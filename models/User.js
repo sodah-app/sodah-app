@@ -1,111 +1,102 @@
 import mongoose from "mongoose";
 
-const UserSchema =
-  new mongoose.Schema(
-    {
-      /* USER INFO */
-
-      fullName: {
-        type: String,
-        required: true,
-        trim: true,
-      },
-
-      phone: {
-        type: String,
-        required: true,
-        trim: true,
-      },
-
-      email: {
-        type: String,
-        required: true,
-        unique: true,
-        lowercase: true,
-        trim: true,
-      },
-
-      password: {
-        type: String,
-        required: true,
-      },
-
-      /* SUBSCRIPTION */
-
-      subscriptionStatus: {
-        type: String,
-
-        enum: [
-          "trial",
-          "active",
-          "expired",
-        ],
-
-        default: "trial",
-      },
-
-      plan: {
-        type: String,
-
-        default:
-          "7-days-trial",
-      },
-
-      trialStartDate: {
-        type: Date,
-
-        default: Date.now,
-      },
-
-      trialEndDate: {
-        type: Date,
-      },
-
-      subscriptionStartDate: {
-        type: Date,
-      },
-
-      subscriptionEndDate: {
-        type: Date,
-      },
-
-      /* BLOCK ACCESS */
-
-      isBlocked: {
-        type: Boolean,
-        default: false,
-      },
+const UserSchema = new mongoose.Schema(
+  {
+    // USER INFO
+    fullName: {
+      type: String,
+      required: true,
+      trim: true,
     },
 
-    {
-      timestamps: true,
-    }
-  );
+    phone: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
-/* AUTO CREATE 7 DAYS TRIAL */
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
 
-UserSchema.pre(
-  "save",
-  function (next) {
-    if (!this.trialEndDate) {
-      const trial =
-        new Date();
+    password: {
+      type: String,
+      required: true,
+    },
 
-      trial.setDate(
-        trial.getDate() + 7
-      );
+    // SUBSCRIPTION STATUS
+    subscriptionStatus: {
+      type: String,
 
-      this.trialEndDate =
-        trial;
-    }
+      enum: [
+        "trial",
+        "active",
+        "expired",
+      ],
 
-    next();
+      default: "trial",
+    },
+
+    // PLAN
+    plan: {
+      type: String,
+
+      default: "7-days-trial",
+    },
+
+    // TRIAL START
+    trialStartDate: {
+      type: Date,
+
+      default: Date.now,
+    },
+
+    // TRIAL END
+    trialEndDate: {
+      type: Date,
+    },
+
+    // FUTURE PAYMENT SUPPORT
+    subscriptionStartDate: {
+      type: Date,
+    },
+
+    subscriptionEndDate: {
+      type: Date,
+    },
+  },
+
+  {
+    timestamps: true,
   }
 );
 
-export default
+// AUTO CREATE 7 DAYS TRIAL
+UserSchema.pre("save", function () {
+
+  if (!this.trialEndDate) {
+
+    const trial = new Date();
+
+    // ADD 7 DAYS
+    trial.setDate(
+      trial.getDate() + 7
+    );
+
+    this.trialEndDate = trial;
+  }
+
+});
+
+const User =
   mongoose.models.User ||
   mongoose.model(
     "User",
     UserSchema
   );
+
+export default User;

@@ -1,30 +1,52 @@
 import bcrypt from "bcryptjs";
-import { connectDB } from "@/lib/mongodb";
-import User from "@/models/User";
+
+import { connectDB } from "../../../../lib/mongodb.js";
+
+import User from "../../../../models/User.js";
 
 export async function POST(req) {
   try {
+    // CONNECT DATABASE
     await connectDB();
 
-    const body =
-      await req.json();
+    // GET BODY
+    const body = await req.json();
 
-    const {
+    let { email, password } = body;
+
+    // CLEAN INPUTS
+    email = email
+      ?.trim()
+      .toLowerCase();
+
+    password = password?.trim();
+
+    // VALIDATION
+    if (!email || !password) {
+      return Response.json(
+        {
+          success: false,
+
+          message:
+            "Please fill in your details.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    // FIND USER
+    const user = await User.findOne({
       email,
-      password,
-    } = body;
+    });
 
-    /* FIND USER */
-
-    const user =
-      await User.findOne({
-        email,
-      });
-
+    // USER NOT FOUND
     if (!user) {
       return Response.json(
         {
           success: false,
+
           message:
             "User not found.",
         },
@@ -34,18 +56,19 @@ export async function POST(req) {
       );
     }
 
-    /* PASSWORD CHECK */
-
+    // CHECK PASSWORD
     const validPassword =
       await bcrypt.compare(
         password,
         user.password
       );
 
+    // INVALID PASSWORD
     if (!validPassword) {
       return Response.json(
         {
           success: false,
+
           message:
             "Invalid password.",
         },
@@ -55,88 +78,50 @@ export async function POST(req) {
       );
     }
 
-    /* =========================
-       SUBSCRIPTION CHECK
-    ========================== */
+    // CHECK SUBSCRIPTION
+    const now = new Date();
 
-    const now =
-      new Date();
+    const trialEndDate =
+      new Date(
+        user.trialEndDate
+      );
 
-    /* FREE TRIAL EXPIRED */
-
-    if (
-      user.trialEndDate &&
-      now >
-        new Date(
-          user.trialEndDate
-        )
-    ) {
+    // EXPIRED
+    if (now > trialEndDate) {
       user.subscriptionStatus =
         "expired";
 
-      user.isBlocked = true;
-
       await user.save();
-
-      return Response.json(
-        {
-          success: false,
-
-          expired: true,
-
-          message:
-            "Your subscription has expired. Please upgrade.",
-        },
-        {
-          status: 403,
-        }
-      );
     }
 
-    /* PAID SUBSCRIPTION EXPIRED */
+    // REMAINING TIME
+    const remainingMs =
+      trialEndDate - now;
 
-    if (
-      user.subscriptionEndDate &&
-      now >
-        new Date(
-          user.subscriptionEndDate
-        )
-    ) {
-      user.subscriptionStatus =
-        "expired";
-
-      user.isBlocked = true;
-
-      await user.save();
-
-      return Response.json(
-        {
-          success: false,
-
-          expired: true,
-
-          message:
-            "Subscription expired. Please renew.",
-        },
-        {
-          status: 403,
-        }
+    const remainingDays =
+      Math.ceil(
+        remainingMs /
+          (1000 *
+            60 *
+            60 *
+            24)
       );
-    }
 
-    /* ACTIVE USER */
+    const remainingHours =
+      Math.ceil(
+        remainingMs /
+          (1000 *
+            60 *
+            60)
+      );
 
-    user.isBlocked = false;
-
-    await user.save();
-
-    /* REMOVE PASSWORD */
-
+    // REMOVE PASSWORD
     const userResponse =
       user.toObject();
 
     delete userResponse.password;
 
+    // SUCCESS RESPONSE
     return Response.json({
       success: true,
 
@@ -144,9 +129,22 @@ export async function POST(req) {
         "Login successful.",
 
       user: userResponse,
+
+      subscriptionStatus:
+        user.subscriptionStatus,
+
+      remainingDays,
+
+      remainingHours,
+
+      trialEndDate:
+        user.trialEndDate,
     });
   } catch (error) {
-    console.error(error);
+    console.error(
+      "LOGIN ERROR:",
+      error
+    );
 
     return Response.json(
       {

@@ -1,117 +1,25 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import OpenAI from "openai";
 
-export async function POST(req) {
-  try {
-    const body = await req.json();
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-    console.log(
-      "PAYPAL WEBHOOK:",
-      JSON.stringify(body, null, 2)
-    );
+export async function POST(request) {
+  const body = await request.json();
+  const userMessage = body.message || "Hello";
 
-    /* =========================
-       PAYMENT COMPLETED
-    ========================== */
-
-    if (
-      body.event_type ===
-      "PAYMENT.CAPTURE.COMPLETED"
-    ) {
-      const payment =
-        body.resource;
-
-      const email =
-        payment?.payer?.email_address;
-
-      const amount =
-        payment?.amount?.value;
-
-      const transactionId =
-        payment?.id;
-
-      /* =========================
-         SAVE PAYMENT
-      ========================== */
-
-      const { error: paymentError } =
-        await supabase
-          .from("payments")
-          .insert([
-            {
-              email,
-              amount,
-              status: "completed",
-              payment_method:
-                "paypal",
-              paypal_transaction_id:
-                transactionId,
-            },
-          ]);
-
-      if (paymentError) {
-        console.error(
-          paymentError
-        );
-      }
-
-      /* =========================
-         CREATE SUBSCRIPTION
-      ========================== */
-
-      const startDate =
-        new Date();
-
-      const endDate =
-        new Date();
-
-      endDate.setMonth(
-        endDate.getMonth() + 1
-      );
-
-      const {
-        error: subscriptionError,
-      } = await supabase
-        .from("subscriptions")
-        .insert([
-          {
-            email,
-            plan: "premium",
-            amount,
-            status: "active",
-            paypal_order_id:
-              transactionId,
-            start_date:
-              startDate,
-            end_date: endDate,
-          },
-        ]);
-
-      if (subscriptionError) {
-        console.error(
-          subscriptionError
-        );
-      }
-
-      console.log(
-        "Subscription Activated"
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-    });
-  } catch (err) {
-    console.error(err);
-
-    return NextResponse.json(
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
       {
-        error:
-          "Webhook Error",
+        role: "user",
+        content: userMessage,
       },
-      {
-        status: 500,
-      }
-    );
-  }
+    ],
+  });
+
+  return NextResponse.json({
+    reply: completion.choices[0].message.content,
+  });
 }
