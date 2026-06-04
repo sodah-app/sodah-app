@@ -39,7 +39,10 @@ useEffect(() => {
     "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1920&q=100",
 
     "https://images.unsplash.com/photo-1526378722484-bd91ca387e72?auto=format&fit=crop&w=1920&q=100",
-
+     "https://res.cloudinary.com/djnjhphf5/image/upload/v1775232452/cld-sample-2.jpg",
+     "https://res.cloudinary.com/djnjhphf5/image/upload/v1775232442/samples/balloons.jpg",
+     "https://res.cloudinary.com/djnjhphf5/image/upload/v1779814901/sodah.io_logo_z6xflv.png",
+    "https://res.cloudinary.com/djnjhphf5/image/upload/v1776474666/WhatsApp_Image_2026-03-15_at_3.47.47_AM_eyfhaw.jpg",
     "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?auto=format&fit=crop&w=1920&q=100",
 
     "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1920&q=100",
@@ -299,7 +302,7 @@ useEffect(() => {
 
       {/* MAIN */}
 
-      <div className="relative z-20 h-screen flex flex-col px-6 py-5">
+      <div className="relative z-20 min-h-screen flex flex-col px-6 py-5 pb-24">
         {/* TOP BAR */}
 
         <div className="flex items-center justify-between mb-5">
@@ -345,9 +348,14 @@ useEffect(() => {
         {/* HERO */}
 
         <div className="mb-5">
-          <h2 className="text-5xl md:text-6xl font-black leading-tight max-w-5xl drop-shadow-2xl">
-            Welcome to Sodah Automation 🚀
-          </h2>
+         <h2 className="text-[56px] leading-[58px] font-black">
+  Welcome to
+  <br />
+  <span className="text-green-400">
+    Sodah
+  </span>{" "}
+  Automation 🚀
+</h2>
 
           <p className="text-gray-200 text-lg mt-3 max-w-3xl leading-relaxed">
             Manage your business,
@@ -366,18 +374,87 @@ useEffect(() => {
 
   {isMobile ? (
     <>
-      <Card
-        title="💬 Connect WhatsApp"
-        desc="Fill business details and connect your number"
-        onClick={() => router.push("/mobile/automation")}
-        highlight
-      />
+      <div className="flex gap-3">
 
-      <Card
-        title="💻 Desktop Features"
-        desc="Dashboard, Analytics, Settings and advanced tools are available on Laptop or Desktop computers."
-        onClick={() => {}}
-      />
+  <div
+    onClick={() =>
+      router.push("/mobile/automation")
+    }
+    className="
+      flex-1
+      bg-green-500/20
+      hover:bg-green-500/30
+      border
+      border-green-400/30
+      backdrop-blur-2xl
+      rounded-3xl
+      p-6
+      cursor-pointer
+      transition-all
+      duration-300
+    "
+  >
+    <h3 className="text-2xl font-bold mb-2">
+      💬 Connect WhatsApp
+    </h3>
+
+    <p className="text-sm text-gray-200">
+      Fill business details and connect your number
+    </p>
+  </div>
+
+  <button
+    onClick={() =>
+      router.push("/settings")
+    }
+    className="
+      w-[90px]
+      bg-white/10
+      border
+      border-white/15
+      backdrop-blur-2xl
+      rounded-3xl
+      flex
+      flex-col
+      items-center
+      justify-center
+      transition-all
+      duration-300
+      hover:bg-white/15
+    "
+  >
+    <span className="text-3xl">
+      ⚙️
+    </span>
+
+    <span className="text-xs mt-1">
+      Settings
+    </span>
+  </button>
+
+</div>
+
+      <div
+  className="
+    bg-white/10
+    backdrop-blur-xl
+    border
+    border-white/10
+    rounded-3xl
+    p-5
+    mt-4
+  "
+>
+  <h3 className="text-2xl font-bold">
+    💻 Explore on Desktop
+  </h3>
+
+  <p className="text-gray-300 mt-2 leading-relaxed">
+    Access Dashboard, Analytics,
+    Settings and advanced tools
+    on Desktop or Laptop.
+  </p>
+</div>
 
       <Card
         title="💰 Subscription"
@@ -400,11 +477,11 @@ useEffect(() => {
         onClick={() => router.push("/dashboard")}
       />
 
-      <Card
-        title="💬 Connect WhatsApp"
-        desc="Fill business details and connect your number"
-        onClick={startAutomationSetup}
-      />
+  <Card
+  title="💬 Connect WhatsApp"
+  desc="Fill business details and connect your number"
+  onClick={startAutomationSetup}
+/>
 
       <Card
         title="🚪 Logout"
@@ -472,6 +549,60 @@ useEffect(() => {
             <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-20 animate-ping"></span>
           </button>
         </div>
+         {isMobile && (
+  <div
+    className="
+      fixed
+      bottom-0
+      left-0
+      right-0
+      h-20
+      bg-black/80
+      backdrop-blur-xl
+      border-t
+      border-white/10
+      flex
+      items-center
+      justify-around
+      z-40
+    "
+  >
+    <button
+      onClick={() => router.push("/home")}
+      className="text-2xl"
+    >
+      🏠
+    </button>
+
+    <button
+      onClick={() => router.push("/dashboard")}
+      className="text-2xl"
+    >
+      📊
+    </button>
+
+    <button
+      onClick={() => router.push("/automation")}
+      className="text-2xl"
+    >
+      🤖
+    </button>
+
+    <button
+      onClick={() => router.push("/analytics")}
+      className="text-2xl"
+    >
+      📈
+    </button>
+
+    <button
+      onClick={() => router.push("/settings")}
+      className="text-2xl"
+    >
+      ⚙️
+    </button>
+  </div>
+)}
       </div>
     </div>
   );

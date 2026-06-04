@@ -69,39 +69,11 @@ console.log("BUSINESS:", body.businessName);
       );
     }
 
-    // ==========================================================
-    // 2. CHECK DATABASE FLAG AS A SECOND LAYER OF PROTECTION
-    // ==========================================================
-    const {
-      data: existingConnectedBusiness,
-      error: checkError,
-    } = await supabase
-      .from("businesses")
-      .select("id, business_name")
-      .eq("whatsapp_connected", true)
-      .maybeSingle();
-
-    if (checkError) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Failed to check WhatsApp connection status.",
-        },
-        { status: 500 }
-      );
-    }
-
-    if (existingConnectedBusiness) {
-      return NextResponse.json(
-        {
-          success: false,
-          alreadyConnected: true,
-          message:
-            "WhatsApp is already connected for another business. Disconnect it first before creating a new setup.",
-        },
-        { status: 400 }
-      );
-    }
+   // ==========================================================
+// 2. PLACEHOLDER
+// ==========================================================
+// Duplicate checking will happen after Step 3
+// when aiNumber and supportNumber are available.
 
     // ==========================================================
     // 3. EXTRACT REQUEST DATA (CAMELCASE FROM FRONTEND)
@@ -122,41 +94,42 @@ console.log("BUSINESS:", body.businessName);
       setupType = "business",
     } = body;
 
-    // ==========================================================
-    // 4. CHECK IF THIS BUSINESS HAS ALREADY BEEN SAVED
-    // ==========================================================
-    const businessNameToCheck =
-      businessName || fullName || "Unknown";
+// ==========================================================
+// 4. CHECK IF RECORD ALREADY EXISTS
+// ==========================================================
 
-    const { data: existingBusiness, error: existingBusinessError } =
-      await supabase
-        .from("businesses")
-        .select("*")
-        .eq("email", email)
-        .eq("business_name", businessNameToCheck)
-        .maybeSingle();
+const { data: existingBusiness, error: existingBusinessError } =
+  await supabase
+    .from("businesses")
+    .select("*")
+    .or(
+      `ai_number.eq.${aiNumber},support_number.eq.${supportNumber}`
+    )
+    .maybeSingle();
 
-    if (existingBusinessError) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: existingBusinessError.message,
-        },
-        { status: 500 }
-      );
-    }
+if (existingBusinessError) {
+  return NextResponse.json(
+    {
+      success: false,
+      message: existingBusinessError.message,
+    },
+    { status: 500 }
+  );
+}
 
-    if (existingBusiness) {
-      return NextResponse.json({
-        success: true,
-        alreadyExists: true,
-        message:
-          "Your information has already been saved. Please connect your WhatsApp.",
-        business_id: existingBusiness.business_id,
-        data: existingBusiness,
-      });
-    }
-
+if (existingBusiness) {
+  return NextResponse.json({
+    success: true,
+    alreadyExists: true,
+    whatsappConnected:
+      existingBusiness.whatsapp_connected === true,
+    business_id: existingBusiness.business_id,
+    message:
+      existingBusiness.whatsapp_connected
+        ? "WhatsApp already connected."
+        : "Information already saved. Continue to connect WhatsApp.",
+  });
+}
     // ==========================================================
     // 5. GENERATE UNIQUE BUSINESS ID
     // ==========================================================

@@ -260,6 +260,7 @@ export default function AutomationPage() {
     // SCHEDULE
     workingDays: [],
     hours: "",
+customHours: "",
 
     // CAPABILITIES
     capabilities: []
@@ -441,17 +442,20 @@ useEffect(() => {
         ? `${form.supportCode}${form.supportNumber}`
         : `${form.aiCode}${form.aiNumber}`,
 
-      // Schedule
-      workingDays: Array.isArray(form.workingDays)
-        ? form.workingDays.join(", ")
-        : "",
+   // Schedule
+workingDays: Array.isArray(form.workingDays)
+  ? form.workingDays.join(", ")
+  : "",
 
-      hours: form.hours || "",
+hours:
+  form.hours === "Custom Hours"
+    ? form.customHours
+    : form.hours,
 
-      // Capabilities
-      capabilities: Array.isArray(form.capabilities)
-        ? form.capabilities.join(", ")
-        : ""
+// Capabilities
+capabilities: Array.isArray(form.capabilities)
+  ? form.capabilities.join(", ")
+  : ""
     };
 
     console.log("Saving to Supabase:", apiPayload);
@@ -479,6 +483,10 @@ useEffect(() => {
       // Save business_id locally
       if (apiData.business_id) {
         localStorage.setItem("business_id", apiData.business_id);
+console.log(
+  "Saved business_id:",
+  apiData.business_id
+);
       }
 
       setTimeout(() => {

@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 export default function Profile() {
   const router = useRouter();
 
-  // ✅ BEST PRACTICE: always define structure
   const [user, setUser] = useState({
     fullName: "",
     phone: "",
@@ -15,7 +14,9 @@ export default function Profile() {
 
   // LOAD USER FROM LOCAL STORAGE
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("user") || "{}");
+    const saved = JSON.parse(
+      localStorage.getItem("user") || "{}"
+    );
 
     setUser({
       fullName: saved.fullName || "",
@@ -26,30 +27,57 @@ export default function Profile() {
 
   // HANDLE INPUT CHANGE
   const handleChange = (e) => {
-    setUser({
-      ...user,
+    setUser((prev) => ({
+      ...prev,
       [e.target.name]: e.target.value,
-    });
+    }));
   };
 
   // SAVE CHANGES
   const handleSave = () => {
-    localStorage.setItem("user", JSON.stringify(user));
-    alert("Profile updated successfully ✅");
-    router.push("/welcome");
+    try {
+      const existingUser = JSON.parse(
+        localStorage.getItem("user") || "{}"
+      );
+
+      const updatedUser = {
+        ...existingUser,
+        ...user,
+      };
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify(updatedUser)
+      );
+
+      console.log(
+        "Updated User:",
+        updatedUser
+      );
+
+      alert("Profile updated successfully ✅");
+
+      router.push("/welcome");
+    } catch (error) {
+      console.error(
+        "Failed to save profile:",
+        error
+      );
+
+      alert(
+        "Failed to save profile."
+      );
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0b0f19] transition">
-
       <div className="w-full max-w-md bg-gray-100 dark:bg-[#111827] border border-gray-300 dark:border-white/10 rounded-xl p-6 shadow-lg">
-
         <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">
           Profile Settings
         </h2>
 
         <div className="space-y-4">
-
           {/* FULL NAME */}
           <input
             type="text"
@@ -95,7 +123,6 @@ export default function Profile() {
           >
             ← Back to Settings
           </button>
-
         </div>
       </div>
     </div>

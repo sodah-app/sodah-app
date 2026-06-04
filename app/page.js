@@ -9,7 +9,8 @@ import { useEffect, useState } from "react";
 
 const SLIDES = [
   "https://res.cloudinary.com/djnjhphf5/image/upload/v1776475843/0f298db5-675f-4c66-8896-f951967a3807_8fcee9.png",
-
+  "https://res.cloudinary.com/djnjhphf5/image/upload/v1775232452/cld-sample-2.jpg",
+  "https://res.cloudinary.com/djnjhphf5/image/upload/v1780574352/WhatsApp_Image_2026-06-04_at_3.56.47_PM_cl8jtq.jpg",
   "https://res.cloudinary.com/djnjhphf5/image/upload/v1779811920/WhatsApp_Image_2026-05-26_at_7.58.55_PM_sw7wpc.jpg",
 ];
 
@@ -231,11 +232,11 @@ export default function Home() {
 
       {/* ================================= FLOATING FREE TRIAL ================================= */}
 
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+      <div className="fixed bottom-9 left-1/2 -translate-x-1/2 z-30">
 
         <button
           onClick={goToSignup}
-          className="px-8 py-4 rounded-full bg-gradient-to-r from-green-400 to-emerald-500 text-black font-black text-lg shadow-[0_0_40px_rgba(34,197,94,0.6)] hover:scale-110 transition animate-pulse"
+          className="px-6 py-2 rounded-full bg-gradient-to-r from-green-400 to-emerald-600 text-black font-black text-lg shadow-[0_0_40px_rgba(34,197,94,0.6)] hover:scale-110 transition animate-pulse"
         >
           🚀 Start Free Trial
         </button>
@@ -324,7 +325,7 @@ export default function Home() {
               <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-[0_0_80px_rgba(34,197,94,0.2)] group">
 
                 <img
-                  src="https://res.cloudinary.com/djnjhphf5/image/upload/v1776475843/0f298db5-675f-4c66-8896-f951967a3807_8fcee9.png"
+                  src="https://res.cloudinary.com/djnjhphf5/image/upload/v1780574352/WhatsApp_Image_2026-06-04_at_3.56.47_PM_cl8jtq.jpg"
                   alt="AI Automation"
                   className="w-full h-[520px] object-cover transition duration-700 group-hover:scale-105 object-center"
                 />

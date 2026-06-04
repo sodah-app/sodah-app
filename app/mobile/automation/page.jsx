@@ -88,117 +88,131 @@ export default function MobileAutomationPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+ const handleSubmit = async (e) => {
 
-    e.preventDefault();
+  e.preventDefault();
 
-    const valid = validateForm();
+  const valid = validateForm();
 
-    if (!valid) {
+  if (!valid) {
 
-      navigator.vibrate?.([
-        200,
-        100,
-        200,
-      ]);
+    navigator.vibrate?.([200, 100, 200]);
 
-      setShake(true);
+    setShake(true);
+    setShowErrorToast(true);
 
-      setShowErrorToast(true);
+    setTimeout(() => {
+      setShake(false);
+    }, 500);
 
-      setTimeout(() => {
-        setShake(false);
-      }, 500);
+    setTimeout(() => {
+      setShowErrorToast(false);
+    }, 2500);
 
-      setTimeout(() => {
-        setShowErrorToast(false);
-      }, 2500);
+    return;
+  }
+
+  try {
+
+    setLoading(true);
+
+    // TEMPORARY TEST
+    console.log("Skipping WhatsApp check");
+
+    // SAVE SETTINGS
+
+    const saveResponse =
+      await fetch(
+        "/api/business/automation",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            businessName:
+              formData.businessName,
+
+            industry:
+              formData.businessType,
+
+            aiNumber:
+              formData.whatsapp,
+
+            supportNumber:
+              formData.whatsapp,
+
+            setupType:
+              "business",
+          }),
+        }
+      );
+
+    const saveData =
+      await saveResponse.json();
+
+    console.log(
+      "SAVE RESPONSE:",
+      saveData
+    );
+
+    if (!saveResponse.ok) {
+
+      console.error(saveData);
+
+      alert(
+        saveData.message ||
+        JSON.stringify(saveData)
+      );
 
       return;
     }
 
-    try {
-
-      setLoading(true);
-
-      // CHECK EXISTING WHATSAPP
-
-      const checkResponse =
-        await fetch(
-          "/api/check-whatsapp",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              whatsapp:
-                formData.whatsapp,
-            }),
-          }
-        );
-
-      const checkData =
-        await checkResponse.json();
-
-      if (checkData.exists) {
-
-        alert(
-          "WhatsApp already connected ✅"
-        );
-
-        return;
-      }
-
-      // SAVE SETTINGS
-
-      const saveResponse =
-        await fetch(
-          "/api/save-automation",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify(
-              formData
-            ),
-          }
-        );
-
-      const saveData =
-        await saveResponse.json();
-
-      if (!saveData.success) {
-
-        alert(
-          "Failed to save settings"
-        );
-
-        return;
-      }
-
-      // REDIRECT TO QR PAGE
-
-      router.push(
-        "/mobile/qr-connect"
-      );
-
-    } catch (error) {
-
-      console.log(error);
+    if (!saveData.success) {
 
       alert(
-        "Something went wrong"
+        saveData.message ||
+        "Failed to save settings"
       );
 
-    } finally {
-
-      setLoading(false);
+      return;
     }
-  };
+
+    router.push(
+      "/mobile/qr-connect"
+    );
+
+  } catch (error) {
+
+    console.error(
+      "FULL ERROR:",
+      error
+    );
+
+    console.error(
+      "ERROR NAME:",
+      error?.name
+    );
+
+    console.error(
+      "ERROR MESSAGE:",
+      error?.message
+    );
+
+    alert(
+      `NAME: ${error?.name}
+MESSAGE: ${error?.message}`
+    );
+
+  } finally {
+
+    setLoading(false);
+
+  }
+};
+
+
 
   return (
 

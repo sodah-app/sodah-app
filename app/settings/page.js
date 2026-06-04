@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "../../lib/supabase";
 
 export default function Settings() {
   const router = useRouter();
 
   // 🌗 DARK MODE STATE
   const [dark, setDark] = useState(false);
-
+const [groupChatsEnabled, setGroupChatsEnabled] =
+  useState(false);
   // ============================================
   // LOAD SAVED THEME GLOBALLY
   // ============================================
@@ -42,7 +44,46 @@ export default function Settings() {
         "black";
     }
   }, []);
+useEffect(() => {
+  const loadGroupChatSetting = async () => {
+    try {
+      const { data, error } =
+        await supabase
+          .from("businesses")
+          .select("*")
+          .eq("status", "active")
+          .single();
 
+      console.log(
+        "Loaded Active Business:",
+        data
+      );
+
+      console.log(
+        "Load Error:",
+        error
+      );
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      if (data) {
+        setGroupChatsEnabled(
+          !!data.group_chat_enabled
+        );
+      }
+    } catch (err) {
+      console.error(
+        "Load Group Chat Error:",
+        err
+      );
+    }
+  };
+
+  loadGroupChatSetting();
+}, []);
   // ============================================
   // GLOBAL DARK MODE TOGGLE
   // ============================================
@@ -92,7 +133,104 @@ export default function Settings() {
       new Event("storage")
     );
   };
+const handleResetAccount = () => {
+  const confirmed = window.confirm(
+    "Reset your account and clear all data?"
+  );
 
+  if (!confirmed) return;
+
+  localStorage.clear();
+
+  router.push("/signup");
+};
+
+const toggleGroupChats = async () => {
+  try {
+    const newValue =
+      !groupChatsEnabled;
+
+    setGroupChatsEnabled(
+      newValue
+    );
+
+ const {
+  data: activeBusiness,
+  error: businessError,
+} = await supabase
+  .from("businesses")
+  .select("*")
+  .eq("status", "active")
+  .single();
+
+console.log(
+  "Active Business:",
+  activeBusiness
+);
+console.log(
+  "Business ID Used:",
+  activeBusiness?.business_id
+);
+
+if (
+  businessError ||
+  !activeBusiness
+) {
+  alert(
+    "No active business found."
+  );
+
+  setGroupChatsEnabled(
+    !newValue
+  );
+
+  return;
+}
+
+const { data, error } =
+  await supabase
+    .from("businesses")
+    .update({
+      group_chat_enabled:
+        newValue,
+    })
+    .eq(
+      "business_id",
+      activeBusiness.business_id
+    )
+    .select();
+console.log("Saved Value:", newValue);
+console.log("Returned Data:", data);
+console.log("Returned Error:", error);
+
+if (data && data.length > 0) {
+  console.log(
+    "Database Value After Save:",
+    data[0].group_chat_enabled
+  );
+}
+
+
+    if (error) {
+      setGroupChatsEnabled(
+        !newValue
+      );
+
+      alert(
+        "Failed to save setting."
+      );
+    }
+  } catch (err) {
+    console.error(
+      "Toggle Error:",
+      err
+    );
+
+    alert(
+      "Failed to save setting."
+    );
+  }
+};
   return (
     <div
       className={`
@@ -236,40 +374,123 @@ export default function Settings() {
           />
         </Card>
 
-        {/* RESET */}
-        <div
-          className={`
-            p-5
-            rounded-2xl
-            cursor-pointer
-            transition-all
-            duration-300
-            border
-            ${
-              dark
-                ? "bg-red-500/10 border-red-500/30"
-                : "bg-red-50 border-red-300"
-            }
-          `}
-        >
-          <h3 className="text-red-500 font-semibold">
-            Reset Account
-          </h3>
+       {/* COMMUNITY + RESET */}
+<div className="grid grid-cols-2 gap-3">
 
-          <p
-            className={`
-              text-sm
-              ${
-                dark
-                  ? "text-gray-400"
-                  : "text-gray-500"
-              }
-            `}
-          >
-            Clear all data and restart
-          </p>
-        </div>
-      </div>
+  {/* WHATSAPP GROUP CHATS */}
+<div
+  className={`
+    p-5
+    rounded-2xl
+    transition-all
+    duration-300
+    border
+    ${
+      dark
+        ? "bg-white/5 border-white/10"
+        : "bg-white border-gray-200"
+    }
+  `}
+>
+  <div className="flex justify-between items-center">
+    <div>
+      <h3 className="text-green-500 font-semibold">
+        WhatsApp Group Chats
+      </h3>
+
+      <p
+        className={`
+          text-sm
+          ${
+            dark
+              ? "text-gray-400"
+              : "text-gray-500"
+          }
+        `}
+      >
+        Enable or disable AI replies in groups
+      </p>
+    </div>
+
+    <div
+     onClick={toggleGroupChats}
+      className={`
+        w-14
+        h-7
+        flex
+        items-center
+        rounded-full
+        p-1
+        cursor-pointer
+        transition-all
+        duration-300
+        ${
+          groupChatsEnabled
+            ? "bg-gradient-to-r from-green-500 to-emerald-400"
+            : "bg-gray-400"
+        }
+      `}
+    >
+      <div
+        className={`
+          bg-white
+          w-5
+          h-5
+          rounded-full
+          shadow-md
+          transform
+          transition-all
+          duration-300
+          ${
+            groupChatsEnabled
+              ? "translate-x-7"
+              : "translate-x-0"
+          }
+        `}
+      />
+    </div>
+  </div>
+</div>
+
+  {/* RESET ACCOUNT */}
+  <div
+    onClick={handleResetAccount}
+    className={`
+      p-5
+      rounded-2xl
+      cursor-pointer
+      transition-all
+      duration-300
+      border
+      hover:scale-[1.02]
+      ${
+        dark
+          ? "bg-red-500/10 border-red-500/30"
+          : "bg-red-50 border-red-300"
+      }
+    `}
+  >
+    <h3 className="text-red-500 font-semibold">
+      Reset Account
+    </h3>
+
+    <p
+      className={`
+        text-sm
+        ${
+          dark
+            ? "text-gray-400"
+            : "text-gray-500"
+        }
+      `}
+    >
+      Clear all data
+    </p>
+  </div>
+
+</div>
+     
+ </div>
     </div>
   );
 }
