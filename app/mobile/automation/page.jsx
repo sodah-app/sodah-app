@@ -9,23 +9,32 @@ export default function MobileAutomationPage() {
 
   const [loading, setLoading] = useState(false);
 
-  const [shake, setShake] = useState(false);
+  const [form, setForm] = useState({
 
-  const [showErrorToast, setShowErrorToast] =
-    useState(false);
+    setupType: "business",
 
-  const [errors, setErrors] = useState({});
-
-  const [formData, setFormData] = useState({
+    // BUSINESS
     businessName: "",
-    businessType: "",
-    whatsapp: "",
-    tone: "Professional",
-    aiReplies: true,
-    bookings: true,
+    industry: "",
+    email: "",
+    location: "",
+
+    // PERSONAL
+    fullName: "",
+    personalGoal: "",
+
+    // CONTACT
+    aiNumber: "",
+    supportNumber: "",
+
+    // SETTINGS
+    workingDays: "Monday-Friday",
+    hours: "24 Hours",
+    capabilities: "Auto Reply"
+
   });
 
-  const businessTypes = [
+  const industries = [
     "Restaurant",
     "Salon",
     "Gym",
@@ -45,399 +54,506 @@ export default function MobileAutomationPage() {
     "Logistics",
     "Pharmacy",
     "Supermarket",
-    "Tech Company",
+    "Tech Company"
+  ];
+
+  const personalGoals = [
+    "Auto Reply",
+    "Appointment Booking",
+    "Personal Assistant",
+    "Reminder Messages",
+    "Receive Unknown Messages",
+    "Follow-up Messages",
+    "Task Notifications",
+    "Event Reminders"
   ];
 
   const handleChange = (e) => {
 
-    const { name, value, type, checked } =
-      e.target;
-
-    setFormData({
-      ...formData,
-      [name]:
-        type === "checkbox"
-          ? checked
-          : value,
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value
     });
 
-    setErrors({
-      ...errors,
-      [name]: "",
-    });
   };
 
-  const validateForm = () => {
+  const handleSubmit = async (e) => {
 
-    const newErrors = {};
+    e.preventDefault();
 
-    if (!formData.businessName.trim()) {
-      newErrors.businessName = true;
-    }
+    if (form.setupType === "business") {
 
-    if (!formData.businessType.trim()) {
-      newErrors.businessType = true;
-    }
-
-    if (!formData.whatsapp.trim()) {
-      newErrors.whatsapp = true;
-    }
-
-    setErrors(newErrors);
-
-    return Object.keys(newErrors).length === 0;
-  };
-
- const handleSubmit = async (e) => {
-
-  e.preventDefault();
-
-  const valid = validateForm();
-
-  if (!valid) {
-
-    navigator.vibrate?.([200, 100, 200]);
-
-    setShake(true);
-    setShowErrorToast(true);
-
-    setTimeout(() => {
-      setShake(false);
-    }, 500);
-
-    setTimeout(() => {
-      setShowErrorToast(false);
-    }, 2500);
-
-    return;
-  }
-
-  try {
-
-    setLoading(true);
-
-    // TEMPORARY TEST
-    console.log("Skipping WhatsApp check");
-
-    // SAVE SETTINGS
-
-    const saveResponse =
-      await fetch(
-        "/api/business/automation",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            businessName:
-              formData.businessName,
-
-            industry:
-              formData.businessType,
-
-            aiNumber:
-              formData.whatsapp,
-
-            supportNumber:
-              formData.whatsapp,
-
-            setupType:
-              "business",
-          }),
-        }
-      );
-
-    const saveData =
-      await saveResponse.json();
-
-    console.log(
-      "SAVE RESPONSE:",
-      saveData
-    );
-
-    if (!saveResponse.ok) {
-
-      console.error(saveData);
-
-      alert(
-        saveData.message ||
-        JSON.stringify(saveData)
-      );
-
-      return;
-    }
-
-    if (!saveData.success) {
-
-      alert(
-        saveData.message ||
-        "Failed to save settings"
-      );
-
-      return;
-    }
-
-    router.push(
-      "/mobile/qr-connect"
-    );
-
-  } catch (error) {
-
-    console.error(
-      "FULL ERROR:",
-      error
-    );
-
-    console.error(
-      "ERROR NAME:",
-      error?.name
-    );
-
-    console.error(
-      "ERROR MESSAGE:",
-      error?.message
-    );
-
-    alert(
-      `NAME: ${error?.name}
-MESSAGE: ${error?.message}`
-    );
-
-  } finally {
-
-    setLoading(false);
-
-  }
-};
-
-
-
-  return (
-
-    <div className="min-h-screen bg-[#0B1120] text-white p-5 flex items-center justify-center">
-
-      {/* ERROR TOAST */}
-
-      {
-        showErrorToast && (
-          <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
-
-            <div className="bg-red-500 text-white px-6 py-4 rounded-2xl shadow-2xl animate-bounce text-center font-semibold">
-
-              Please fill all required details ❗
-
-            </div>
-
-          </div>
-        )
+      if (
+        !form.businessName ||
+        !form.industry ||
+        !form.aiNumber
+      ) {
+        alert(
+          "Please complete all business details"
+        );
+        return;
       }
 
-      <div
-        className={`w-full max-w-md ${
-          shake
-            ? "animate-shake"
-            : ""
-        }`}
-      >
+    }
+
+    if (form.setupType === "personal") {
+
+      if (
+        !form.fullName ||
+        !form.personalGoal ||
+        !form.aiNumber
+      ) {
+        alert(
+          "Please complete all personal details"
+        );
+        return;
+      }
+
+    }
+
+    try {
+
+      setLoading(true);
+
+      const payload = {
+
+        setupType:
+          form.setupType,
+
+        businessName:
+          form.setupType === "business"
+            ? form.businessName
+            : form.fullName,
+
+        fullName:
+          form.fullName,
+
+        personalGoal:
+          form.personalGoal,
+
+        industry:
+          form.setupType === "business"
+            ? form.industry
+            : "Personal Use",
+
+        email:
+          form.setupType === "business"
+            ? form.email
+            : "",
+
+        location:
+          form.setupType === "business"
+            ? form.location
+            : "",
+
+        aiNumber:
+          form.aiNumber,
+
+        supportNumber:
+          form.setupType === "business"
+            ? (
+                form.supportNumber ||
+                form.aiNumber
+              )
+            : form.aiNumber,
+
+        workingDays:
+          form.workingDays,
+
+        hours:
+          form.hours,
+
+        capabilities:
+          form.capabilities,
+
+        whatsapp_connected:
+          false
+
+      };
+
+      console.log(
+        "MOBILE PAYLOAD:",
+        payload
+      );
+
+      const response =
+        await fetch(
+          "/api/business/automation",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+            body: JSON.stringify(
+              payload
+            )
+          }
+        );
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+
+        throw new Error(
+          data.message ||
+          "Failed to save"
+        );
+
+      }
+
+      if (data.business_id) {
+
+        localStorage.setItem(
+          "business_id",
+          data.business_id
+        );
+
+      }
+
+      alert(
+        "Setup saved successfully 🚀"
+      );
+
+      router.push(
+        "/mobile/qr-connect"
+      );
+
+    } catch (error) {
+
+      console.error(error);
+
+      alert(
+        error.message
+      );
+
+    } finally {
+
+      setLoading(false);
+
+    }
+
+  };
+  return (
+
+    <div className="min-h-screen bg-[#0B1120] text-white p-5">
+
+      <div className="max-w-md mx-auto">
 
         {/* HEADER */}
 
-        <div className="flex items-center gap-3 mb-6">
+        <div className="mb-8">
 
           <img
             src="https://res.cloudinary.com/djnjhphf5/image/upload/v1779814901/sodah.io_logo_z6xflv.png"
             alt="Sodah.io"
-            className="w-14 h-14 rounded-2xl"
+            className="w-16 h-16 rounded-2xl mb-4"
           />
 
-          <div>
+          <h1 className="text-4xl font-bold mb-2">
+            Setup Automation
+          </h1>
 
-            <h1 className="text-3xl font-bold">
-              Setup Automation
-            </h1>
-
-            <p className="text-gray-400 text-sm mt-1">
-              Connect your business AI assistant.
-            </p>
-
-          </div>
+          <p className="text-gray-400">
+            Connect your AI Assistant
+          </p>
 
         </div>
 
-        {/* FORM */}
-
         <form
           onSubmit={handleSubmit}
-          className="space-y-5"
+          className="space-y-4"
         >
 
-          {/* BUSINESS NAME */}
+          {/* ACCOUNT TYPE */}
 
-          <div>
+          <select
+            name="setupType"
+            value={form.setupType}
+            onChange={handleChange}
+            className="w-full p-4 rounded-xl bg-[#1E293B]"
+          >
 
-            <label className="block mb-2 text-sm font-medium">
-              Business Name
-            </label>
+            <option value="business">
+              🏢 Business Use
+            </option>
 
-            <input
-              type="text"
-              name="businessName"
-              value={formData.businessName}
-              onChange={handleChange}
-              placeholder="Sodah Restaurant"
-              className={`w-full p-4 rounded-2xl bg-[#1E293B] border ${
-                errors.businessName
-                  ? "border-red-500"
-                  : "border-gray-700"
-              } focus:outline-none focus:border-green-400 transition`}
-            />
+            <option value="personal">
+              👤 Personal Use
+            </option>
 
-          </div>
+          </select>
 
-          {/* BUSINESS TYPE */}
+          {/* BUSINESS USE */}
 
-          <div>
+          {form.setupType === "business" && (
+            <>
 
-            <label className="block mb-2 text-sm font-medium">
-              Business Type
-            </label>
+              <input
+                type="text"
+                name="businessName"
+                placeholder="Business Name"
+                value={form.businessName}
+                onChange={handleChange}
+                className="w-full p-4 rounded-xl bg-[#1E293B]"
+              />
 
-            <select
-              name="businessType"
-              value={formData.businessType}
-              onChange={handleChange}
-              className={`w-full p-4 rounded-2xl bg-[#1E293B] border ${
-                errors.businessType
-                  ? "border-red-500"
-                  : "border-gray-700"
-              } focus:outline-none focus:border-green-400 transition`}
-            >
+              <select
+                name="industry"
+                value={form.industry}
+                onChange={handleChange}
+                className="w-full p-4 rounded-xl bg-[#1E293B]"
+              >
 
-              <option value="">
-                Select Business Type
-              </option>
+                <option value="">
+                  Select Industry
+                </option>
 
-              {
-                businessTypes.map(
-                  (type) => (
+                {industries.map(
+                  (item) => (
                     <option
-                      key={type}
-                      value={type}
+                      key={item}
+                      value={item}
                     >
-                      {type}
+                      {item}
                     </option>
                   )
-                )
-              }
+                )}
 
-            </select>
+              </select>
 
-          </div>
+              <input
+                type="email"
+                name="email"
+                placeholder="Business Email"
+                value={form.email}
+                onChange={handleChange}
+                className="w-full p-4 rounded-xl bg-[#1E293B]"
+              />
 
-          {/* WHATSAPP */}
+              <input
+                type="text"
+                name="location"
+                placeholder="Business Location"
+                value={form.location}
+                onChange={handleChange}
+                className="w-full p-4 rounded-xl bg-[#1E293B]"
+              />
 
-          <div>
+              <input
+                type="tel"
+                name="aiNumber"
+                placeholder="AI WhatsApp Number"
+                value={form.aiNumber}
+                onChange={handleChange}
+                className="w-full p-4 rounded-xl bg-[#1E293B]"
+              />
 
-            <label className="block mb-2 text-sm font-medium">
-              WhatsApp Number
-            </label>
+              <input
+                type="tel"
+                name="supportNumber"
+                placeholder="Support Number"
+                value={form.supportNumber}
+                onChange={handleChange}
+                className="w-full p-4 rounded-xl bg-[#1E293B]"
+              />
 
-            <input
-              type="text"
-              name="whatsapp"
-              value={formData.whatsapp}
-              onChange={handleChange}
-              placeholder="+971 50 123 4567"
-              className={`w-full p-4 rounded-2xl bg-[#1E293B] border ${
-                errors.whatsapp
-                  ? "border-red-500"
-                  : "border-gray-700"
-              } focus:outline-none focus:border-green-400 transition`}
-            />
+            </>
+          )}
 
-          </div>
+          {/* PERSONAL USE */}
 
-          {/* AI TONE */}
+          {form.setupType === "personal" && (
+            <>
 
-          <div>
+              <input
+                type="text"
+                name="fullName"
+                placeholder="Full Name"
+                value={form.fullName}
+                onChange={handleChange}
+                className="w-full p-4 rounded-xl bg-[#1E293B]"
+              />
 
-            <label className="block mb-2 text-sm font-medium">
-              AI Tone
-            </label>
+              <select
+                name="personalGoal"
+                value={form.personalGoal}
+                onChange={handleChange}
+                className="w-full p-4 rounded-xl bg-[#1E293B]"
+              >
 
-            <select
-              name="tone"
-              value={formData.tone}
-              onChange={handleChange}
-              className="w-full p-4 rounded-2xl bg-[#1E293B] border border-gray-700 focus:outline-none focus:border-green-400 transition"
-            >
+                <option value="">
+                  Select Personal Goal
+                </option>
 
-              <option>
-                Professional
-              </option>
+                {personalGoals.map(
+                  (goal) => (
+                    <option
+                      key={goal}
+                      value={goal}
+                    >
+                      {goal}
+                    </option>
+                  )
+                )}
 
-              <option>
-                Friendly
-              </option>
+              </select>
 
-              <option>
-                Sales
-              </option>
+              <input
+                type="tel"
+                name="aiNumber"
+                placeholder="WhatsApp Number"
+                value={form.aiNumber}
+                onChange={handleChange}
+                className="w-full p-4 rounded-xl bg-[#1E293B]"
+              />
 
-            </select>
+            </>
+          )}
+          {/* WORKING DAYS */}
 
-          </div>
+          <select
+            name="workingDays"
+            value={form.workingDays}
+            onChange={handleChange}
+            className="w-full p-4 rounded-xl bg-[#1E293B]"
+          >
+            <option>
+              Monday-Friday
+            </option>
 
-          {/* AI REPLIES */}
+            <option>
+              Monday-Saturday
+            </option>
 
-          <div className="flex items-center justify-between bg-[#1E293B] p-4 rounded-2xl">
+            <option>
+              Monday-Sunday
+            </option>
 
-            <span>
-              Enable AI Replies
-            </span>
+            <option>
+              24/7
+            </option>
+          </select>
 
-            <input
-              type="checkbox"
-              name="aiReplies"
-              checked={formData.aiReplies}
-              onChange={handleChange}
-            />
+          {/* HOURS */}
 
-          </div>
+          <select
+            name="hours"
+            value={form.hours}
+            onChange={handleChange}
+            className="w-full p-4 rounded-xl bg-[#1E293B]"
+          >
+            <option>
+              24 Hours
+            </option>
 
-          {/* BOOKINGS */}
+            <option>
+              8 AM - 4 PM
+            </option>
 
-          <div className="flex items-center justify-between bg-[#1E293B] p-4 rounded-2xl">
+            <option>
+              9 AM - 5 PM
+            </option>
 
-            <span>
-              Enable Booking Automation
-            </span>
+            <option>
+              9 AM - 6 PM
+            </option>
 
-            <input
-              type="checkbox"
-              name="bookings"
-              checked={formData.bookings}
-              onChange={handleChange}
-            />
+            <option>
+              10 AM - 7 PM
+            </option>
+          </select>
 
-          </div>
+          {/* CAPABILITIES */}
+
+          <select
+            name="capabilities"
+            value={form.capabilities}
+            onChange={handleChange}
+            className="w-full p-4 rounded-xl bg-[#1E293B]"
+          >
+
+            {form.setupType === "business" ? (
+              <>
+
+                <option>
+                  Auto Reply
+                </option>
+
+                <option>
+                  Appointment Booking
+                </option>
+
+                <option>
+                  Customer Support
+                </option>
+
+                <option>
+                  Lead Capture
+                </option>
+
+                <option>
+                  Follow-up Messages
+                </option>
+
+                <option>
+                  Order Handling
+                </option>
+
+                <option>
+                  FAQ Answers
+                </option>
+
+                <option>
+                  Sales Automation
+                </option>
+
+              </>
+            ) : (
+              <>
+
+                <option>
+                  Auto Reply
+                </option>
+
+                <option>
+                  Personal Assistant
+                </option>
+
+                <option>
+                  Reminder Messages
+                </option>
+
+                <option>
+                  Appointment Booking
+                </option>
+
+                <option>
+                  Follow-up Messages
+                </option>
+
+                <option>
+                  Task Notifications
+                </option>
+
+              </>
+            )}
+
+          </select>
 
           {/* SUBMIT */}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-green-400 hover:bg-green-300 transition text-black font-bold py-4 rounded-2xl"
+            className="w-full bg-green-500 hover:bg-green-400 transition text-black font-bold py-4 rounded-xl"
           >
-
             {
               loading
                 ? "Saving..."
                 : "Save & Connect WhatsApp 🚀"
             }
-
           </button>
 
         </form>
@@ -445,5 +561,7 @@ MESSAGE: ${error?.message}`
       </div>
 
     </div>
+
   );
+
 }

@@ -28,18 +28,25 @@ console.log("BUSINESS:", body.businessName);
     // 1. CHECK LIVE WHATSAPP SESSION BEFORE SAVING ANY DATA
     // ==========================================================
     const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      "https://sodah-app-sypp.vercel.app";
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  "https://sodah-app.vercel.app";
 
-    try {
-      const checkResponse = await fetch(
-        `${appUrl}/api/connect-whatsapp`,
-        {
-          method: "GET",
-          cache: "no-store",
-        }
-      );
+console.log("APP URL =", appUrl);
+
+console.log(
+  "CONNECT URL =",
+  `${appUrl}/api/connect-whatsapp`
+);
+try {
+
+const checkResponse = await fetch(
+  `${appUrl}/api/connect-whatsapp`,
+  {
+    method: "GET",
+    cache: "no-store",
+  }
+);
 
       if (checkResponse.ok) {
         const checkData = await checkResponse.json();
