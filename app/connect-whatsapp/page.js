@@ -13,10 +13,10 @@ export default function ConnectWhatsAppPage() {
   const searchParams =
     useSearchParams();
 
-  const businessId =
-    searchParams.get(
-      "businessId"
-    );
+ const businessId =
+  searchParams?.get(
+    "businessId"
+  ) || "";
 
   const [loading, setLoading] =
     useState(false);
