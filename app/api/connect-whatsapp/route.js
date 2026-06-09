@@ -1,60 +1,114 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 const EVOLUTION_URL =
-  process.env.EVOLUTION_API_URL || "http://89.167.127.70:8080";
-
-const INSTANCE_NAME =
-  process.env.EVOLUTION_INSTANCE_NAME || "sodah-main";
+  process.env.EVOLUTION_API_URL ||
+  "http://89.167.127.70:8080";
 
 const API_KEY =
-  process.env.EVOLUTION_API_KEY || "sodah123";
+  process.env.EVOLUTION_API_KEY ||
+  "sodah123";
 
 function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) =>
+    setTimeout(resolve, ms)
+  );
 }
 
 /**
- * Universal fetch helper
+ * Universal Evolution API helper
  */
-async function evolutionFetch(endpoint, options = {}) {
-  const response = await fetch(`${EVOLUTION_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      apikey: API_KEY,
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-    cache: "no-store",
-  });
+async function evolutionFetch(
+  endpoint,
+  options = {}
+) {
+  const response = await fetch(
+    `${EVOLUTION_URL}${endpoint}`,
+    {
+      ...options,
+      headers: {
+        apikey: API_KEY,
+        "Content-Type":
+          "application/json",
+        ...(options.headers || {})
+      },
+      cache: "no-store"
+    }
+  );
 
-  const text = await response.text();
+  const text =
+    await response.text();
 
-  if (!text || text.trim() === "") {
+  if (
+    !text ||
+    text.trim() === ""
+  ) {
     return {};
   }
 
   try {
     return JSON.parse(text);
   } catch {
-    return { raw: text };
+    return {
+      raw: text
+    };
   }
 }
 
 /**
- * Create instance if it does not already exist.
+ * Get business from Supabase
  */
-async function ensureInstanceExists() {
-  const result = await evolutionFetch("/instance/create", {
-    method: "POST",
-    body: JSON.stringify({
-      instanceName: INSTANCE_NAME,
-      qrcode: true,
-      integration: "WHATSAPP-BAILEYS",
-    }),
-  });
+async function getBusiness(
+  businessId
+) {
+  const { data, error } =
+    await supabase
+      .from("businesses")
+      .select("*")
+      .eq(
+        "business_id",
+        businessId
+      )
+      .single();
+
+  if (error) {
+    throw new Error(
+      error.message
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Create instance if missing
+ */
+async function ensureInstanceExists(
+  instanceName
+) {
+  const result =
+    await evolutionFetch(
+      "/instance/create",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          instanceName,
+          qrcode: true,
+          integration:
+            "WHATSAPP-BAILEYS"
+        })
+      }
+    );
 
   const message =
-    result?.response?.message?.join(" ") ||
+    result?.response?.message?.join(
+      " "
+    ) ||
     result?.message ||
     result?.raw ||
     "";
@@ -62,18 +116,123 @@ async function ensureInstanceExists() {
   if (
     String(message)
       .toLowerCase()
-      .includes("already in use")
+      .includes(
+        "already in use"
+      )
   ) {
-    console.log(`Instance "${INSTANCE_NAME}" already exists.`);
+    console.log(
+      `Instance "${instanceName}" already exists.`
+    );
   } else {
-    console.log(`Instance "${INSTANCE_NAME}" created.`);
+    console.log(
+      `Instance "${instanceName}" created.`
+    );
   }
 
   await sleep(3000);
 }
 
 /**
- * Extract QR code from all possible Evolution API response formats.
+ * Configure webhook
+ */
+async function configureWebhook(
+  instanceName
+) {
+  try {
+    const result =
+      await evolutionFetch(
+        `/webhook/set/${instanceName}`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            enabled: true,
+
+            url:
+              "https://solomon-n8n.duckdns.org/webhook/app-chat",
+
+            webhookByEvents: false,
+
+            webhookBase64: false,
+
+            events: [
+              "CONNECTION_UPDATE",
+              "MESSAGES_UPSERT",
+              "MESSAGES_UPDATE",
+              "SEND_MESSAGE",
+              "QRCODE_UPDATED"
+            ]
+          })
+        }
+      );
+
+    console.log(
+      "Webhook configured:",
+      result
+    );
+
+    return true;
+  } catch (error) {
+    console.error(
+      "Webhook configuration failed:",
+      error
+    );
+
+    return false;
+  }
+}
+
+/**
+ * Send welcome message
+ */
+async function sendWelcomeMessage(
+  instanceName,
+  phoneNumber
+) {
+  try {
+    const message = `
+🎉 Welcome to Sodah.io
+
+Your AI Automation is now active.
+
+✅ WhatsApp Connected
+✅ AI Auto Reply Activated
+✅ Automation Ready
+
+You can now start receiving and replying to customers automatically.
+
+Thank you for choosing Sodah.io 🚀
+`;
+
+    const result =
+      await evolutionFetch(
+        `/message/sendText/${instanceName}`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            number: phoneNumber,
+            text: message
+          })
+        }
+      );
+
+    console.log(
+      "Welcome message sent:",
+      result
+    );
+
+    return true;
+  } catch (error) {
+    console.error(
+      "Failed to send welcome message:",
+      error
+    );
+
+    return false;
+  }
+}
+
+/**
+ * Extract QR code
  */
 function extractQr(data) {
   return (
@@ -92,19 +251,24 @@ function extractQr(data) {
 }
 
 /**
- * Convert raw base64 into a browser-friendly image source.
+ * Normalize QR image
  */
 function normalizeQr(qr) {
-  if (!qr || typeof qr !== "string") {
+  if (
+    !qr ||
+    typeof qr !== "string"
+  ) {
     return null;
   }
 
-  // Already a valid data URL
-  if (qr.startsWith("data:image")) {
+  if (
+    qr.startsWith(
+      "data:image"
+    )
+  ) {
     return qr;
   }
 
-  // Raw base64 string
   if (qr.length > 100) {
     return `data:image/png;base64,${qr}`;
   }
@@ -113,7 +277,7 @@ function normalizeQr(qr) {
 }
 
 /**
- * Determine whether WhatsApp is connected.
+ * Check connection status
  */
 function isConnected(data) {
   const status =
@@ -128,129 +292,238 @@ function isConnected(data) {
     "connected",
     "online",
     "ready",
-    "authenticated",
-  ].includes(String(status).toLowerCase());
+    "authenticated"
+  ].includes(
+    String(status).toLowerCase()
+  );
 }
 
 /**
- * User instructions shown with the QR code.
- * Matches the WhatsApp Web wording.
+ * QR Instructions
  */
 function getQrInstructions() {
   return {
     title: "Scan to log in",
+
     steps: [
       "Open WhatsApp on your phone.",
       "Tap Menu (⋮) on Android or Settings on iPhone.",
       "Tap Linked Devices.",
       "Tap Link a Device.",
-      "Scan the QR code shown on this screen.",
+      "Scan the QR code shown on this screen."
     ],
+
     helpText:
-      "Scan the QR code again if it expires before linking is complete.",
+      "Scan the QR code again if it expires before linking is complete."
   };
 }
 
 /**
- * Main request handler.
+ * Main request handler
  */
-async function handleRequest() {
+async function handleRequest(
+  request
+) {
   try {
-    console.log("======================================");
-    console.log("Starting WhatsApp connection process");
-    console.log("Instance:", INSTANCE_NAME);
-    console.log("======================================");
+    const { searchParams } =
+      new URL(request.url);
 
-    // 1. Ensure instance exists
-    await ensureInstanceExists();
-
-    // 2. Poll for QR code
-    for (let attempt = 1; attempt <= 20; attempt++) {
-      console.log(`Attempt ${attempt}/20`);
-
-      const result = await evolutionFetch(
-        `/instance/connect/${INSTANCE_NAME}`,
-        {
-          method: "GET",
-        }
+    const businessId =
+      searchParams.get(
+        "businessId"
       );
 
-      // Already connected
-      if (isConnected(result)) {
-        console.log("WhatsApp already connected.");
+    if (!businessId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "businessId is required."
+        },
+        {
+          status: 400
+        }
+      );
+    }
 
-        return NextResponse.json({
-          success: true,
-          connected: true,
-          message: "WhatsApp connected successfully.",
-          redirectTo: "/automation",
-          redirectDelay: 3000,
-        });
+    const business =
+      await getBusiness(
+        businessId
+      );
+
+    const instanceName =
+      business.business_id;
+
+    console.log(
+      "======================================"
+    );
+    console.log(
+      "Starting WhatsApp connection process"
+    );
+    console.log(
+      "Business ID:",
+      businessId
+    );
+    console.log(
+      "Instance:",
+      instanceName
+    );
+    console.log(
+      "======================================"
+    );
+
+    // Create instance
+    await ensureInstanceExists(
+      instanceName
+    );
+
+    // Configure webhook
+    await configureWebhook(
+      instanceName
+    );
+
+    // Poll for QR
+    for (
+      let attempt = 1;
+      attempt <= 20;
+      attempt++
+    ) {
+      console.log(
+        `Attempt ${attempt}/20`
+      );
+
+      const result =
+        await evolutionFetch(
+          `/instance/connect/${instanceName}`,
+          {
+            method: "GET"
+          }
+        );
+
+      // Already connected
+      if (
+        isConnected(result)
+      ) {
+        console.log(
+          "WhatsApp connected."
+        );
+
+        await configureWebhook(
+          instanceName
+        );
+
+        await supabase
+          .from("businesses")
+          .update({
+            whatsapp_connected: true
+          })
+          .eq(
+            "business_id",
+            businessId
+          );
+
+        if (
+          business.ai_number
+        ) {
+          await sendWelcomeMessage(
+            instanceName,
+            business.ai_number
+          );
+        }
+
+        return NextResponse.json(
+          {
+            success: true,
+            connected: true,
+            businessId,
+            message:
+              "WhatsApp connected successfully.",
+            redirectTo:
+              "/automation",
+            redirectDelay: 3000
+          }
+        );
       }
 
-      // QR code available
-      const qr = normalizeQr(extractQr(result));
+      // QR Available
+      const qr =
+        normalizeQr(
+          extractQr(
+            result
+          )
+        );
 
       if (qr) {
-        console.log("QR code generated successfully.");
+        return NextResponse.json(
+          {
+            success: true,
+            connected: false,
+            businessId,
 
-        return NextResponse.json({
-          success: true,
-          connected: false,
+            qrCode: qr,
+            qr,
 
-          // QR image
-          qrCode: qr,
-          qr,
+            title:
+              "Scan to log in",
 
-          // Display text for UI
-          title: "Scan to log in",
-          message:
-            "Scan the QR code with WhatsApp on your phone.",
+            message:
+              "Scan the QR code with WhatsApp on your phone.",
 
-          // Step-by-step instructions
-          instructions: getQrInstructions(),
-
-          // Future redirect after successful scan
-          redirectTo: "/automation",
-          redirectDelay: 3000,
-        });
+            instructions:
+              getQrInstructions()
+          }
+        );
       }
 
-      console.log("QR not ready yet...");
       await sleep(3000);
     }
 
-    // QR was not returned
     return NextResponse.json(
       {
         success: false,
         connected: false,
-        title: "Failed to generate QR code",
+        title:
+          "Failed to generate QR code",
         message:
-          "QR code was not returned by Evolution API. Please try again.",
+          "QR code was not returned by Evolution API."
       },
-      { status: 404 }
+      {
+        status: 404
+      }
     );
   } catch (error) {
-    console.error("Connect API Error:", error);
+    console.error(
+      "Connect API Error:",
+      error
+    );
 
     return NextResponse.json(
       {
         success: false,
         connected: false,
-        title: "Connection Error",
         message:
-          error.message || "Unexpected server error.",
+          error.message ||
+          "Unexpected server error."
       },
-      { status: 500 }
+      {
+        status: 500
+      }
     );
   }
 }
 
-export async function GET() {
-  return handleRequest();
+export async function GET(
+  request
+) {
+  return handleRequest(
+    request
+  );
 }
 
-export async function POST() {
-  return handleRequest();
+export async function POST(
+  request
+) {
+  return handleRequest(
+    request
+  );
 }

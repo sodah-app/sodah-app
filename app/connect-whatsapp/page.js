@@ -1,60 +1,108 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import {
+  useRouter,
+  useSearchParams
+} from "next/navigation";
 
 export default function ConnectWhatsAppPage() {
   const router = useRouter();
 
-  const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState("Ready to generate QR code.");
-  const [qrCode, setQrCode] = useState("");
-  const [error, setError] = useState("");
+  const searchParams =
+    useSearchParams();
 
-  const generateQRCode = async () => {
-    setLoading(true);
-    setError("");
-    setQrCode("");
-    setStatus("Generating secure QR code...");
+  const businessId =
+    searchParams.get(
+      "businessId"
+    );
 
-    try {
-      const response = await fetch("/api/connect-whatsapp", {
-        method: "POST",
-      });
+  const [loading, setLoading] =
+    useState(false);
 
-      const data = await response.json();
+  const [status, setStatus] =
+    useState(
+      "Ready to generate QR code."
+    );
 
-      if (!response.ok) {
-        throw new Error(data.message || "Unable to connect to WhatsApp.");
+  const [qrCode, setQrCode] =
+    useState("");
+
+  const [error, setError] =
+    useState("");
+
+  const generateQRCode =
+    async () => {
+      setLoading(true);
+      setError("");
+      setQrCode("");
+
+      setStatus(
+        "Generating secure QR code..."
+      );
+
+      try {
+        const response =
+          await fetch(
+            `/api/connect-whatsapp?businessId=${businessId}`,
+            {
+              method: "POST"
+            }
+          );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+              "Unable to connect to WhatsApp."
+          );
+        }
+
+        if (data.connected) {
+          setStatus(
+            "✅ WhatsApp already connected."
+          );
+
+          setTimeout(() => {
+            router.push(
+              "/automation"
+            );
+          }, 2000);
+
+          return;
+        }
+
+        const qr =
+          data.qrCode ||
+          data.qr;
+
+        if (qr) {
+          setQrCode(qr);
+
+          setStatus(
+            "Scan this QR code with WhatsApp."
+          );
+        } else {
+          throw new Error(
+            data.message ||
+              "QR code not available."
+          );
+        }
+      } catch (err) {
+        setError(
+          err.message ||
+            "Unexpected error."
+        );
+
+        setStatus(
+          "Failed to generate QR code."
+        );
+      } finally {
+        setLoading(false);
       }
-
-      // Already connected
-      if (data.connected) {
-        setStatus("✅ WhatsApp already connected.");
-
-        setTimeout(() => {
-          router.push("/automation");
-        }, 2000);
-
-        return;
-      }
-
-      // QR returned
-      const qr = data.qrCode || data.qr;
-
-      if (qr) {
-        setQrCode(qr);
-        setStatus("Scan this QR code with WhatsApp.");
-      } else {
-        throw new Error(data.message || "QR code not available.");
-      }
-    } catch (err) {
-      setError(err.message || "Unexpected error.");
-      setStatus("Failed to generate QR code.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   useEffect(() => {
     generateQRCode();
@@ -71,7 +119,7 @@ export default function ConnectWhatsAppPage() {
           className="w-12 h-12 mb-3 flex-shrink-0"
         />
 
-        {/* Title - Single line */}
+        {/* Title */}
         <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 leading-tight mb-3 flex-shrink-0">
           Connect Your WhatsApp
         </h1>
@@ -93,19 +141,19 @@ export default function ConnectWhatsAppPage() {
           </div>
         )}
 
-        {/* Main Content Area */}
+        {/* Main Content */}
         <div className="flex-1 w-full flex items-center justify-center min-h-0">
-          {/* Loading */}
+
           {loading && (
             <div className="text-center">
               <div className="w-10 h-10 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+
               <p className="text-gray-600 text-sm">
                 Generating secure QR code...
               </p>
             </div>
           )}
 
-          {/* QR Code */}
           {!loading && qrCode && (
             <div className="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm">
               <img
@@ -116,7 +164,6 @@ export default function ConnectWhatsAppPage() {
             </div>
           )}
 
-          {/* Initial Button */}
           {!loading && !qrCode && (
             <button
               onClick={generateQRCode}
@@ -129,7 +176,7 @@ export default function ConnectWhatsAppPage() {
 
         {/* Bottom Buttons */}
         <div className="w-full mt-4 flex flex-col items-center gap-3 flex-shrink-0">
-          {/* Generate New QR Button */}
+
           {qrCode && (
             <button
               onClick={generateQRCode}
@@ -139,13 +186,15 @@ export default function ConnectWhatsAppPage() {
             </button>
           )}
 
-          {/* Back Button */}
           <button
-            onClick={() => router.push("/automation")}
+            onClick={() =>
+              router.push("/automation")
+            }
             className="px-5 py-2 text-gray-500 hover:text-gray-700 font-medium rounded-lg transition"
           >
             ← Back to automation
           </button>
+
         </div>
       </div>
     </div>

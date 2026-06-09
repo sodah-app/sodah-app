@@ -5,11 +5,8 @@ import { useEffect, useRef, useState } from "react";
 
 export default function WelcomePage() {
   const router = useRouter();
-const [isMobile, setIsMobile] = useState(false);
 
-useEffect(() => {
-  setIsMobile(window.innerWidth < 768);
-}, []);
+  const [isMobile, setIsMobile] = useState(false);
 
   const [user, setUser] = useState({
     fullName: "",
@@ -23,8 +20,27 @@ useEffect(() => {
 
   const idleTimer = useRef(null);
 
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+
+    window.addEventListener(
+      "resize",
+      checkMobile
+    );
+
+    return () =>
+      window.removeEventListener(
+        "resize",
+        checkMobile
+      );
+  }, []);
+
   /* =========================
-     PREMIUM AI BACKGROUNDS
+     PREMIUM BACKGROUNDS
   ========================== */
 
   const backgrounds = [
@@ -39,39 +55,23 @@ useEffect(() => {
     "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1920&q=100",
 
     "https://images.unsplash.com/photo-1526378722484-bd91ca387e72?auto=format&fit=crop&w=1920&q=100",
-     "https://res.cloudinary.com/djnjhphf5/image/upload/v1775232452/cld-sample-2.jpg",
-     "https://res.cloudinary.com/djnjhphf5/image/upload/v1775232442/samples/balloons.jpg",
-     "https://res.cloudinary.com/djnjhphf5/image/upload/v1779814901/sodah.io_logo_z6xflv.png",
-    "https://res.cloudinary.com/djnjhphf5/image/upload/v1776474666/WhatsApp_Image_2026-03-15_at_3.47.47_AM_eyfhaw.jpg",
-    "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?auto=format&fit=crop&w=1920&q=100",
-
-    "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1920&q=100",
-
-    "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1920&q=100",
-
-    "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1920&q=100",
-
-    "https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=1920&q=100",
-
-    "https://images.unsplash.com/photo-1516321165247-4aa89a48be28?auto=format&fit=crop&w=1920&q=100",
-
-    "https://images.unsplash.com/photo-1516321497487-e288fb19713f?auto=format&fit=crop&w=1920&q=100",
-
-    "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1920&q=100",
-
-    "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1920&q=100",
   ];
 
   /* =========================
-     BACKGROUND AUTO SWITCH
+     BACKGROUND ROTATION
   ========================== */
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setBgIndex((prev) => (prev + 1) % backgrounds.length);
+      setBgIndex(
+        (prev) =>
+          (prev + 1) %
+          backgrounds.length
+      );
     }, 7000);
 
-    return () => clearInterval(interval);
+    return () =>
+      clearInterval(interval);
   }, []);
 
   /* =========================
@@ -82,52 +82,74 @@ useEffect(() => {
     const updateClock = () => {
       const now = new Date();
 
-      const time = now.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const time =
+        now.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
 
-      const date = now.toLocaleDateString([], {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-      });
+      const date =
+        now.toLocaleDateString([], {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+        });
 
-      setCurrentTime(`${time} • ${date}`);
+      setCurrentTime(
+        `${time} • ${date}`
+      );
     };
 
     updateClock();
 
-    const interval = setInterval(updateClock, 1000);
+    const interval = setInterval(
+      updateClock,
+      1000
+    );
 
-    return () => clearInterval(interval);
+    return () =>
+      clearInterval(interval);
   }, []);
 
   /* =========================
-     IDLE / SCREENSAVER MODE
+     IDLE MODE
   ========================== */
 
   useEffect(() => {
     const resetIdleTimer = () => {
       setIdleMode(false);
 
-      clearTimeout(idleTimer.current);
+      clearTimeout(
+        idleTimer.current
+      );
 
-      idleTimer.current = setTimeout(() => {
-        setIdleMode(true);
-      }, 1 * 60 * 1000); // 1 MINUTES
+      idleTimer.current =
+        setTimeout(() => {
+          setIdleMode(true);
+        }, 60000);
     };
 
-    window.addEventListener("mousemove", resetIdleTimer);
+    window.addEventListener(
+      "mousemove",
+      resetIdleTimer
+    );
 
-    window.addEventListener("keydown", resetIdleTimer);
+    window.addEventListener(
+      "keydown",
+      resetIdleTimer
+    );
 
-    window.addEventListener("click", resetIdleTimer);
+    window.addEventListener(
+      "click",
+      resetIdleTimer
+    );
 
     resetIdleTimer();
 
     return () => {
-      clearTimeout(idleTimer.current);
+      clearTimeout(
+        idleTimer.current
+      );
 
       window.removeEventListener(
         "mousemove",
@@ -147,42 +169,51 @@ useEffect(() => {
   }, []);
 
   /* =========================
-     SUBSCRIPTION VALIDATION
+     USER + SUBSCRIPTION
   ========================== */
 
   useEffect(() => {
     const storedUser = JSON.parse(
-      localStorage.getItem("user") || "{}"
+      localStorage.getItem(
+        "user"
+      ) || "{}"
     );
 
-    const expiry = storedUser.planExpiry;
+    const expiry =
+      storedUser.planExpiry;
 
     if (
       !expiry ||
-      storedUser.subscription !== "active"
+      storedUser.subscription !==
+        "active"
     ) {
-      router.push("/subscription");
-
+      router.push(
+        "/subscription"
+      );
       return;
     }
 
     const now = new Date();
 
-    const expiryDate = new Date(expiry);
+    const expiryDate =
+      new Date(expiry);
 
     if (now > expiryDate) {
       alert(
-        "Your subscription has expired. Please upgrade to continue."
+        "Your subscription has expired."
       );
 
-      router.push("/subscription");
+      router.push(
+        "/subscription"
+      );
 
       return;
     }
 
     setUser({
       fullName:
-        storedUser.fullName || "",
+        storedUser.fullName ||
+        "",
     });
   }, [router]);
 
@@ -190,12 +221,24 @@ useEffect(() => {
      ACTIONS
   ========================== */
 
-  const startAutomationSetup = () => {
-    router.push("/automation");
-  };
+  const startAutomationSetup =
+    () => {
+      router.push(
+        "/mobile/automation"
+      );
+    };
+
+  const showDesktopOnly =
+    (pageName) => {
+      alert(
+        `${pageName} is only available on Desktop or Laptop.`
+      );
+    };
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
+    localStorage.removeItem(
+      "user"
+    );
 
     router.push("/");
   };
@@ -207,57 +250,56 @@ useEffect(() => {
   if (idleMode) {
     return (
       <div className="relative w-full h-screen overflow-hidden text-white bg-black">
-        {/* BACKGROUNDS */}
 
-        {backgrounds.map((bg, index) => (
-          <div
-            key={index}
-            className={`absolute inset-0 bg-cover bg-center transition-opacity duration-[4000ms] ${
-              index === bgIndex
-                ? "opacity-100 scale-110"
-                : "opacity-0 scale-100"
-            }`}
-            style={{
-              backgroundImage: `url(${bg})`,
-              animation:
-                "zoomAnimation 18s linear infinite",
-            }}
-          />
-        ))}
-
-        {/* DARK OVERLAY */}
+        {backgrounds.map(
+          (bg, index) => (
+            <div
+              key={index}
+              className={`absolute inset-0 bg-cover bg-center transition-opacity duration-[4000ms] ${
+                index === bgIndex
+                  ? "opacity-100 scale-110"
+                  : "opacity-0 scale-100"
+              }`}
+              style={{
+                backgroundImage: `url(${bg})`,
+                animation:
+                  "zoomAnimation 18s linear infinite",
+              }}
+            />
+          )
+        )}
 
         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
-        {/* CENTER */}
-
         <div className="relative z-20 flex flex-col items-center justify-center h-full text-center px-6">
+
           <img
             src="https://res.cloudinary.com/djnjhphf5/image/upload/v1779814901/sodah.io_logo_z6xflv.png"
             alt="Sodah.io"
-            className="w-36 mb-6 drop-shadow-2xl"
+            className="w-36 mb-6"
           />
 
-          <h1 className="text-6xl md:text-8xl font-black tracking-tight bg-gradient-to-r from-green-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">
+          <h1 className="text-6xl md:text-8xl font-black bg-gradient-to-r from-green-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">
             Sodah.io
           </h1>
 
-          <p className="mt-5 text-xl text-gray-300 tracking-wide">
+          <p className="mt-5 text-xl text-gray-300">
             AI WhatsApp Automation Platform
           </p>
-        </div>
 
-        {/* CLOCK */}
+        </div>
 
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30">
-          <div className="bg-black/40 border border-white/10 backdrop-blur-xl px-8 py-4 rounded-full text-center">
-            <p className="text-lg font-semibold text-white">
+
+          <div className="bg-black/40 border border-white/10 backdrop-blur-xl px-8 py-4 rounded-full">
+
+            <p className="text-lg font-semibold">
               {currentTime}
             </p>
-          </div>
-        </div>
 
-        {/* ANIMATION */}
+          </div>
+
+        </div>
 
         <style jsx>{`
           @keyframes zoomAnimation {
@@ -270,6 +312,7 @@ useEffect(() => {
             }
           }
         `}</style>
+
       </div>
     );
   }
@@ -280,259 +323,362 @@ useEffect(() => {
 
   return (
     <div className="relative min-h-screen overflow-hidden text-white">
-      {/* BACKGROUNDS */}
 
-      {backgrounds.map((bg, index) => (
-        <div
-          key={index}
-          className={`absolute inset-0 bg-cover bg-center transition-opacity duration-[2500ms] ${
-            index === bgIndex
-              ? "opacity-100"
-              : "opacity-0"
-          }`}
-          style={{
-            backgroundImage: `url(${bg})`,
-          }}
-        />
-      ))}
+      {backgrounds.map(
+        (bg, index) => (
+          <div
+            key={index}
+            className={`absolute inset-0 bg-cover bg-center transition-opacity duration-[2500ms] ${
+              index === bgIndex
+                ? "opacity-100"
+                : "opacity-0"
+            }`}
+            style={{
+              backgroundImage: `url(${bg})`,
+            }}
+          />
+        )
+      )}
 
-      {/* OVERLAY */}
+      <div className="absolute inset-0 bg-gradient-to-br from-black/90 via-slate-950/80 to-black/90 backdrop-blur-sm" />
 
-      <div className="absolute inset-0 bg-gradient-to-br from-black/85 via-slate-950/75 to-black/85 backdrop-blur-[2px]" />
+      <div className="relative z-20 min-h-screen flex flex-col px-5 py-5 pb-28">
 
-      {/* MAIN */}
-
-      <div className="relative z-20 min-h-screen flex flex-col px-6 py-5 pb-24">
         {/* TOP BAR */}
 
-        <div className="flex items-center justify-between mb-5">
-          {/* LEFT */}
+        <div className="flex items-center justify-between mb-6">
 
           <div className="flex items-center gap-3">
+
+            <button
+              className="w-12 h-12 rounded-full border border-white/10 bg-white/5 backdrop-blur-xl flex items-center justify-center text-xl"
+            >
+              ☰
+            </button>
+
             <img
               src="https://res.cloudinary.com/djnjhphf5/image/upload/v1779814901/sodah.io_logo_z6xflv.png"
-              alt="Sodah.io Logo"
-              className="w-10 h-10 object-contain"
+              alt="Sodah.io"
+              className="w-12 h-12"
             />
 
-            <div>
-              <h1 className="text-3xl font-black tracking-tight">
-                Sodah.io
-              </h1>
-            </div>
-          </div>
+            <h1 className="text-3xl font-black">
+              Sodah.io
+            </h1>
 
-          {/* USER */}
+          </div>
 
           <div
             onClick={() =>
               router.push("/profile")
             }
-            className="flex items-center gap-3 bg-white/10 hover:bg-white/20 transition border border-white/10 backdrop-blur-xl px-4 py-2 rounded-full cursor-pointer"
+            className="flex items-center gap-3 bg-white/10 border border-white/10 backdrop-blur-xl px-4 py-2 rounded-full cursor-pointer"
           >
-            <span className="text-sm text-white/90">
-              {user.fullName ||
-                "Welcome back"}
-            </span>
 
-            <div className="w-9 h-9 rounded-full bg-gradient-to-r from-green-400 to-lime-500 flex items-center justify-center font-bold shadow-xl">
+            <div>
+              <p className="text-xs text-gray-300">
+                Welcome back,
+              </p>
+
+              <p className="font-semibold">
+                {user.fullName ||
+                  "User"}
+              </p>
+            </div>
+
+            <div className="w-11 h-11 rounded-full bg-gradient-to-r from-green-400 to-lime-500 flex items-center justify-center text-black font-bold">
               {user.fullName
                 ? user.fullName
                     .charAt(0)
                     .toUpperCase()
                 : "U"}
             </div>
+
           </div>
+
         </div>
 
         {/* HERO */}
 
-        <div className="mb-5">
-         <h2 className="text-[56px] leading-[58px] font-black">
-  Welcome to
-  <br />
-  <span className="text-green-400">
-    Sodah
-  </span>{" "}
-  Automation 🚀
-</h2>
+        <div className="mb-8">
 
-          <p className="text-gray-200 text-lg mt-3 max-w-3xl leading-relaxed">
-            Manage your business,
+          <h2 className="text-[42px] leading-[46px] md:text-[64px] md:leading-[68px] font-black">
+
+            Welcome to
+
+            <br />
+
+            <span className="text-green-400">
+              Sodah
+            </span>{" "}
+
+            Automation 🚀
+
+          </h2>
+
+          <p className="text-gray-300 text-base md:text-lg mt-4 max-w-2xl">
+
+            Connect your WhatsApp,
             automate conversations,
-            and scale faster with
-            powerful AI-driven
-            WhatsApp automation.
+            manage customers,
+            and grow your business with AI.
+
           </p>
+
         </div>
 
-        {/* GRID */}
+        {/* MOBILE DESIGN */}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {isMobile ? (
 
-  {/* MOBILE VERSION */}
+          <div className="space-y-5">
 
-  {isMobile ? (
-    <>
-      <div className="flex gap-3">
+            {/* CONNECT WHATSAPP */}
 
-  <div
-    onClick={() =>
-      router.push("/mobile/automation")
-    }
-    className="
-      flex-1
-      bg-green-500/20
-      hover:bg-green-500/30
-      border
-      border-green-400/30
-      backdrop-blur-2xl
-      rounded-3xl
-      p-6
-      cursor-pointer
-      transition-all
-      duration-300
-    "
-  >
-    <h3 className="text-2xl font-bold mb-2">
-      💬 Connect WhatsApp
-    </h3>
+            <div
+              onClick={startAutomationSetup}
+              className="
+                relative
+                overflow-hidden
+                rounded-[32px]
+                p-6
+                bg-gradient-to-br
+                from-green-500/20
+                via-green-400/10
+                to-transparent
+                border
+                border-green-400/30
+                backdrop-blur-2xl
+                cursor-pointer
+                transition-all
+                duration-300
+                hover:scale-[1.02]
+              "
+            >
 
-    <p className="text-sm text-gray-200">
-      Fill business details and connect your number
-    </p>
-  </div>
+              <div className="flex items-center justify-between">
 
-  <button
-    onClick={() =>
-      router.push("/settings")
-    }
-    className="
-      w-[90px]
-      bg-white/10
-      border
-      border-white/15
-      backdrop-blur-2xl
-      rounded-3xl
-      flex
-      flex-col
-      items-center
-      justify-center
-      transition-all
-      duration-300
-      hover:bg-white/15
-    "
-  >
-    <span className="text-3xl">
-      ⚙️
-    </span>
+                <div>
 
-    <span className="text-xs mt-1">
-      Settings
-    </span>
-  </button>
+                  <div className="flex items-center gap-3 mb-3">
 
-</div>
+                    <img
+                      src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
+                      alt="WhatsApp"
+                      className="w-10 h-10"
+                    />
 
-      <div
-  className="
-    bg-white/10
-    backdrop-blur-xl
-    border
-    border-white/10
-    rounded-3xl
-    p-5
-    mt-4
-  "
->
-  <h3 className="text-2xl font-bold">
-    💻 Explore on Desktop
-  </h3>
+                    <h3 className="text-2xl font-bold">
+                      Connect WhatsApp
+                    </h3>
 
-  <p className="text-gray-300 mt-2 leading-relaxed">
-    Access Dashboard, Analytics,
-    Settings and advanced tools
-    on Desktop or Laptop.
-  </p>
-</div>
+                  </div>
 
-      <Card
-        title="💰 Subscription"
-        desc="Manage your plan"
-        onClick={() => router.push("/subscription")}
-      />
+                  <p className="text-gray-300 leading-relaxed">
 
-      <Card
-        title="🚪 Logout"
-        desc="Securely sign out"
-        onClick={handleLogout}
-        danger
-      />
-    </>
-  ) : (
-    <>
-      <Card
-        title="📊 Dashboard"
-        desc="View chats, bookings & performance"
-        onClick={() => router.push("/dashboard")}
-      />
+                    Connect your business number
+                    and activate AI automation.
 
-  <Card
-  title="💬 Connect WhatsApp"
-  desc="Fill business details and connect your number"
-  onClick={startAutomationSetup}
-/>
+                  </p>
 
-      <Card
-        title="🚪 Logout"
-        desc="Securely sign out of your account"
-        onClick={handleLogout}
-        danger
-      />
+                </div>
 
-      <Card
-        title="📈 Analytics"
-        desc="Track performance & growth"
-        onClick={() => router.push("/analytics")}
-      />
+                <div className="
+                  w-12
+                  h-12
+                  rounded-full
+                  bg-green-500
+                  flex
+                  items-center
+                  justify-center
+                  text-black
+                  font-black
+                  text-xl
+                ">
+                  →
+                </div>
 
-      <Card
-        title="⚙️ Settings"
-        desc="Manage your account & preferences"
-        onClick={() => router.push("/settings")}
-      />
+              </div>
 
-      <Card
-        title="💰 Subscription"
-        desc="Upgrade your plan & unlock features"
-        onClick={() => router.push("/subscription")}
-        highlight
-      />
-    </>
-  )}
+            </div>
 
-</div>
+            {/* DESKTOP */}
+
+            <div
+              onClick={() =>
+                showDesktopOnly(
+                  "Dashboard & Analytics"
+                )
+              }
+              className="
+                rounded-[32px]
+                p-6
+                bg-white/10
+                border
+                border-white/10
+                backdrop-blur-2xl
+                cursor-pointer
+              "
+            >
+
+              <div className="flex items-center gap-3 mb-3">
+
+                <span className="text-3xl">
+                  💻
+                </span>
+
+                <h3 className="text-2xl font-bold">
+                  Explore on Desktop
+                </h3>
+
+              </div>
+
+              <p className="text-gray-300 leading-relaxed">
+
+                Access Dashboard and Analytics
+                on Desktop or Laptop for the
+                complete experience.
+
+              </p>
+
+            </div>
+
+            {/* UPGRADE PLAN */}
+
+            <div
+              onClick={() =>
+                router.push(
+                  "/subscription"
+                )
+              }
+              className="
+                rounded-[32px]
+                p-6
+                bg-gradient-to-r
+                from-purple-600/30
+                via-pink-500/20
+                to-purple-600/30
+                border
+                border-purple-400/30
+                backdrop-blur-2xl
+                cursor-pointer
+              "
+            >
+
+              <div className="flex items-center justify-between">
+
+                <div>
+
+                  <h3 className="text-2xl font-bold mb-2">
+
+                    Upgrade your plan
+
+                  </h3>
+
+                  <p className="text-gray-300">
+
+                    Unlock premium features,
+                    advanced analytics,
+                    and priority support.
+
+                  </p>
+
+                </div>
+
+                <div className="
+                  px-4
+                  py-2
+                  rounded-full
+                  bg-purple-500
+                  font-semibold
+                ">
+                  View Plans
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        ) : (
+
+          <div className="grid grid-cols-3 gap-5">
+
+            <Card
+              title="📊 Dashboard"
+              desc="View chats, leads and bookings"
+              onClick={() =>
+                router.push("/dashboard")
+              }
+            />
+
+            <Card
+              title="💬 Connect WhatsApp"
+              desc="Connect your number and automate conversations"
+              onClick={
+                startAutomationSetup
+              }
+            />
+
+            <Card
+              title="💰 Subscription"
+              desc="Upgrade your plan and unlock features"
+              onClick={() =>
+                router.push(
+                  "/subscription"
+                )
+              }
+              highlight
+            />
+
+            <Card
+              title="📈 Analytics"
+              desc="Track business growth"
+              onClick={() =>
+                router.push("/analytics")
+              }
+            />
+
+            <Card
+              title="⚙️ Settings"
+              desc="Manage account settings"
+              onClick={() =>
+                router.push("/settings")
+              }
+            />
+
+            <Card
+              title="🚪 Logout"
+              desc="Securely sign out"
+              onClick={
+                handleLogout
+              }
+              danger
+            />
+
+          </div>
+
+        )}
 
         {/* INDICATORS */}
 
-        <div className="flex justify-center gap-2 mt-5">
-          {backgrounds.map(
-            (_, index) => (
-              <div
-                key={index}
-                className={`h-2 rounded-full transition-all duration-500 ${
-                  index === bgIndex
-                    ? "w-8 bg-green-400"
-                    : "w-2 bg-white/40"
-                }`}
-              />
-            )
-          )}
+        <div className="flex justify-center gap-2 mt-8">
+          {backgrounds.map((_, index) => (
+            <div
+              key={index}
+              className={`h-2 rounded-full transition-all duration-500 ${
+                index === bgIndex
+                  ? "w-8 bg-green-400"
+                  : "w-2 bg-white/40"
+              }`}
+            />
+          ))}
         </div>
 
         {/* SUPPORT BOT */}
 
-        <div className="fixed bottom-5 right-5 z-50">
+        <div className="fixed bottom-24 right-5 z-50">
           <button
             onClick={() =>
               window.open(
@@ -540,7 +686,23 @@ useEffect(() => {
                 "_blank"
               )
             }
-            className="relative flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-r from-blue-500 via-cyan-500 to-purple-600 shadow-2xl hover:scale-110 transition duration-300"
+            className="
+              relative
+              flex
+              items-center
+              justify-center
+              w-16
+              h-16
+              rounded-full
+              bg-gradient-to-r
+              from-blue-500
+              via-cyan-500
+              to-purple-600
+              shadow-2xl
+              hover:scale-110
+              transition
+              duration-300
+            "
           >
             <span className="text-2xl">
               🤖
@@ -549,67 +711,150 @@ useEffect(() => {
             <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-20 animate-ping"></span>
           </button>
         </div>
-         {isMobile && (
-  <div
-    className="
-      fixed
-      bottom-0
-      left-0
-      right-0
-      h-20
-      bg-black/80
-      backdrop-blur-xl
-      border-t
-      border-white/10
-      flex
-      items-center
-      justify-around
-      z-40
-    "
-  >
-    <button
-      onClick={() => router.push("/home")}
-      className="text-2xl"
-    >
-      🏠
-    </button>
 
-    <button
-      onClick={() => router.push("/dashboard")}
-      className="text-2xl"
-    >
-      📊
-    </button>
+        {/* MOBILE BOTTOM NAVIGATION */}
 
-    <button
-      onClick={() => router.push("/automation")}
-      className="text-2xl"
-    >
-      🤖
-    </button>
+        {isMobile && (
+          <div
+            className="
+              fixed
+              bottom-0
+              left-0
+              right-0
+              h-20
+              bg-black/85
+              backdrop-blur-2xl
+              border-t
+              border-white/10
+              flex
+              items-center
+              justify-around
+              z-50
+            "
+          >
 
-    <button
-      onClick={() => router.push("/analytics")}
-      className="text-2xl"
-    >
-      📈
-    </button>
+            {/* HOME */}
 
-    <button
-      onClick={() => router.push("/settings")}
-      className="text-2xl"
-    >
-      ⚙️
-    </button>
-  </div>
-)}
+            <button
+              onClick={() =>
+                router.push("/welcome")
+              }
+              className="
+                flex
+                flex-col
+                items-center
+                text-white
+              "
+            >
+              <span className="text-2xl">
+                🏠
+              </span>
+
+              <span className="text-[11px] mt-1">
+                Home
+              </span>
+            </button>
+
+            {/* DASHBOARD */}
+
+            <button
+              onClick={() =>
+                showDesktopOnly(
+                  "Dashboard"
+                )
+              }
+              className="
+                flex
+                flex-col
+                items-center
+                text-white
+              "
+            >
+              <span className="text-2xl">
+                📊
+              </span>
+
+              <span className="text-[11px] mt-1">
+                Dashboard
+              </span>
+            </button>
+
+            {/* ANALYTICS */}
+
+            <button
+              onClick={() =>
+                showDesktopOnly(
+                  "Analytics"
+                )
+              }
+              className="
+                flex
+                flex-col
+                items-center
+                text-white
+              "
+            >
+              <span className="text-2xl">
+                📈
+              </span>
+
+              <span className="text-[11px] mt-1">
+                Analytics
+              </span>
+            </button>
+
+            {/* LOGOUT */}
+
+            <button
+              onClick={handleLogout}
+              className="
+                flex
+                flex-col
+                items-center
+                text-red-400
+              "
+            >
+              <span className="text-2xl">
+                🚪
+              </span>
+
+              <span className="text-[11px] mt-1">
+                Logout
+              </span>
+            </button>
+
+            {/* SETTINGS */}
+
+            <button
+              onClick={() =>
+                router.push("/settings")
+              }
+              className="
+                flex
+                flex-col
+                items-center
+                text-white
+              "
+            >
+              <span className="text-2xl">
+                ⚙️
+              </span>
+
+              <span className="text-[11px] mt-1">
+                Settings
+              </span>
+            </button>
+
+          </div>
+        )}
+
       </div>
     </div>
   );
 }
 
 /* =========================
-   PREMIUM CARD
+   PREMIUM CARD COMPONENT
 ========================= */
 
 function Card({
@@ -640,7 +885,7 @@ function Card({
         backdrop-blur-2xl
         rounded-3xl
         p-6
-        min-h-[145px]
+        min-h-[150px]
         cursor-pointer
         transition-all
         duration-300

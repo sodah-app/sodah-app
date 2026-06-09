@@ -6,89 +6,121 @@ import { useRouter } from "next/navigation";
 export default function SubscriptionPage() {
   const router = useRouter();
 
-  // 📱 WhatsApp number
-  const WHATSAPP_NUMBER = "971544027954";
+  const WHATSAPP_NUMBER =
+    "971544027954";
 
-  // 🔔 Notification state
-  const [notification, setNotification] = useState(null);
+  const [notification, setNotification] =
+    useState(null);
 
-  // =====================================================
-  // CHECK SUBSCRIPTION STATUS
-  // =====================================================
+  /* =====================================================
+     SUBSCRIPTION CHECK
+  ===================================================== */
+
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const user = JSON.parse(
+      localStorage.getItem("user") || "{}"
+    );
 
     if (!user.planExpiry) return;
 
     const now = new Date();
-    const expiry = new Date(user.planExpiry);
 
-    const diffMs = expiry.getTime() - now.getTime();
-
-    const daysRemaining = Math.ceil(
-      diffMs / (1000 * 60 * 60 * 24)
+    const expiry = new Date(
+      user.planExpiry
     );
 
-    // EXPIRED
+    const diffMs =
+      expiry.getTime() -
+      now.getTime();
+
+    const daysRemaining =
+      Math.ceil(
+        diffMs /
+          (1000 * 60 * 60 * 24)
+      );
+
     if (daysRemaining <= 0) {
-      user.subscription = "expired";
+      user.subscription =
+        "expired";
 
       localStorage.setItem(
         "user",
         JSON.stringify(user)
       );
 
-      localStorage.removeItem("token");
-      localStorage.removeItem("isLoggedIn");
-
-      alert(
-        "Your subscription has expired. Please renew to continue using SODAH."
+      localStorage.removeItem(
+        "token"
       );
 
-      router.replace("/subscription");
+      localStorage.removeItem(
+        "isLoggedIn"
+      );
+
+      alert(
+        "Your subscription has expired. Please renew your plan."
+      );
+
+      router.replace(
+        "/subscription"
+      );
 
       return;
     }
 
-    // REMINDERS
     if (daysRemaining === 3) {
       setNotification(
         "⚠️ Your subscription expires in 3 days. Renew now to avoid interruption."
       );
-    } else if (daysRemaining === 1) {
+    } else if (
+      daysRemaining === 1
+    ) {
       setNotification(
-        "⏰ Your subscription expires tomorrow. Renew now to continue using SODAH."
-      );
-    } else if (daysRemaining === 0) {
-      setNotification(
-        "🚨 Your subscription expires today. Renew now to avoid losing access."
+        "⏰ Your subscription expires tomorrow. Renew now to continue using Sodah."
       );
     } else {
       setNotification(null);
     }
   }, [router]);
 
-  // =====================================================
-  // HANDLE PLAN
-  // =====================================================
-  const handleUpgrade = (plan) => {
+  /* =====================================================
+     PLAN HANDLER
+  ===================================================== */
+
+  const handleUpgrade = (
+    plan
+  ) => {
     const now = new Date();
 
-    // STARTER
     if (plan === "Starter") {
       const user = JSON.parse(
-        localStorage.getItem("user") || "{}"
+        localStorage.getItem(
+          "user"
+        ) || "{}"
       );
 
-      const expiry = new Date();
+      const expiry =
+        new Date();
 
-      expiry.setDate(now.getDate() + 7);
+      expiry.setDate(
+        now.getDate() + 7
+      );
 
-      user.subscription = "active";
+      user.subscription =
+        "active";
+
       user.plan = "Starter";
-      user.planType = "trial";
-      user.planStartDate = now.toISOString();
-      user.planExpiry = expiry.toISOString();
+
+      user.planType =
+        "trial";
+
+      user.planStartDate =
+        now.toISOString();
+
+      user.planExpiry =
+        expiry.toISOString();
+
+      user.aiUsageLimit =
+        "0.5GB";
 
       localStorage.setItem(
         "user",
@@ -100,7 +132,6 @@ export default function SubscriptionPage() {
       return;
     }
 
-    // PRO
     if (plan === "Pro") {
       window.location.href =
         "https://www.paypal.com/ncp/payment/AH23RR8JBGTNN?plan=pro";
@@ -108,7 +139,6 @@ export default function SubscriptionPage() {
       return;
     }
 
-    // PREMIUM
     if (plan === "Premium") {
       window.location.href =
         "https://www.paypal.com/ncp/payment/H87TGY5F8Z6EA?plan=premium";
@@ -116,24 +146,31 @@ export default function SubscriptionPage() {
       return;
     }
 
-    // CUSTOM
-    if (plan === "Custom Automation") {
+    if (
+      plan ===
+      "Custom Automation"
+    ) {
       const message =
-        "Hi, I want to fully customize my business automation with SODAH. Please provide more details about your custom automation service.";
+        "Hi, I want a fully customized AI automation solution for my business.";
 
-      const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-        message
-      )}`;
+      const whatsappUrl =
+        `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+          message
+        )}`;
 
-      window.open(whatsappUrl, "_blank");
+      window.open(
+        whatsappUrl,
+        "_blank"
+      );
 
       return;
     }
   };
 
-  // =====================================================
-  // PLAN CARD
-  // =====================================================
+  /* =====================================================
+     PLAN CARD
+  ===================================================== */
+
   const PlanCard = ({
     title,
     price,
@@ -143,6 +180,7 @@ export default function SubscriptionPage() {
     borderClass,
     onClick,
     subtitle,
+    badge,
   }) => (
     <div
       className={`
@@ -162,8 +200,13 @@ export default function SubscriptionPage() {
         hover:scale-[1.01]
       `}
     >
-      {/* TOP CONTENT */}
       <div>
+        {badge && (
+          <div className="inline-block mb-3 px-3 py-1 rounded-full bg-green-500/20 border border-green-400 text-green-300 text-xs font-semibold">
+            {badge}
+          </div>
+        )}
+
         <h3 className="text-xl font-semibold mb-2">
           {title}
         </h3>
@@ -179,13 +222,16 @@ export default function SubscriptionPage() {
         )}
 
         <ul className="text-sm text-gray-300 space-y-2">
-          {features.map((feature, index) => (
-            <li key={index}>✔ {feature}</li>
-          ))}
+          {features.map(
+            (feature, index) => (
+              <li key={index}>
+                ✔ {feature}
+              </li>
+            )
+          )}
         </ul>
       </div>
 
-      {/* BUTTON */}
       <button
         onClick={onClick}
         className={`
@@ -205,7 +251,9 @@ export default function SubscriptionPage() {
 
   return (
     <div className="min-h-screen overflow-hidden bg-gradient-to-br from-[#0f172a] via-[#064e3b] to-[#020617] text-white px-4 py-5 flex flex-col">
+
       {/* NOTIFICATION */}
+
       {notification && (
         <div className="w-full max-w-6xl mx-auto mb-4 bg-yellow-500/20 border border-yellow-400 text-yellow-200 px-4 py-3 rounded-xl text-center text-sm">
           {notification}
@@ -213,17 +261,21 @@ export default function SubscriptionPage() {
       )}
 
       {/* HEADER */}
+
       <div className="text-center mb-5">
+
         <h1 className="text-3xl md:text-5xl font-bold mb-2">
           Choose Your Plan 💰
         </h1>
 
         <p className="text-gray-300 text-sm md:text-base">
-          Scale your business with powerful automation
+          Scale your business with powerful AI automation
         </p>
+
       </div>
 
       {/* PLANS */}
+
       <div
         className="
           w-full
@@ -237,103 +289,213 @@ export default function SubscriptionPage() {
           items-stretch
         "
       >
+
         {/* STARTER */}
+
         <PlanCard
           title="Starter"
-          price="7 Days Free"
+          badge="7 Day Free Trial"
+          price="Free"
           features={[
-            "0.5GB AI usage",
-            "AI auto-reply",
-            "Smart follow-up reminders",
-            "Dashboard & analytics",
-            "Customer management",
-            "Inventory tracking",
-            "Personal AI assistant",
-            "Limited support",
+            "0.5GB AI Usage",
+            "WhatsApp Connection",
+            "AI Auto Reply",
+            "Basic Customer Support",
+            "Basic FAQ Responses",
+            "Limited Dashboard",
+            "Limited Analytics",
+            "Community Support",
+            "No Appointment Scheduling",
+            "No Follow-up Messages",
+            "No Reminder Messages",
           ]}
           buttonText="Start Free Trial"
           buttonClass="bg-white/10 hover:bg-white/20 text-white"
           borderClass="border-white/10"
-          onClick={() => handleUpgrade("Starter")}
+          onClick={() =>
+            handleUpgrade("Starter")
+          }
         />
 
         {/* PRO */}
+
         <PlanCard
           title="Pro"
+          badge="Most Popular"
           price="$29/mo"
           features={[
-            "5.5GB AI usage",
-            "AI auto-reply",
-            "Smart follow-up reminders",
-            "Dashboard & analytics",
-            "Customer management",
-            "Inventory tracking",
-            "Appointment scheduling",
-            "Personal AI assistant",
-            "Priority support",
+            "5.5GB AI Usage",
+            "AI Auto Reply",
+            "Lead Capture",
+            "Customer Support Automation",
+            "Appointment Scheduling",
+            "Dashboard Access",
+            "Analytics Access",
+            "Customer Management",
+            "Inventory Tracking",
+            "Priority Support",
+            "No Follow-up Messages",
+            "No Reminder Messages",
+            "No Group Automation",
           ]}
           buttonText="Upgrade Now"
           buttonClass="bg-green-500 hover:bg-green-600 text-black"
           borderClass="border-green-400"
-          onClick={() => handleUpgrade("Pro")}
+          onClick={() =>
+            handleUpgrade("Pro")
+          }
         />
 
         {/* PREMIUM */}
+
         <PlanCard
           title="Premium"
+          badge="Best Value"
           price="$79/mo"
           features={[
-            "20GB AI usage",
-            "Unlimited business automation",
-            "AI auto-reply",
-            "Smart follow-up reminders",
-            "Advanced analytics",
-            "Customer & inventory management",
-            "Appointment scheduling",
-            "Personal AI assistant",
-            "Advanced integrations",
-            "VIP priority support",
+            "20GB AI Usage",
+            "Unlimited Business Automation",
+            "AI Auto Reply",
+            "Lead Capture",
+            "Appointment Scheduling",
+            "Customer Management",
+            "Inventory Tracking",
+            "Smart Follow-up Messages",
+            "Reminder Messages",
+            "Incomplete Chat Recovery",
+            "Group Chat Automation",
+            "Advanced Analytics",
+            "Advanced Integrations",
+            "Personal AI Assistant",
+            "VIP Priority Support",
           ]}
           buttonText="Go Premium 🚀"
           buttonClass="bg-yellow-400 hover:bg-yellow-500 text-black"
           borderClass="border-yellow-400"
-          onClick={() => handleUpgrade("Premium")}
+          onClick={() =>
+            handleUpgrade("Premium")
+          }
         />
 
         {/* CUSTOM */}
+
         <PlanCard
           title="Custom Automation 🤖"
           price=""
-          subtitle="Tailored for Your Business"
+          subtitle="Tailored For Your Business"
           features={[
-            "Fully customized automation",
-            "AI answers calls",
-            "AI auto-reply",
-            "Smart follow-ups",
-            "Sales automation",
-            "Inventory & operations management",
-            "Personal AI assistant",
-            "Dedicated onboarding",
-            "Tailored to your business",
+            "Everything In Premium",
+            "Custom Workflows",
+            "AI Voice Call Automation",
+            "Dedicated Setup Team",
+            "Dedicated Support",
+            "Business-Specific AI Training",
+            "Sales Automation",
+            "Operations Automation",
+            "Enterprise Integrations",
           ]}
           buttonText="Contact on WhatsApp 💬"
           buttonClass="bg-purple-500 hover:bg-purple-600 text-white"
           borderClass="border-purple-400"
           onClick={() =>
-            handleUpgrade("Custom Automation")
+            handleUpgrade(
+              "Custom Automation"
+            )
           }
         />
+
+      </div>
+
+      {/* TRUST SECTION */}
+
+      <div className="w-full max-w-7xl mx-auto mt-6">
+
+        <div
+          className="
+            bg-white/5
+            border
+            border-white/10
+            rounded-2xl
+            p-5
+            backdrop-blur-sm
+            text-center
+          "
+        >
+
+          <h3 className="text-xl font-semibold mb-3">
+            Why Businesses Choose Sodah.io 🚀
+          </h3>
+
+          <div
+            className="
+              grid
+              grid-cols-1
+              md:grid-cols-3
+              gap-4
+              text-sm
+              text-gray-300
+            "
+          >
+
+            <div>
+              <div className="text-2xl mb-2">
+                🤖
+              </div>
+
+              <p>
+                AI automatically replies to customers
+                24/7 without missing leads.
+              </p>
+            </div>
+
+            <div>
+              <div className="text-2xl mb-2">
+                📈
+              </div>
+
+              <p>
+                Increase conversions through smart
+                automation and customer engagement.
+              </p>
+            </div>
+
+            <div>
+              <div className="text-2xl mb-2">
+                ⚡
+              </div>
+
+              <p>
+                Connect WhatsApp in minutes and start
+                automating immediately.
+              </p>
+            </div>
+
+          </div>
+
+        </div>
+
       </div>
 
       {/* BACK BUTTON */}
+
       <div className="text-center mt-4">
+
         <button
-          onClick={() => router.push("/welcome")}
-          className="text-gray-400 hover:text-white transition text-sm"
+          onClick={() =>
+            router.push("/welcome")
+          }
+          className="
+            text-gray-400
+            hover:text-white
+            transition
+            text-sm
+          "
         >
           ← Back
         </button>
+
       </div>
+
     </div>
   );
 }

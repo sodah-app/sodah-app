@@ -489,9 +489,11 @@ console.log(
 );
       }
 
-      setTimeout(() => {
-        router.push("/connect-whatsapp");
-      }, 2000);
+    setTimeout(() => {
+  router.push(
+    `/connect-whatsapp?businessId=${apiData.business_id}`
+  );
+}, 2000);
 
       return;
     }
@@ -550,8 +552,10 @@ console.log(
        STEP 6: REDIRECT TO CONNECT WHATSAPP
     ================================================================= */
     setTimeout(() => {
-      router.push("/connect-whatsapp");
-    }, 2000);
+  router.push(
+    `/connect-whatsapp?businessId=${businessId}`
+  );
+}, 2000);
   } catch (err) {
     console.error("Submission failed:", err);
 
