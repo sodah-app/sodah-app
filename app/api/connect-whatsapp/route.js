@@ -36,16 +36,17 @@ async function evolutionFetch(endpoint, options = {}) {
   for (const baseUrl of urls) {
     try {
       const response = await fetch(
-        `${baseUrl}${endpoint}`,
-        {
-          ...options,
-          headers: {
-            apikey: API_KEY,
-            "Content-Type": "application/json",
-            ...(options.headers || {}),
-          },
-        }
-      );
+  `${baseUrl}${endpoint}`,
+  {
+    ...options,
+    cache: "no-store",
+    headers: {
+      apikey: API_KEY,
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  }
+);
 
       if (!response.ok) {
         throw new Error(
@@ -53,7 +54,17 @@ async function evolutionFetch(endpoint, options = {}) {
         );
       }
 
-      return response;
+      const text = await response.text();
+
+if (!text || text.trim() === "") {
+  return {};
+}
+
+try {
+  return JSON.parse(text);
+} catch {
+  return { raw: text };
+}
     } catch (error) {
       console.error(
         `Evolution API failed: ${baseUrl}`,
@@ -65,38 +76,6 @@ async function evolutionFetch(endpoint, options = {}) {
   }
 
   throw lastError;
-}
-  const response = await fetch(
-    `${EVOLUTION_URL}${endpoint}`,
-    {
-      ...options,
-      headers: {
-        apikey: API_KEY,
-        "Content-Type":
-          "application/json",
-        ...(options.headers || {})
-      },
-      cache: "no-store"
-    }
-  );
-
-  const text =
-    await response.text();
-
-  if (
-    !text ||
-    text.trim() === ""
-  ) {
-    return {};
-  }
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    return {
-      raw: text
-    };
-  }
 }
 
 /**
