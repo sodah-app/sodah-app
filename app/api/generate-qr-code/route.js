@@ -1,6 +1,3 @@
-// Replace ONLY your generateQRCode() function with this version.
-// It calls the Evolution API server directly instead of /api/connect.
-
 const generateQRCode = async () => {
   try {
     setLoading(true);
@@ -9,7 +6,7 @@ const generateQRCode = async () => {
     setSuccess(false);
 
     // Your Evolution API server
-    const EVOLUTION_URL = "http://89.167.127.70:8080";
+    const EVOLUTION_URL = "https://evolution.sodah.io";
     const API_KEY = "sodah123";
     const INSTANCE_NAME = "sodah";
 

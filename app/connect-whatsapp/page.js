@@ -85,10 +85,41 @@ function ConnectWhatsAppContent() {
   }, [businessId]);
 
   return (
-    <div>
-      Connect WhatsApp Page
-    </div>
-  );
+  <div className="min-h-screen flex flex-col items-center justify-center p-6">
+    <h1 className="text-2xl font-bold mb-4">
+      Connect WhatsApp
+    </h1>
+
+    <p className="mb-4">{status}</p>
+
+    {loading && (
+      <p>Generating QR code...</p>
+    )}
+
+    {error && (
+      <div className="text-red-500 mb-4">
+        {error}
+      </div>
+    )}
+
+    {qrCode && (
+      <img
+        src={qrCode}
+        alt="WhatsApp QR Code"
+        className="w-72 h-72 border rounded-lg"
+      />
+    )}
+
+    {!loading && !qrCode && (
+      <button
+        onClick={generateQRCode}
+        className="px-4 py-2 bg-green-600 text-white rounded"
+      >
+        Generate QR Code
+      </button>
+    )}
+  </div>
+);
 }
 
 export default function ConnectWhatsAppPage() {
