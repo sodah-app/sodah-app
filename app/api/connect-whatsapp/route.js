@@ -6,13 +6,15 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-const EVOLUTION_URL =
+const PRIMARY_EVOLUTION_URL =
   process.env.EVOLUTION_API_URL ||
+  "https://evolution.sodah.io";
+
+const SECONDARY_EVOLUTION_URL =
+  process.env.EVOLUTION_API_FALLBACK_URL ||
   "http://89.167.127.70:8080";
 
-const API_KEY =
-  process.env.EVOLUTION_API_KEY ||
-  "sodah123";
+const API_KEY = process.env.EVOLUTION_API_KEY;
 
 function sleep(ms) {
   return new Promise((resolve) =>
@@ -23,10 +25,47 @@ function sleep(ms) {
 /**
  * Universal Evolution API helper
  */
-async function evolutionFetch(
-  endpoint,
-  options = {}
-) {
+async function evolutionFetch(endpoint, options = {}) {
+  const urls = [
+    PRIMARY_EVOLUTION_URL,
+    SECONDARY_EVOLUTION_URL,
+  ];
+
+  let lastError;
+
+  for (const baseUrl of urls) {
+    try {
+      const response = await fetch(
+        `${baseUrl}${endpoint}`,
+        {
+          ...options,
+          headers: {
+            apikey: API_KEY,
+            "Content-Type": "application/json",
+            ...(options.headers || {}),
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Evolution API returned ${response.status}`
+        );
+      }
+
+      return response;
+    } catch (error) {
+      console.error(
+        `Evolution API failed: ${baseUrl}`,
+        error
+      );
+
+      lastError = error;
+    }
+  }
+
+  throw lastError;
+}
   const response = await fetch(
     `${EVOLUTION_URL}${endpoint}`,
     {
