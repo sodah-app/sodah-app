@@ -324,11 +324,12 @@ export default function Home() {
 
               <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-[0_0_80px_rgba(34,197,94,0.2)] group">
 
-                <img
-                  src="https://res.cloudinary.com/djnjhphf5/image/upload/v1780574352/WhatsApp_Image_2026-06-04_at_3.56.47_PM_cl8jtq.jpg"
-                  alt="AI Automation"
-                  className="w-full h-[520px] object-cover transition duration-700 group-hover:scale-105 object-center"
-                />
+                 <img
+            src="https://res.cloudinary.com/djnjhphf5/image/upload/v1779811920/WhatsApp_Image_2026-05-26_at_7.58.55_PM_sw7wpc.jpg"
+            alt="AI Automation"
+            className="rounded-3xl shadow-2xl border border-white/10 transition duration-700 hover:scale-105"
+          />
+
 
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
 
@@ -368,7 +369,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-14 items-center">
 
           <img
-            src="https://res.cloudinary.com/djnjhphf5/image/upload/v1779811920/WhatsApp_Image_2026-05-26_at_7.58.55_PM_sw7wpc.jpg"
+            src="https://res.cloudinary.com/djnjhphf5/image/upload/v1781641952/manualreplirstil_prjkoe.jpg"
             alt="Business Team"
             className="rounded-3xl shadow-2xl border border-white/10 transition duration-700 hover:scale-105"
           />
@@ -409,12 +410,12 @@ export default function Home() {
 
       <section className="py-24 bg-[#071d17]">
 
-        <div className="max-w-7xl mx-auto px-6 md:px-12 grid md:grid-cols-2 gap-12 items-center">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 grid md:grid-cols-2 gap-14 items-center">
 
           <div>
 
             <h2 className="text-4xl font-black mb-6">
-              Connect Your Existing WhatsApp Easily
+              Connect Your Existing WhatsApp Easily On Computer
             </h2>
 
             <p className="text-gray-300 text-lg leading-relaxed mb-6">
@@ -442,11 +443,11 @@ export default function Home() {
 
           <div className="relative">
 
-          <img
-  src="https://res.cloudinary.com/djnjhphf5/image/upload/v1779819980/WhatsApp_Image_2026-05-26_at_10.24.26_PM_brfhsd.jpg"
-  alt="QR Connect"
- className="w-[420px] ml-20 rounded-3xl border border-white/10 shadow-2xl hover:scale-105 transition duration-700"
-/>
+           <img
+            src="https://res.cloudinary.com/djnjhphf5/image/upload/v1781713157/WhatsApp_Image_2026-06-17_at_8.18.20_PM_gyi4wt.jpg"
+            alt="QR Connect"
+            className="rounded-3xl border border-white/10 shadow-2xl hover:scale-105 transition duration-700"
+          />
             
 
           </div>
@@ -454,6 +455,85 @@ export default function Home() {
         </div>
 
       </section>
+{/* ================================= EXTRA LAYER 2 ================================= */}
+
+      <section className="py-24">
+
+        <div className="max-w-7xl mx-auto px-6 md:px-12 grid md:grid-cols-2 gap-12 items-center">
+
+          <img
+            src="https://res.cloudinary.com/djnjhphf5/image/upload/v1781711765/WhatsApp_Image_2026-06-17_at_7.54.25_PM_luvnxg.jpg"
+            alt="Fast Setup"
+            className="rounded-3xl border border-white/10 shadow-2xl hover:scale-105 transition duration-700"
+          />
+
+          <div>
+
+            <h2 className="text-4xl font-black mb-6">
+              Business & Personal Setup
+            </h2>
+
+            <p className="text-gray-300 text-lg leading-relaxed">
+              Setup your business AI assistant and personal assistant AI.
+              the AI is well train to handle your Business and Personal chat profesionally.
+            </p>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+  {/* ================================= EXTRA LAYER 1 ================================= */}
+
+      <section className="py-24 bg-[#071d17]">
+
+        <div className="max-w-7xl mx-auto px-6 md:px-12 grid md:grid-cols-2 gap-12 items-center">
+
+          <div>
+
+            <h2 className="text-4xl font-black mb-6">
+              Connect Your Existing WhatsApp Using Phone
+            </h2>
+
+            <p className="text-gray-300 text-lg leading-relaxed mb-6">
+              No need to disconnect your current WhatsApp account.
+              Simply scan the QR code and connect instantly.
+            </p>
+
+            <div className="space-y-4">
+
+              <div className="bg-white/5 border border-white/10 p-4 rounded-2xl hover:scale-105 transition">
+                ✅ fill automation details, Business or Personal use
+              </div>
+
+              <div className="bg-white/5 border border-white/10 p-4 rounded-2xl hover:scale-105 transition">
+                ✅ Scan 	QR code with the phone which have your existing whatsApp 
+              </div>
+
+              <div className="bg-white/5 border border-white/10 p-4 rounded-2xl hover:scale-105 transition">
+                ✅ Ai auto_reply, follow_up, reminder and appointment bookings start instantly
+              </div>
+
+            </div>
+
+          </div>
+          <div className="relative">
+
+            <img
+             src="https://res.cloudinary.com/djnjhphf5/image/upload/v1781712052/WhatsApp_Image_2026-06-17_at_7.59.59_PM_mouj83.jpg"
+            alt="QR Connect"
+            className="rounded-3xl border border-white/10 shadow-2xl hover:scale-105 transition duration-700"
+          />
+    
+
+          </div>
+
+        </div>
+
+      </section>
+
 
       {/* ================================= EXTRA LAYER 2 ================================= */}
 

@@ -437,7 +437,6 @@ export default function MobileAutomationPage() {
           </select>
 
           {/* HOURS */}
-
           <select
             name="hours"
             value={form.hours}
@@ -463,7 +462,9 @@ export default function MobileAutomationPage() {
             <option>
               10 AM - 7 PM
             </option>
+<option>Custom Hours</option>
           </select>
+        
 
           {/* CAPABILITIES */}
 

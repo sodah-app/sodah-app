@@ -221,12 +221,13 @@ export default function WelcomePage() {
      ACTIONS
   ========================== */
 
-  const startAutomationSetup =
-    () => {
-      router.push(
-        "/mobile/automation"
-      );
-    };
+ const startAutomationSetup = () => {
+  if (isMobile) {
+    router.push("/mobile/automation");
+  } else {
+    router.push("/automation");
+  }
+};
 
   const showDesktopOnly =
     (pageName) => {

@@ -297,7 +297,7 @@ if (data && data.length > 0) {
             <Title
               dark={dark}
               title="Dark Mode"
-              desc="Switch dashboard appearance"
+              desc="Switch connect whatsapp appearance"
             />
 
             <div
