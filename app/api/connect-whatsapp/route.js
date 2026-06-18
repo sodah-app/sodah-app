@@ -15,6 +15,9 @@ const SECONDARY_EVOLUTION_URL =
   "http://89.167.127.70:8080";
 
 const API_KEY = process.env.EVOLUTION_API_KEY;
+console.log("EVOLUTION_API_URL:", process.env.EVOLUTION_API_URL);
+console.log("EVOLUTION_API_KEY exists:", !!process.env.EVOLUTION_API_KEY);
+console.log("FALLBACK_URL:", process.env.EVOLUTION_API_FALLBACK_URL);
 
 function sleep(ms) {
   return new Promise((resolve) =>
@@ -510,10 +513,12 @@ async function handleRequest(
       }
     );
   } catch (error) {
-    console.error(
-      "Connect API Error:",
-      error
-    );
+   console.error("Connect API Error:", {
+  message: error.message,
+  stack: error.stack,
+  apiUrl: PRIMARY_EVOLUTION_URL,
+  apiKeyExists: !!API_KEY
+});
 
     return NextResponse.json(
       {
