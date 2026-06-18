@@ -39,6 +39,15 @@ async function configureWebhook(
   instanceName,
   webhookUrl
 ) {
+  const payload = {
+    instanceName,
+    webhook: {
+      enabled: true,
+      url: webhookUrl,
+      events: WEBHOOK_EVENTS,
+    },
+  };
+
   const response = await fetch(
     `${apiUrl}/webhook/set/${instanceName}`,
     {
@@ -47,18 +56,13 @@ async function configureWebhook(
         "Content-Type": "application/json",
         apikey: apiKey,
       },
-      body: JSON.stringify({
-        webhook: {
-          url: webhookUrl,
-          enabled: true,
-          events: WEBHOOK_EVENTS,
-        },
-      }),
+      body: JSON.stringify(payload),
     }
   );
 
   const text = await response.text();
 
+  console.log("Configure webhook payload:", payload);
   console.log("Configure webhook response:", text);
 
   if (!response.ok) {

@@ -1,4 +1,23 @@
 import { NextResponse } from "next/server";
+import { configureWebhook } from "@/lib/evolution";
+
+export async function POST(request) {
+  try {
+    const result = await configureWebhook(...);
+
+    return NextResponse.json(result);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: error.message,
+      },
+      { status: 500 }
+    );
+  }
+}
+
+type EvolutionResponse = Record<string, any>;
 
 const WEBHOOK_EVENTS = [
   "APPLICATION_STARTUP",
@@ -8,7 +27,6 @@ const WEBHOOK_EVENTS = [
   "MESSAGES_UPDATE",
   "SEND_MESSAGE",
 ];
-
 async function createInstance(apiUrl, apiKey, instanceName) {
   const response = await fetch(`${apiUrl}/instance/create`, {
     method: "POST",
@@ -33,11 +51,11 @@ async function createInstance(apiUrl, apiKey, instanceName) {
   return text ? JSON.parse(text) : {};
 }
 
-async function configureWebhook(
-  apiUrl,
-  apiKey,
-  instanceName,
-  webhookUrl
+export async function configureWebhook(
+  apiUrl: string,
+  apiKey: string,
+  instanceName: string,
+  webhookUrl: string
 ) {
   const response = await fetch(
     `${apiUrl}/webhook/set/${instanceName}`,
@@ -192,8 +210,8 @@ export async function POST(request) {
         {
           success: false,
           message:
-            data?.message ||
-            data?.response?.message?.[0] ||
+          (data as any)?.message ||
+            (data as any)?.response?.message?.[0] ||
             `Evolution API returned ${response.status}`,
           details: data,
         },
