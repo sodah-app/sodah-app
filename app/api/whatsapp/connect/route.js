@@ -13,12 +13,6 @@ const SECONDARY_EVOLUTION_URL = (
 const EVOLUTION_API_KEY =
   process.env.EVOLUTION_API_KEY;
 
-function sleep(ms) {
-  return new Promise((resolve) =>
-    setTimeout(resolve, ms)
-  );
-}
-
 async function evolutionFetch(
   endpoint,
   options = {}
@@ -49,10 +43,6 @@ async function evolutionFetch(
       });
 
       const text = await response.text();
-
-      console.log(
-        `[Evolution] Status: ${response.status}`
-      );
 
       let data = {};
 
@@ -98,15 +88,11 @@ function extractQr(data) {
     data?.data?.qr ||
     data?.data?.qrCode ||
     data?.data?.qrcode ||
-    data?.data?.qrcode?.base64 ||
-    data?.data?.qrcode?.code ||
     data?.response?.base64 ||
     data?.response?.code ||
     data?.response?.qr ||
     data?.response?.qrCode ||
     data?.response?.qrcode ||
-    data?.response?.qrcode?.base64 ||
-    data?.response?.qrcode?.code ||
     null
   );
 }
@@ -155,11 +141,10 @@ function isConnected(data) {
 
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const { searchParams } = new URL(request.url);
 
-    console.log("REQUEST BODY:", body);
-
-    const { businessId } = body;
+    const businessId =
+      searchParams.get("businessId");
 
     if (!businessId) {
       return NextResponse.json(
@@ -173,28 +158,6 @@ export async function POST(request) {
 
     const instanceName = `sodah_${businessId}`;
 
-    try {
-      await evolutionFetch(
-        "/instance/create",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            instanceName,
-            qrcode: true,
-            integration:
-              "WHATSAPP-BAILEYS",
-          }),
-        }
-      );
-
-      await sleep(2000);
-    } catch (error) {
-      console.log(
-        "Instance may already exist:",
-        error.message
-      );
-    }
-
     const result = await evolutionFetch(
       `/instance/connect/${instanceName}`,
       {
@@ -203,41 +166,21 @@ export async function POST(request) {
     );
 
     console.log(
-      "CONNECT RESPONSE:",
+      "Evolution response:",
       JSON.stringify(result, null, 2)
     );
-
-    if (isConnected(result)) {
-      return NextResponse.json({
-        success: true,
-        connected: true,
-        message:
-          "WhatsApp already connected.",
-      });
-    }
 
     const qr = normalizeQr(
       extractQr(result)
     );
 
-    if (!qr) {
-      return NextResponse.json(
-        {
-          success: false,
-          connected: false,
-          message:
-            "QR code not generated.",
-        },
-        { status: 500 }
-      );
-    }
-
     return NextResponse.json({
       success: true,
-      connected: false,
-      qr,
-      message:
-        "Scan this QR code with WhatsApp.",
+      connected: isConnected(result),
+      qrCode: qr,
+      message: qr
+        ? "Scan this QR code with WhatsApp."
+        : "QR code not available.",
     });
   } catch (error) {
     console.error(
@@ -250,8 +193,9 @@ export async function POST(request) {
         success: false,
         connected: false,
         message:
-          error.message ||
-          "Failed to generate QR code.",
+          error instanceof Error
+            ? error.message
+            : "Unable to connect WhatsApp.",
       },
       { status: 500 }
     );
