@@ -1,19 +1,3 @@
-export function getInstanceName(businessId: string) {
-  return businessId;
-}
-
-export async function createEvolutionInstance(
-  instanceName: string
-) {
-  // existing code
-}
-
-export async function ensureEvolutionInstance(
-  instanceName: string
-) {
-  // existing code
-}
-
 export async function configureInstanceWebhook(
   instanceName: string
 ) {
@@ -26,21 +10,25 @@ export async function configureInstanceWebhook(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        url: process.env.N8N_WEBHOOK_URL,
-        enabled: true,
-        webhookByEvents: false,
-        events: [
-          "CONNECTION_UPDATE",
-          "MESSAGES_UPSERT",
-          "MESSAGES_UPDATE",
-          "SEND_MESSAGE",
-          "QRCODE_UPDATED",
-        ],
+        webhook: {
+          url: process.env.N8N_WEBHOOK_URL!,
+          enabled: true,
+          webhookByEvents: false,
+          events: [
+            "CONNECTION_UPDATE",
+            "MESSAGES_UPSERT",
+            "MESSAGES_UPDATE",
+            "SEND_MESSAGE",
+            "QRCODE_UPDATED",
+          ],
+        },
       }),
     }
   );
 
   const text = await response.text();
+
+  console.log("Webhook configuration response:", text);
 
   let data: Record<string, any> = {};
 
@@ -52,8 +40,7 @@ export async function configureInstanceWebhook(
 
   if (!response.ok) {
     throw new Error(
-      data?.message ||
-      `Webhook configuration failed (${response.status})`
+      JSON.stringify(data)
     );
   }
 
