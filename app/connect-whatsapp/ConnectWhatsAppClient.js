@@ -15,24 +15,14 @@ export default function ConnectWhatsAppClient() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-  if (!businessId) return;
-
-  const interval = setInterval(async () => {
-    const response = await fetch(
-      `/api/whatsapp/status?businessId=${businessId}`
+    const params = new URLSearchParams(
+      window.location.search
     );
 
-    const data = await response.json();
+    const id = params.get("businessId") || "";
 
-    if (data.connected) {
-      clearInterval(interval);
-
-      window.location.href = `/welcome?businessId=${businessId}`;
-    }
-  }, 5000);
-
-  return () => clearInterval(interval);
-}, [businessId]);
+    setBusinessId(id);
+  }, []);
 
   async function generateQRCode(id) {
     if (!id) {
