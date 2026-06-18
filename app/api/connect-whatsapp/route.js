@@ -15,9 +15,13 @@ const SECONDARY_EVOLUTION_URL =
   "http://89.167.127.70:8080";
 
 const API_KEY = process.env.EVOLUTION_API_KEY;
-console.log("EVOLUTION_API_URL:", process.env.EVOLUTION_API_URL);
-console.log("EVOLUTION_API_KEY exists:", !!process.env.EVOLUTION_API_KEY);
-console.log("FALLBACK_URL:", process.env.EVOLUTION_API_FALLBACK_URL);
+
+console.log("======================================");
+console.log("Evolution API configuration");
+console.log("PRIMARY:", PRIMARY_EVOLUTION_URL);
+console.log("FALLBACK:", SECONDARY_EVOLUTION_URL);
+console.log("API KEY EXISTS:", !!API_KEY);
+console.log("======================================");
 
 function sleep(ms) {
   return new Promise((resolve) =>
