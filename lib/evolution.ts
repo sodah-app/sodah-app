@@ -1,26 +1,57 @@
-export async function configureInstanceWebhook(
-  instanceName: string
+import { NextResponse } from "next/server";
+
+const WEBHOOK_EVENTS = [
+  "APPLICATION_STARTUP",
+  "QRCODE_UPDATED",
+  "CONNECTION_UPDATE",
+  "MESSAGES_UPSERT",
+  "MESSAGES_UPDATE",
+  "SEND_MESSAGE",
+];
+
+async function createInstance(apiUrl, apiKey, instanceName) {
+  const response = await fetch(`${apiUrl}/instance/create`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: apiKey,
+    },
+    body: JSON.stringify({
+      instanceName,
+      integration: "WHATSAPP-BAILEYS",
+    }),
+  });
+
+  const text = await response.text();
+
+  console.log("Create instance response:", text);
+
+  if (!response.ok) {
+    throw new Error(`Failed to create instance: ${text}`);
+  }
+
+  return text ? JSON.parse(text) : {};
+}
+
+async function configureWebhook(
+  apiUrl,
+  apiKey,
+  instanceName,
+  webhookUrl
 ) {
   const response = await fetch(
-    `${process.env.EVOLUTION_API_URL}/webhook/set/${instanceName}`,
+    `${apiUrl}/webhook/set/${instanceName}`,
     {
       method: "POST",
       headers: {
-        apikey: process.env.EVOLUTION_API_KEY!,
         "Content-Type": "application/json",
+        apikey: apiKey,
       },
       body: JSON.stringify({
         webhook: {
-          url: process.env.N8N_WEBHOOK_URL!,
           enabled: true,
-          webhookByEvents: false,
-          events: [
-            "CONNECTION_UPDATE",
-            "MESSAGES_UPSERT",
-            "MESSAGES_UPDATE",
-            "SEND_MESSAGE",
-            "QRCODE_UPDATED",
-          ],
+          url: webhookUrl,
+          events: WEBHOOK_EVENTS,
         },
       }),
     }
@@ -28,21 +59,185 @@ export async function configureInstanceWebhook(
 
   const text = await response.text();
 
-  console.log("Webhook configuration response:", text);
-
-  let data: Record<string, any> = {};
-
-  try {
-    data = text ? JSON.parse(text) : {};
-  } catch {
-    data = { raw: text };
-  }
+  console.log("Configure webhook response:", text);
 
   if (!response.ok) {
-    throw new Error(
-      JSON.stringify(data)
-    );
+    throw new Error(`Failed to configure webhook: ${text}`);
   }
 
-  return data;
+  return text ? JSON.parse(text) : {};
+}
+
+async function getQrCode(apiUrl, apiKey, instanceName) {
+  const response = await fetch(
+    `${apiUrl}/instance/connect/${instanceName}`,
+    {
+      method: "GET",
+      headers: {
+        apikey: apiKey,
+      },
+      cache: "no-store",
+    }
+  );
+
+  const text = await response.text();
+
+  console.log("Evolution raw response:", text);
+
+  let data = {};
+
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error(
+        `Evolution returned invalid JSON: ${text}`
+      );
+    }
+  }
+
+  return { response, data };
+}
+
+export async function POST(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+
+    const businessId = searchParams.get("businessId");
+
+    if (!businessId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Missing businessId",
+        },
+        { status: 400 }
+      );
+    }
+
+    const apiUrl = process.env.EVOLUTION_API_URL;
+    const apiKey = process.env.EVOLUTION_API_KEY;
+    const webhookUrl = process.env.N8N_WEBHOOK_URL;
+
+    if (!apiUrl || !apiKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Evolution API environment variables are missing.",
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!webhookUrl) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "N8N_WEBHOOK_URL is missing.",
+        },
+        { status: 500 }
+      );
+    }
+
+    const instanceName = businessId;
+
+    let { response, data } = await getQrCode(
+      apiUrl,
+      apiKey,
+      instanceName
+    );
+
+    if (response.status === 404) {
+      console.log(
+        `Instance ${instanceName} not found. Recreating...`
+      );
+
+      await createInstance(
+        apiUrl,
+        apiKey,
+        instanceName
+      );
+
+      await configureWebhook(
+        apiUrl,
+        apiKey,
+        instanceName,
+        webhookUrl
+      );
+
+      await new Promise((resolve) =>
+        setTimeout(resolve, 3000)
+      );
+
+      const retry = await getQrCode(
+        apiUrl,
+        apiKey,
+        instanceName
+      );
+
+      response = retry.response;
+      data = retry.data;
+    } else {
+      await configureWebhook(
+        apiUrl,
+        apiKey,
+        instanceName,
+        webhookUrl
+      );
+    }
+
+    if (!response.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            data?.message ||
+            data?.response?.message?.[0] ||
+            `Evolution API returned ${response.status}`,
+          details: data,
+        },
+        { status: response.status }
+      );
+    }
+
+    const qrCode =
+      data?.base64 ||
+      data?.qrcode?.base64 ||
+      data?.qrcode?.code ||
+      data?.qrCode ||
+      data?.code ||
+      "";
+
+    const connected =
+      data?.instance?.state === "open" ||
+      data?.state === "open";
+
+    return NextResponse.json({
+      success: true,
+      connected,
+      qrCode,
+      message: connected
+        ? "WhatsApp already connected."
+        : qrCode
+          ? "Scan this QR code with WhatsApp."
+          : "No QR code returned.",
+    });
+  } catch (error) {
+    console.error(
+      "Connect WhatsApp Error:",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Internal server error",
+      },
+      { status: 500 }
+    );
+  }
 }

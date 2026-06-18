@@ -48,9 +48,11 @@ async function configureWebhook(
         apikey: apiKey,
       },
       body: JSON.stringify({
-        url: webhookUrl,
-        enabled: true,
-        events: WEBHOOK_EVENTS,
+        webhook: {
+          url: webhookUrl,
+          enabled: true,
+          events: WEBHOOK_EVENTS,
+        },
       }),
     }
   );
@@ -82,6 +84,7 @@ async function getQrCode(apiUrl, apiKey, instanceName) {
 
   console.log("Evolution raw response:", text);
 
+  /** @type {any} */
   let data = {};
 
   if (text) {
@@ -121,7 +124,8 @@ export async function POST(request) {
       return NextResponse.json(
         {
           success: false,
-          message: "Evolution API environment variables are missing.",
+          message:
+            "Evolution API environment variables are missing.",
         },
         { status: 500 }
       );
@@ -176,7 +180,6 @@ export async function POST(request) {
       response = retry.response;
       data = retry.data;
     } else {
-      // Ensure webhook remains configured
       await configureWebhook(
         apiUrl,
         apiKey,
