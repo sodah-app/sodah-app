@@ -2,29 +2,47 @@ export function getInstanceName(businessId: string) {
   return businessId;
 }
 
-const API_URL = process.env.EVOLUTION_API_URL!;
-const API_KEY = process.env.EVOLUTION_API_KEY!;
+export async function createEvolutionInstance(
+  instanceName: string
+) {
+  // existing code
+}
 
-async function evolutionFetch(
-  endpoint: string,
-  options: RequestInit = {}
+export async function ensureEvolutionInstance(
+  instanceName: string
+) {
+  // existing code
+}
+
+export async function configureInstanceWebhook(
+  instanceName: string
 ) {
   const response = await fetch(
-    `${API_URL}${endpoint}`,
+    `${process.env.EVOLUTION_API_URL}/webhook/set/${instanceName}`,
     {
-      ...options,
+      method: "POST",
       headers: {
-        apikey: API_KEY,
+        apikey: process.env.EVOLUTION_API_KEY!,
         "Content-Type": "application/json",
-        ...(options.headers || {}),
       },
-      cache: "no-store",
+      body: JSON.stringify({
+        url: process.env.N8N_WEBHOOK_URL,
+        enabled: true,
+        webhookByEvents: false,
+        events: [
+          "CONNECTION_UPDATE",
+          "MESSAGES_UPSERT",
+          "MESSAGES_UPDATE",
+          "SEND_MESSAGE",
+          "QRCODE_UPDATED",
+        ],
+      }),
     }
   );
 
   const text = await response.text();
 
-  let data: any = {};
+  let data = {};
 
   try {
     data = text ? JSON.parse(text) : {};
@@ -32,59 +50,12 @@ async function evolutionFetch(
     data = { raw: text };
   }
 
-  return {
-    ok: response.ok,
-    status: response.status,
-    data,
-  };
-}
-
-export async function createEvolutionInstance(
-  instanceName: string
-) {
-  const response = await evolutionFetch(
-    "/instance/create",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        instanceName,
-      }),
-    }
-  );
-
   if (!response.ok) {
     throw new Error(
-      response.data?.response?.message?.[0] ||
-        response.data?.message ||
-        "Failed to create instance"
+      data?.message ||
+      `Webhook configuration failed (${response.status})`
     );
   }
 
-  return response.data;
-}
-
-export async function ensureEvolutionInstance(
-  instanceName: string
-) {
-  const response = await evolutionFetch(
-    `/instance/fetchInstances`,
-    {
-      method: "GET",
-    }
-  );
-
-  const instances = Array.isArray(response.data)
-    ? response.data
-    : response.data?.instances || [];
-
-  const exists = instances.some(
-    (instance: any) =>
-      instance.name === instanceName
-  );
-
-  if (!exists) {
-    await createEvolutionInstance(instanceName);
-  }
-
-  return true;
+  return data;
 }

@@ -1,61 +1,35 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(req) {
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
 
-  try {
+  const businessId = searchParams.get("businessId");
 
-    const { searchParams } =
-      new URL(req.url);
-
-    const businessId =
-      searchParams.get("businessId");
-
-    if (!businessId) {
-
-      return NextResponse.json({
-        connected: false
-      });
-    }
-
-    const instanceName =
-      `sodah_${businessId}`;
-
-    const EVOLUTION_URL =
-      process.env.EVOLUTION_API_URL;
-
-    const EVOLUTION_KEY =
-      process.env.EVOLUTION_API_KEY;
-
-    const response = await fetch(
-      `${EVOLUTION_URL}/instance/connectionState/${instanceName}`,
-      {
-        method: "GET",
-
-        headers: {
-          apikey: EVOLUTION_KEY
-        }
-      }
+  if (!businessId) {
+    return NextResponse.json(
+      { success: false },
+      { status: 400 }
     );
-
-    const data =
-      await response.json();
-
-    console.log(data);
-
-    const connected =
-      data?.instance?.state ===
-      "open";
-
-    return NextResponse.json({
-      connected
-    });
-
-  } catch (error) {
-
-    console.log(error);
-
-    return NextResponse.json({
-      connected: false
-    });
   }
+
+  const apiUrl = process.env.EVOLUTION_API_URL!;
+  const apiKey = process.env.EVOLUTION_API_KEY!;
+
+  const response = await fetch(
+    `${apiUrl}/instance/connectionState/${businessId}`,
+    {
+      headers: {
+        apikey: apiKey
+      },
+      cache: "no-store"
+    }
+  );
+
+  const data = await response.json();
+
+  return NextResponse.json({
+    connected:
+      data?.instance?.state === "open" ||
+      data?.state === "open"
+  });
 }

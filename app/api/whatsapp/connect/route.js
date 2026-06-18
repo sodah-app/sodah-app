@@ -1,12 +1,46 @@
 import { NextResponse } from "next/server";
 
-async function createInstance(
+const WEBHOOK_EVENTS = [
+  "APPLICATION_STARTUP",
+  "QRCODE_UPDATED",
+  "CONNECTION_UPDATE",
+  "MESSAGES_UPSERT",
+  "MESSAGES_UPDATE",
+  "SEND_MESSAGE",
+];
+
+async function createInstance(apiUrl, apiKey, instanceName) {
+  const response = await fetch(`${apiUrl}/instance/create`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: apiKey,
+    },
+    body: JSON.stringify({
+      instanceName,
+      integration: "WHATSAPP-BAILEYS",
+    }),
+  });
+
+  const text = await response.text();
+
+  console.log("Create instance response:", text);
+
+  if (!response.ok) {
+    throw new Error(`Failed to create instance: ${text}`);
+  }
+
+  return text ? JSON.parse(text) : {};
+}
+
+async function configureWebhook(
   apiUrl,
   apiKey,
-  instanceName
+  instanceName,
+  webhookUrl
 ) {
   const response = await fetch(
-    `${apiUrl}/instance/create`,
+    `${apiUrl}/webhook/set/${instanceName}`,
     {
       method: "POST",
       headers: {
@@ -14,30 +48,25 @@ async function createInstance(
         apikey: apiKey,
       },
       body: JSON.stringify({
-        instanceName,
-        integration: "WHATSAPP-BAILEYS",
+        url: webhookUrl,
+        enabled: true,
+        events: WEBHOOK_EVENTS,
       }),
     }
   );
 
   const text = await response.text();
 
-  console.log("Create instance response:", text);
+  console.log("Configure webhook response:", text);
 
   if (!response.ok) {
-    throw new Error(
-      `Failed to create instance: ${text}`
-    );
+    throw new Error(`Failed to configure webhook: ${text}`);
   }
 
   return text ? JSON.parse(text) : {};
 }
 
-async function getQrCode(
-  apiUrl,
-  apiKey,
-  instanceName
-) {
+async function getQrCode(apiUrl, apiKey, instanceName) {
   const response = await fetch(
     `${apiUrl}/instance/connect/${instanceName}`,
     {
@@ -72,8 +101,7 @@ export async function POST(request) {
   try {
     const { searchParams } = new URL(request.url);
 
-    const businessId =
-      searchParams.get("businessId");
+    const businessId = searchParams.get("businessId");
 
     if (!businessId) {
       return NextResponse.json(
@@ -85,18 +113,25 @@ export async function POST(request) {
       );
     }
 
-    const apiUrl =
-      process.env.EVOLUTION_API_URL;
-
-    const apiKey =
-      process.env.EVOLUTION_API_KEY;
+    const apiUrl = process.env.EVOLUTION_API_URL;
+    const apiKey = process.env.EVOLUTION_API_KEY;
+    const webhookUrl = process.env.N8N_WEBHOOK_URL;
 
     if (!apiUrl || !apiKey) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "Evolution API environment variables are missing.",
+          message: "Evolution API environment variables are missing.",
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!webhookUrl) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "N8N_WEBHOOK_URL is missing.",
         },
         { status: 500 }
       );
@@ -121,6 +156,13 @@ export async function POST(request) {
         instanceName
       );
 
+      await configureWebhook(
+        apiUrl,
+        apiKey,
+        instanceName,
+        webhookUrl
+      );
+
       await new Promise((resolve) =>
         setTimeout(resolve, 3000)
       );
@@ -133,6 +175,14 @@ export async function POST(request) {
 
       response = retry.response;
       data = retry.data;
+    } else {
+      // Ensure webhook remains configured
+      await configureWebhook(
+        apiUrl,
+        apiKey,
+        instanceName,
+        webhookUrl
+      );
     }
 
     if (!response.ok) {
@@ -172,10 +222,7 @@ export async function POST(request) {
           : "No QR code returned.",
     });
   } catch (error) {
-    console.error(
-      "Connect WhatsApp Error:",
-      error
-    );
+    console.error("Connect WhatsApp Error:", error);
 
     return NextResponse.json(
       {
