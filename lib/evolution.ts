@@ -4,13 +4,12 @@ type EvolutionResponse = Record<string, any>;
 
 const WEBHOOK_EVENTS = [
   "APPLICATION_STARTUP",
-  "QRCODE_UPDATED",
-  "CONNECTION_UPDATE",
   "MESSAGES_UPSERT",
-  "MESSAGES_UPDATE",
+  "CONNECTION_UPDATE",
+  "MESSAGES_UPDATED",
+  "QRCODE_UPDATED",
   "SEND_MESSAGE",
 ];
-
 async function createInstance(
   apiUrl: string,
   apiKey: string,
