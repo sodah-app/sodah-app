@@ -42,7 +42,7 @@ export async function configureInstanceWebhook(
 
   const text = await response.text();
 
-  let data = {};
+  let data: Record<string, any> = {};
 
   try {
     data = text ? JSON.parse(text) : {};
