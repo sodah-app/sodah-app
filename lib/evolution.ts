@@ -1,21 +1,4 @@
 import { NextResponse } from "next/server";
-import { configureWebhook } from "@/lib/evolution";
-
-export async function POST(request) {
-  try {
-    const result = await configureWebhook(...);
-
-    return NextResponse.json(result);
-  } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        message: error.message,
-      },
-      { status: 500 }
-    );
-  }
-}
 
 type EvolutionResponse = Record<string, any>;
 
@@ -27,7 +10,12 @@ const WEBHOOK_EVENTS = [
   "MESSAGES_UPDATE",
   "SEND_MESSAGE",
 ];
-async function createInstance(apiUrl, apiKey, instanceName) {
+
+async function createInstance(
+  apiUrl: string,
+  apiKey: string,
+  instanceName: string
+): Promise<EvolutionResponse> {
   const response = await fetch(`${apiUrl}/instance/create`, {
     method: "POST",
     headers: {
@@ -51,12 +39,12 @@ async function createInstance(apiUrl, apiKey, instanceName) {
   return text ? JSON.parse(text) : {};
 }
 
-export async function configureWebhook(
+async function configureWebhook(
   apiUrl: string,
   apiKey: string,
   instanceName: string,
   webhookUrl: string
-) {
+): Promise<EvolutionResponse> {
   const response = await fetch(
     `${apiUrl}/webhook/set/${instanceName}`,
     {
@@ -86,7 +74,11 @@ export async function configureWebhook(
   return text ? JSON.parse(text) : {};
 }
 
-async function getQrCode(apiUrl, apiKey, instanceName) {
+async function getQrCode(
+  apiUrl: string,
+  apiKey: string,
+  instanceName: string
+): Promise<{ response: Response; data: EvolutionResponse }> {
   const response = await fetch(
     `${apiUrl}/instance/connect/${instanceName}`,
     {
@@ -102,22 +94,20 @@ async function getQrCode(apiUrl, apiKey, instanceName) {
 
   console.log("Evolution raw response:", text);
 
-  let data = {};
+  let data: EvolutionResponse = {};
 
   if (text) {
     try {
       data = JSON.parse(text);
     } catch {
-      throw new Error(
-        `Evolution returned invalid JSON: ${text}`
-      );
+      throw new Error(`Evolution returned invalid JSON: ${text}`);
     }
   }
 
   return { response, data };
 }
 
-export async function POST(request) {
+export async function POST(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
 
@@ -141,8 +131,7 @@ export async function POST(request) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "Evolution API environment variables are missing.",
+          message: "Evolution API environment variables are missing.",
         },
         { status: 500 }
       );
@@ -167,15 +156,9 @@ export async function POST(request) {
     );
 
     if (response.status === 404) {
-      console.log(
-        `Instance ${instanceName} not found. Recreating...`
-      );
+      console.log(`Instance ${instanceName} not found. Recreating...`);
 
-      await createInstance(
-        apiUrl,
-        apiKey,
-        instanceName
-      );
+      await createInstance(apiUrl, apiKey, instanceName);
 
       await configureWebhook(
         apiUrl,
@@ -184,9 +167,7 @@ export async function POST(request) {
         webhookUrl
       );
 
-      await new Promise((resolve) =>
-        setTimeout(resolve, 3000)
-      );
+      await new Promise((resolve) => setTimeout(resolve, 3000));
 
       const retry = await getQrCode(
         apiUrl,
@@ -210,8 +191,8 @@ export async function POST(request) {
         {
           success: false,
           message:
-          (data as any)?.message ||
-            (data as any)?.response?.message?.[0] ||
+            data?.message ||
+            data?.response?.message?.[0] ||
             `Evolution API returned ${response.status}`,
           details: data,
         },
@@ -242,10 +223,7 @@ export async function POST(request) {
           : "No QR code returned.",
     });
   } catch (error) {
-    console.error(
-      "Connect WhatsApp Error:",
-      error
-    );
+    console.error("Connect WhatsApp Error:", error);
 
     return NextResponse.json(
       {
