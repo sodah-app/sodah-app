@@ -1,201 +1,110 @@
 import { NextResponse } from "next/server";
 
-const PRIMARY_EVOLUTION_URL = (
-  process.env.EVOLUTION_API_URL ||
-  "https://evolution.sodah.io"
-).replace(/\/$/, "");
-
-const SECONDARY_EVOLUTION_URL = (
-  process.env.EVOLUTION_API_FALLBACK_URL ||
-  "http://89.167.127.70:8080"
-).replace(/\/$/, "");
-
-const EVOLUTION_API_KEY =
-  process.env.EVOLUTION_API_KEY;
-
-async function evolutionFetch(
-  endpoint,
-  options = {}
-) {
-  const urls = [
-    PRIMARY_EVOLUTION_URL,
-    SECONDARY_EVOLUTION_URL,
-  ];
-
-  let lastError;
-
-  for (const baseUrl of urls) {
-    const url = `${baseUrl}${endpoint}`;
-
-    try {
-      console.log(
-        `[Evolution] ${options.method || "GET"} ${url}`
-      );
-
-      const response = await fetch(url, {
-        ...options,
-        cache: "no-store",
-        headers: {
-          apikey: EVOLUTION_API_KEY,
-          "Content-Type": "application/json",
-          ...(options.headers || {}),
-        },
-      });
-
-      const text = await response.text();
-
-      let data = {};
-
-      if (text?.trim()) {
-        try {
-          data = JSON.parse(text);
-        } catch {
-          data = { raw: text };
-        }
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          `Evolution API returned ${response.status}: ${text}`
-        );
-      }
-
-      return data;
-    } catch (error) {
-      console.error(
-        `[Evolution] Failed: ${url}`,
-        error.message
-      );
-
-      lastError = error;
-    }
-  }
-
-  throw lastError;
-}
-
-function extractQr(data) {
-  return (
-    data?.base64 ||
-    data?.code ||
-    data?.qr ||
-    data?.qrCode ||
-    data?.qrcode ||
-    data?.qrcode?.base64 ||
-    data?.qrcode?.code ||
-    data?.data?.base64 ||
-    data?.data?.code ||
-    data?.data?.qr ||
-    data?.data?.qrCode ||
-    data?.data?.qrcode ||
-    data?.response?.base64 ||
-    data?.response?.code ||
-    data?.response?.qr ||
-    data?.response?.qrCode ||
-    data?.response?.qrcode ||
-    null
-  );
-}
-
-function normalizeQr(qr) {
-  if (!qr || typeof qr !== "string") {
-    return null;
-  }
-
-  const value = qr.trim();
-
-  if (value.startsWith("data:image")) {
-    return value;
-  }
-
-  if (
-    value.startsWith("http://") ||
-    value.startsWith("https://")
-  ) {
-    return value;
-  }
-
-  return `data:image/png;base64,${value}`;
-}
-
-function isConnected(data) {
-  const status = (
-    data?.instance?.state ||
-    data?.instance?.status ||
-    data?.connectionStatus ||
-    data?.state ||
-    data?.status ||
-    ""
-  )
-    .toString()
-    .toLowerCase();
-
-  return [
-    "open",
-    "connected",
-    "online",
-    "ready",
-    "authenticated",
-  ].includes(status);
-}
-
 export async function POST(request) {
   try {
     const { searchParams } = new URL(request.url);
 
-    const businessId =
-      searchParams.get("businessId");
+    const businessId = searchParams.get("businessId");
 
     if (!businessId) {
       return NextResponse.json(
         {
           success: false,
-          message: "Missing business ID",
+          message: "Missing businessId",
         },
         { status: 400 }
       );
     }
 
-    const instanceName = `sodah_${businessId}`;
+    const instanceName = businessId;
+    const apiUrl = process.env.EVOLUTION_API_URL;
+    const apiKey = process.env.EVOLUTION_API_KEY;
 
-    const result = await evolutionFetch(
-      `/instance/connect/${instanceName}`,
+    if (!apiUrl || !apiKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Evolution API environment variables are missing.",
+        },
+        { status: 500 }
+      );
+    }
+
+    const response = await fetch(
+      `${apiUrl}/instance/connect/${instanceName}`,
       {
         method: "GET",
+        headers: {
+          apikey: apiKey,
+        },
+        cache: "no-store",
       }
     );
 
-    console.log(
-      "Evolution response:",
-      JSON.stringify(result, null, 2)
-    );
+    const text = await response.text();
 
-    const qr = normalizeQr(
-      extractQr(result)
-    );
+    console.log("Evolution raw response:", text);
+
+    let data = {};
+
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        return NextResponse.json(
+          {
+            success: false,
+            message: `Evolution returned invalid JSON: ${text}`,
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    if (!response.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            data?.message ||
+            `Evolution API returned ${response.status}`,
+          details: data,
+        },
+        { status: response.status }
+      );
+    }
+
+    const qrCode =
+      data?.base64 ||
+      data?.qrcode?.base64 ||
+      data?.qrCode ||
+      data?.code ||
+      "";
+
+    const connected =
+      data?.instance?.state === "open" ||
+      data?.state === "open";
 
     return NextResponse.json({
       success: true,
-      connected: isConnected(result),
-      qrCode: qr,
-      message: qr
+      connected,
+      qrCode,
+      message: connected
+        ? "WhatsApp already connected."
+        : qrCode
         ? "Scan this QR code with WhatsApp."
-        : "QR code not available.",
+        : "No QR code returned.",
     });
   } catch (error) {
-    console.error(
-      "Connect WhatsApp Error:",
-      error
-    );
+    console.error("Connect WhatsApp Error:", error);
 
     return NextResponse.json(
       {
         success: false,
-        connected: false,
         message:
           error instanceof Error
             ? error.message
-            : "Unable to connect WhatsApp.",
+            : "Internal server error",
       },
       { status: 500 }
     );

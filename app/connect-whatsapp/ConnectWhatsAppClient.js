@@ -44,25 +44,35 @@ export default function ConnectWhatsAppClient() {
           cache: "no-store",
         }
       );
-const text = await response.text();
 
-console.log("Raw API response:", text);
+      const text = await response.text();
 
-let data = {};
+      console.log(
+        "[WhatsApp Connect] Raw API response:",
+        text
+      );
 
-try {
-  data = text ? JSON.parse(text) : {};
-} catch (error) {
-  throw new Error(
-    `Invalid API response: ${text || "empty response"}`
-  );
-}
-      console.log("QR response:", data);
+      let data = {};
+
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          throw new Error(
+            `Invalid API response: ${text}`
+          );
+        }
+      }
+
+      console.log(
+        "[WhatsApp Connect] Parsed response:",
+        data
+      );
 
       if (!response.ok) {
         throw new Error(
           data?.message ||
-            "Unable to connect WhatsApp."
+            `Request failed with status ${response.status}`
         );
       }
 
@@ -90,11 +100,14 @@ try {
         return;
       }
 
-      setStatus(
-        data.message || "QR code not available."
+      throw new Error(
+        data.message || "QR code not found."
       );
     } catch (err) {
-      console.error(err);
+      console.error(
+        "[WhatsApp Connect] Error:",
+        err
+      );
 
       setError(
         err instanceof Error
