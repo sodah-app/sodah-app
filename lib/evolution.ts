@@ -84,8 +84,7 @@ async function getQrCode(apiUrl, apiKey, instanceName) {
 
   console.log("Evolution raw response:", text);
 
-  let data = {};
-
+  let data: any = {};
   if (text) {
     try {
       data = JSON.parse(text);
@@ -142,7 +141,13 @@ export async function POST(request) {
 
     const instanceName = businessId;
 
-    let { response, data } = await getQrCode(
+    let { response, 
+
+
+
+
+
+ } = await getQrCode(
       apiUrl,
       apiKey,
       instanceName
@@ -192,8 +197,8 @@ export async function POST(request) {
         {
           success: false,
           message:
-            data?.message ||
-            data?.response?.message?.[0] ||
+           (data as any)?.message ||
+            (data as any)?.response?.message?.[0] ||
             `Evolution API returned ${response.status}`,
           details: data,
         },
