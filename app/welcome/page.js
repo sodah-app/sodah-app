@@ -343,11 +343,10 @@ export default function WelcomePage() {
 
       <div className="absolute inset-0 bg-gradient-to-br from-black/90 via-slate-950/80 to-black/90 backdrop-blur-sm" />
 
-      <div className="relative z-20 min-h-screen flex flex-col px-5 py-5 pb-28">
-
+     <div className="relative z-20 h-screen overflow-hidden flex flex-col px-4 py-3 pb-20">
         {/* TOP BAR */}
 
-        <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
 
           <div className="flex items-center gap-3">
 
@@ -399,40 +398,86 @@ export default function WelcomePage() {
 
         </div>
 
-        {/* HERO */}
+       {/* HERO */}
 
-        <div className="mb-8">
+<div className="mb-3">
 
-          <h2 className="text-[42px] leading-[46px] md:text-[64px] md:leading-[68px] font-black">
+  <div className="flex justify-between items-start gap-3">
 
-            Welcome to
+    <div className="flex-1">
 
-            <br />
+      <h2 className="text-[34px] leading-[38px] font-black">
 
-            <span className="text-green-400">
-              Sodah
-            </span>{" "}
+        Welcome to
 
-            Automation 🚀
+        <br />
 
-          </h2>
+        <span className="text-green-400">
+          Sodah
+        </span>
 
-          <p className="text-gray-300 text-base md:text-lg mt-4 max-w-2xl">
+        <br />
 
-            Connect your WhatsApp,
-            automate conversations,
-            manage customers,
-            and grow your business with AI.
+        Automation 🚀
 
+      </h2>
+
+      <p className="text-gray-300 text-[15px] leading-7 mt-3 max-w-[180px]">
+
+        Manage your business, automate conversations and scale faster with AI.
+
+      </p>
+
+      <div className="flex gap-3 mt-5">
+
+        <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 min-w-[100px]">
+
+          <p className="text-green-400 text-xl font-bold">
+            10K+
+          </p>
+
+          <p className="text-gray-400 text-sm">
+            Businesses
           </p>
 
         </div>
 
+        <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 min-w-[100px]">
+
+          <p className="text-yellow-400 text-xl font-bold">
+            99.9%
+          </p>
+
+          <p className="text-gray-400 text-sm">
+            Uptime
+          </p>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <div className="flex-shrink-0">
+
+      <img
+        src="https://res.cloudinary.com/djnjhphf5/image/upload/v1781861552/ChatGPT_Image_Jun_19_2026_01_31_18_PM_yuzjrt.png"
+        alt="WhatsApp Automation"
+        className="w-[150px] object-contain"
+      />
+
+    </div>
+
+  </div>
+
+</div>
+
         {/* MOBILE DESIGN */}
 
-        {isMobile ? (
+       {isMobile ? (
 
-          <div className="space-y-5">
+  <div className="flex-1 flex flex-col justify-between">
+    <div className="space-y-3">
 
             {/* CONNECT WHATSAPP */}
 
@@ -441,8 +486,8 @@ export default function WelcomePage() {
               className="
                 relative
                 overflow-hidden
-                rounded-[32px]
-                p-6
+                rounded-[24px]
+                p-4
                 bg-gradient-to-br
                 from-green-500/20
                 via-green-400/10
@@ -466,10 +511,10 @@ export default function WelcomePage() {
                     <img
                       src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
                       alt="WhatsApp"
-                      className="w-10 h-10"
+                      className="w-8 h-8"
                     />
 
-                    <h3 className="text-2xl font-bold">
+                    <h3 className="text-xl font-bold">
                       Connect WhatsApp
                     </h3>
 
@@ -485,8 +530,8 @@ export default function WelcomePage() {
                 </div>
 
                 <div className="
-                  w-12
-                  h-12
+                  w-10
+                  h-10
                   rounded-full
                   bg-green-500
                   flex
@@ -512,8 +557,8 @@ export default function WelcomePage() {
                 )
               }
               className="
-                rounded-[32px]
-                p-6
+                rounded-[24px]
+                p-4
                 bg-white/10
                 border
                 border-white/10
@@ -524,11 +569,11 @@ export default function WelcomePage() {
 
               <div className="flex items-center gap-3 mb-3">
 
-                <span className="text-3xl">
+                <span className="text-2xl">
                   💻
                 </span>
 
-                <h3 className="text-2xl font-bold">
+                <h3 className="text-xl font-bold">
                   Explore on Desktop
                 </h3>
 
@@ -553,8 +598,8 @@ export default function WelcomePage() {
                 )
               }
               className="
-                rounded-[32px]
-                p-6
+                rounded-[24px]
+                p-4
                 bg-gradient-to-r
                 from-purple-600/30
                 via-pink-500/20
@@ -570,7 +615,7 @@ export default function WelcomePage() {
 
                 <div>
 
-                  <h3 className="text-2xl font-bold mb-2">
+                  <h3 className="text-xl font-bold mb-2">
 
                     Upgrade your plan
 
@@ -587,7 +632,7 @@ export default function WelcomePage() {
                 </div>
 
                 <div className="
-                  px-4
+                  px-3
                   py-2
                   rounded-full
                   bg-purple-500
@@ -599,6 +644,8 @@ export default function WelcomePage() {
               </div>
 
             </div>
+           
+          </div>
 
           </div>
 
@@ -664,7 +711,7 @@ export default function WelcomePage() {
 
         {/* INDICATORS */}
 
-        <div className="flex justify-center gap-2 mt-8">
+        <div className="flex justify-center gap-2 mt-4">
           {backgrounds.map((_, index) => (
             <div
               key={index}
@@ -692,8 +739,8 @@ export default function WelcomePage() {
               flex
               items-center
               justify-center
-              w-16
-              h-16
+              w-14
+              h-14
               rounded-full
               bg-gradient-to-r
               from-blue-500
@@ -722,7 +769,7 @@ export default function WelcomePage() {
               bottom-0
               left-0
               right-0
-              h-20
+              h-16
               bg-black/85
               backdrop-blur-2xl
               border-t
