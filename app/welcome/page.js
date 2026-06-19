@@ -460,11 +460,11 @@ export default function WelcomePage() {
 
     <div className="flex-shrink-0">
 
-      <img
-        src="https://res.cloudinary.com/djnjhphf5/image/upload/v1781861552/ChatGPT_Image_Jun_19_2026_01_31_18_PM_yuzjrt.png"
-        alt="WhatsApp Automation"
-        className="w-[150px] object-contain"
-      />
+     <img
+  src="https://res.cloudinary.com/djnjhphf5/image/upload/v1781861552/ChatGPT_Image_Jun_19_2026_01_31_18_PM_yuzjrt.png"
+  alt="WhatsApp Automation"
+  className="w-[190px] mt-6 object-contain"
+/>
 
     </div>
 
@@ -486,8 +486,8 @@ export default function WelcomePage() {
               className="
                 relative
                 overflow-hidden
-                rounded-[24px]
-                p-4
+                rounded-[20px]
+                px-4 py-3
                 bg-gradient-to-br
                 from-green-500/20
                 via-green-400/10
@@ -511,16 +511,16 @@ export default function WelcomePage() {
                     <img
                       src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
                       alt="WhatsApp"
-                      className="w-8 h-8"
+                      className="w-7 h-7"
                     />
 
-                    <h3 className="text-xl font-bold">
+                    <h3 className="text-lg font-bold">
                       Connect WhatsApp
                     </h3>
 
                   </div>
 
-                  <p className="text-gray-300 leading-relaxed">
+                  <p className="text-gray-300 leading-relaxed-6">
 
                     Connect your business number
                     and activate AI automation.
@@ -557,8 +557,8 @@ export default function WelcomePage() {
                 )
               }
               className="
-                rounded-[24px]
-                p-4
+                rounded-[20px]
+                px-4 py-3
                 bg-white/10
                 border
                 border-white/10
@@ -573,13 +573,13 @@ export default function WelcomePage() {
                   💻
                 </span>
 
-                <h3 className="text-xl font-bold">
+                <h3 className="text-lg font-bold">
                   Explore on Desktop
                 </h3>
 
               </div>
 
-              <p className="text-gray-300 leading-relaxed">
+              <p className="text-gray-300 leading-relaxed-6">
 
                 Access Dashboard and Analytics
                 on Desktop or Laptop for the
