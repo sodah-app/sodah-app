@@ -242,13 +242,14 @@ export default function AutomationPage() {
     fullName: "",
     personalGoal: "",
 
-    // BUSINESS
-    businessName: "",
-    industry: "",
-    email: "",
-    location: "",
-    priceRange: "",
-    customPrice: "",
+   // BUSINESS
+businessName: "",
+industry: "",
+email: "",
+location: "",
+priceRange: "",
+customPrice: "",
+serviceDescription: "",
 
     // PHONE NUMBERS
     aiCode: "+971",
@@ -435,6 +436,7 @@ useEffect(() => {
   form.priceRange === "Custom Pricing"
     ? form.customPrice
     : form.priceRange,
+serviceDescription: form.serviceDescription || "",
   
       // Numbers
       aiNumber: `${form.aiCode}${form.aiNumber}`,
@@ -522,6 +524,7 @@ console.log(
         email: apiPayload.email,
         location: apiPayload.location,
         priceRange: apiPayload.priceRange,
+        serviceDescription: apiPayload.serviceDescription,
         aiNumber: apiPayload.aiNumber,
         supportNumber: apiPayload.supportNumber,
         workingDays: apiPayload.workingDays,
@@ -758,39 +761,61 @@ return (
                   }
                 />
 
-                <div className="col-span-2">
-                 {form.priceRange === "Custom Pricing" ? (
-  <input
-    type="text"
-    placeholder="Enter your custom budget"
-    className="input"
-    value={form.customPrice || ""}
-    onChange={(e) =>
-      setForm({
-        ...form,
-        customPrice: e.target.value
-      })
-    }
-  />
-) : (
-  <select
-    className="input"
-    value={form.priceRange}
-    onChange={(e) =>
-      setForm({
-        ...form,
-        priceRange: e.target.value
-      })
-    }
-  >
-    <option value="">Select Price Range</option>
+               <div className="col-span-2 grid grid-cols-2 gap-4">
+  <div>
+    {form.priceRange === "Custom Pricing" ? (
+      <input
+        type="text"
+        placeholder="Enter your custom budget"
+        className="input"
+        value={form.customPrice || ""}
+        onChange={(e) =>
+          setForm({
+            ...form,
+            customPrice: e.target.value
+          })
+        }
+      />
+    ) : (
+      <select
+        className="input"
+        value={form.priceRange}
+        onChange={(e) =>
+          setForm({
+            ...form,
+            priceRange: e.target.value
+          })
+        }
+      >
+        <option value="">Select Price Range</option>
 
-    {priceRanges.map((item) => (
-      <option key={item}>{item}</option>
-    ))}
-  </select>
-)}
-                </div>
+        {priceRanges.map((item) => (
+          <option key={item}>{item}</option>
+        ))}
+      </select>
+    )}
+  </div>
+
+  <div className="relative">
+    <textarea
+      className="input min-h-[46px] h-[46px] resize-none py-3"
+      placeholder="Describe your Business services (max 120 characters)"
+      maxLength={120}
+      rows={1}
+      value={form.serviceDescription}
+      onChange={(e) =>
+        setForm({
+          ...form,
+          serviceDescription: e.target.value
+        })
+      }
+    />
+
+    <span className="absolute right-3 bottom-2 text-xs text-gray-400">
+      {form.serviceDescription.length}/120
+    </span>
+  </div>
+</div>
               </div>
             </div>
           )}

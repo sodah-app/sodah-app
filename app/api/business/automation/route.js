@@ -165,6 +165,8 @@ if (existingBusiness) {
           location,
 
           price_range: priceRange,
+         
+          services_description: body.serviceDescription,
 
           ai_number: aiNumber,
 
