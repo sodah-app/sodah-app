@@ -29,8 +29,10 @@ export default function MobileAutomationPage() {
 
     // SETTINGS
     workingDays: "Monday-Friday",
-    hours: "24 Hours",
-    capabilities: "Auto Reply"
+   hours: "24 Hours",
+customHours: "",
+serviceDescription: "",
+capabilities: "Auto Reply"
 
   });
 
@@ -81,35 +83,42 @@ export default function MobileAutomationPage() {
 
     e.preventDefault();
 
-    if (form.setupType === "business") {
+  
 
-      if (
-        !form.businessName ||
-        !form.industry ||
-        !form.aiNumber
-      ) {
-        alert(
-          "Please complete all business details"
-        );
-        return;
-      }
+ if (form.setupType === "business") {
 
-    }
+  if (
+    !form.businessName ||
+    !form.industry ||
+    !form.aiNumber ||
+    !form.serviceDescription
+  ) {
+    alert("Please complete all business details");
+    return;
+  }
 
-    if (form.setupType === "personal") {
+}
 
-      if (
-        !form.fullName ||
-        !form.personalGoal ||
-        !form.aiNumber
-      ) {
-        alert(
-          "Please complete all personal details"
-        );
-        return;
-      }
+if (
+  form.setupType === "business" &&
+  form.hours === "Custom Hours" &&
+  !form.customHours
+) {
+  alert("Please enter your custom business hours");
+  return;
+}
+if (form.setupType === "personal") {
 
-    }
+  if (
+    !form.fullName ||
+    !form.personalGoal ||
+    !form.aiNumber
+  ) {
+    alert("Please complete all personal details");
+    return;
+  }
+
+}
 
     try {
 
@@ -156,15 +165,19 @@ export default function MobileAutomationPage() {
                 form.aiNumber
               )
             : form.aiNumber,
+workingDays: form.workingDays,
 
-        workingDays:
-          form.workingDays,
+hours:
+  form.hours === "Custom Hours"
+    ? form.customHours
+    : form.hours,
 
-        hours:
-          form.hours,
+serviceDescription:
+  form.setupType === "business"
+    ? form.serviceDescription
+    : "",
 
-        capabilities:
-          form.capabilities,
+capabilities: form.capabilities,
 
         whatsapp_connected:
           false
@@ -340,6 +353,20 @@ export default function MobileAutomationPage() {
                 onChange={handleChange}
                 className="w-full p-4 rounded-xl bg-[#1E293B]"
               />
+               
+               <textarea
+  name="serviceDescription"
+  placeholder="Describe your business services (max 120 characters)"
+  value={form.serviceDescription}
+  onChange={handleChange}
+  maxLength={120}
+  rows={3}
+  className="w-full p-4 rounded-xl bg-[#1E293B] resize-none"
+/>
+
+<p className="text-right text-xs text-gray-400">
+  {form.serviceDescription.length}/120
+</p>
 
               <input
                 type="tel"
@@ -414,134 +441,101 @@ export default function MobileAutomationPage() {
           {/* WORKING DAYS */}
 
           <select
-            name="workingDays"
-            value={form.workingDays}
-            onChange={handleChange}
-            className="w-full p-4 rounded-xl bg-[#1E293B]"
-          >
-            <option>
-              Monday-Friday
+  name="workingDays"
+  value={form.workingDays}
+  onChange={handleChange}
+  className="w-full p-4 rounded-xl bg-[#1E293B]"
+>
+  <option value="Monday-Friday">
+            Monday-Friday
             </option>
 
-            <option>
-              Monday-Saturday
-            </option>
+            <option value="Monday-Saturday">
+  Monday-Saturday
+</option>
 
-            <option>
-              Monday-Sunday
-            </option>
+<option value="Monday-Sunday">
+  Monday-Sunday
+</option>
 
-            <option>
-              24/7
-            </option>
+<option value="24/7">
+  24/7
+</option>
           </select>
 
-          {/* HOURS */}
-          <select
-            name="hours"
-            value={form.hours}
-            onChange={handleChange}
-            className="w-full p-4 rounded-xl bg-[#1E293B]"
-          >
-            <option>
-              24 Hours
-            </option>
+         {/* HOURS */}
+<select
+  name="hours"
+  value={form.hours}
+  onChange={handleChange}
+  className="w-full p-4 rounded-xl bg-[#1E293B]"
+>
+  <option value="24 Hours">
+    24 Hours
+  </option>
 
-            <option>
-              8 AM - 4 PM
-            </option>
+  <option value="8 AM - 4 PM">
+    8 AM - 4 PM
+  </option>
 
-            <option>
-              9 AM - 5 PM
-            </option>
+  <option value="9 AM - 5 PM">
+    9 AM - 5 PM
+  </option>
 
-            <option>
-              9 AM - 6 PM
-            </option>
+  <option value="9 AM - 6 PM">
+    9 AM - 6 PM
+  </option>
 
-            <option>
-              10 AM - 7 PM
-            </option>
-<option>Custom Hours</option>
-          </select>
+  <option value="10 AM - 7 PM">
+    10 AM - 7 PM
+  </option>
+
+  <option value="Custom Hours">
+    Custom Hours
+  </option>
+</select>
+
+{form.hours === "Custom Hours" && (
+  <input
+    type="text"
+    name="customHours"
+    placeholder="Example: Mon-Fri • 8:30 AM - 6:30 PM"
+    value={form.customHours}
+    onChange={handleChange}
+    className="w-full p-4 rounded-xl bg-[#1E293B]"
+  />
+)}
         
 
           {/* CAPABILITIES */}
-
-          <select
-            name="capabilities"
-            value={form.capabilities}
-            onChange={handleChange}
-            className="w-full p-4 rounded-xl bg-[#1E293B]"
-          >
-
-            {form.setupType === "business" ? (
-              <>
-
-                <option>
-                  Auto Reply
-                </option>
-
-                <option>
-                  Appointment Booking
-                </option>
-
-                <option>
-                  Customer Support
-                </option>
-
-                <option>
-                  Lead Capture
-                </option>
-
-                <option>
-                  Follow-up Messages
-                </option>
-
-                <option>
-                  Order Handling
-                </option>
-
-                <option>
-                  FAQ Answers
-                </option>
-
-                <option>
-                  Sales Automation
-                </option>
-
-              </>
-            ) : (
-              <>
-
-                <option>
-                  Auto Reply
-                </option>
-
-                <option>
-                  Personal Assistant
-                </option>
-
-                <option>
-                  Reminder Messages
-                </option>
-
-                <option>
-                  Appointment Booking
-                </option>
-
-                <option>
-                  Follow-up Messages
-                </option>
-
-                <option>
-                  Task Notifications
-                </option>
-
-              </>
-            )}
-
-          </select>
+<select
+  name="capabilities"
+  value={form.capabilities}
+  onChange={handleChange}
+  className="w-full p-4 rounded-xl bg-[#1E293B]"
+>
+  {form.setupType === "business" ? (
+    <>
+      <option value="Auto Reply">Auto Reply</option>
+      <option value="Appointment Booking">Appointment Booking</option>
+      <option value="Customer Support">Customer Support</option>
+      <option value="Lead Capture">Lead Capture</option>
+      <option value="Follow-up Messages">Follow-up Messages</option>
+      <option value="Order Handling">Order Handling</option>
+      <option value="FAQ Answers">FAQ Answers</option>
+      <option value="Sales Automation">Sales Automation</option>
+    </>
+  ) : (
+    <>
+      <option value="Auto Reply">Auto Reply</option>
+      <option value="Personal Assistant">Personal Assistant</option>
+      <option value="Reminder Messages">Reminder Messages</option>
+      <option value="Appointment Booking">Appointment Booking</option>
+      <option value="Follow-up Messages">Follow-up Messages</option>
+      <option value="Task Notifications">Task Notifications</option>
+    </>
+  )}
+</select>
 
           {/* SUBMIT */}
 

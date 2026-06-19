@@ -372,7 +372,7 @@ export default function WelcomePage() {
             onClick={() =>
               router.push("/profile")
             }
-            className="flex items-center gap-3 bg-white/10 border border-white/10 backdrop-blur-xl px-4 py-2 rounded-full cursor-pointer"
+           className="flex items-center gap-2 bg-white/7 border border-white/7 backdrop-blur-xl px-2 py-1 rounded-full cursor-pointer"
           >
 
             <div>
@@ -380,13 +380,13 @@ export default function WelcomePage() {
                 Welcome back,
               </p>
 
-              <p className="font-semibold">
+             <p className="text-sm font-semibold">
                 {user.fullName ||
                   "User"}
               </p>
             </div>
 
-            <div className="w-11 h-11 rounded-full bg-gradient-to-r from-green-400 to-lime-500 flex items-center justify-center text-black font-bold">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-r from-green-400 to-lime-500 flex items-center justify-center text-black text-sm font-bold">
               {user.fullName
                 ? user.fullName
                     .charAt(0)
@@ -418,7 +418,7 @@ export default function WelcomePage() {
 
         <br />
 
-        Automation 🚀
+        Automation
 
       </h2>
 
@@ -463,7 +463,7 @@ export default function WelcomePage() {
       <img
         src="https://res.cloudinary.com/djnjhphf5/image/upload/v1781861552/ChatGPT_Image_Jun_19_2026_01_31_18_PM_yuzjrt.png"
         alt="WhatsApp Automation"
-        className="w-[160px] mt-10 object-contain"
+        className="w-[190px] mt-5 object-contain -ml-4"
       />
 
     </div>
@@ -528,8 +528,8 @@ export default function WelcomePage() {
         </div>
 
         <div className="
-          w-10
-          h-10
+          w-8
+          h-8
           rounded-full
           bg-green-500
           flex
@@ -817,6 +817,10 @@ export default function WelcomePage() {
 
   </div>
 )}
+</div>
+    </div>
+  );
+}
 /* =========================
    PREMIUM CARD COMPONENT
 ========================= */
