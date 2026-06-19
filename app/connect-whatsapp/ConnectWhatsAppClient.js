@@ -124,6 +124,39 @@ export default function ConnectWhatsAppClient() {
       generateQRCode(businessId);
     }
   }, [businessId]);
+useEffect(() => {
+  if (!businessId || !qrCode) return;
+
+  const interval = setInterval(async () => {
+    try {
+      const response = await fetch(
+        `/api/whatsapp/status?businessId=${encodeURIComponent(
+          businessId
+        )}`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.connected) {
+        clearInterval(interval);
+
+        setStatus("WhatsApp connected successfully.");
+
+        router.replace("/welcome");
+      }
+    } catch (error) {
+      console.error(
+        "[WhatsApp Status Check]",
+        error
+      );
+    }
+  }, 3000);
+
+  return () => clearInterval(interval);
+}, [businessId, qrCode, router]);
 
   return (
     <div className="min-h-screen bg-[#0B1120] text-white flex items-center justify-center p-5">
