@@ -398,15 +398,15 @@ export default function WelcomePage() {
 
         </div>
 
-       {/* HERO */}
+    {/* HERO */}
 
-<div className="mb-2">
+<div className="mb-4">
 
-  <div className="flex justify-between items-start gap-3">
+  <div className="flex justify-between items-start gap-2">
 
     <div className="flex-1">
 
-      <h2 className="text-[34px] leading-[38px] font-black">
+      <h2 className="text-[32px] leading-[36px] font-black">
 
         Welcome to
 
@@ -418,7 +418,7 @@ export default function WelcomePage() {
 
         <br />
 
-        Automation🚀
+        Automation 🚀
 
       </h2>
 
@@ -428,7 +428,7 @@ export default function WelcomePage() {
 
       </p>
 
-      <div className="flex gap-3 mt-5">
+      <div className="flex gap-3 mt-4">
 
         <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 min-w-[100px]">
 
@@ -460,196 +460,191 @@ export default function WelcomePage() {
 
     <div className="flex-shrink-0">
 
-     <img
-  src="https://res.cloudinary.com/djnjhphf5/image/upload/v1781861552/ChatGPT_Image_Jun_19_2026_01_31_18_PM_yuzjrt.png"
-  alt="WhatsApp Automation"
-  className="w-[60x] mt-6 object-contain"
-/>
+      <img
+        src="https://res.cloudinary.com/djnjhphf5/image/upload/v1781861552/ChatGPT_Image_Jun_19_2026_01_31_18_PM_yuzjrt.png"
+        alt="WhatsApp Automation"
+        className="w-[160px] mt-10 object-contain"
+      />
 
     </div>
 
   </div>
 
 </div>
-
         {/* MOBILE DESIGN */}
 
        {isMobile ? (
 
-  <div className="flex-1 flex flex-col justify-between">
-    <div className="space-y-3">
+  <div className="space-y-3 pb-28">
 
-            {/* CONNECT WHATSAPP */}
+    {/* CONNECT WHATSAPP */}
 
-            <div
-              onClick={startAutomationSetup}
-              className="
-                relative
-                overflow-hidden
-                rounded-[20px]
-                px-4 py-3
-                bg-gradient-to-br
-                from-green-500/20
-                via-green-400/10
-                to-transparent
-                border
-                border-green-400/30
-                backdrop-blur-2xl
-                cursor-pointer
-                transition-all
-                duration-300
-                hover:scale-[1.02]
-              "
-            >
+    <div
+      onClick={startAutomationSetup}
+      className="
+        relative
+        overflow-hidden
+        rounded-[20px]
+        px-4
+        py-3
+        bg-gradient-to-br
+        from-green-500/20
+        via-green-400/10
+        to-transparent
+        border
+        border-green-400/30
+        backdrop-blur-2xl
+        cursor-pointer
+        transition-all
+        duration-300
+        hover:scale-[1.02]
+      "
+    >
 
-              <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
 
-                <div>
+        <div className="flex-1">
 
-                  <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-3 mb-2">
 
-                    <img
-                      src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
-                      alt="WhatsApp"
-                      className="w-7 h-7"
-                    />
+            <img
+              src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
+              alt="WhatsApp"
+              className="w-7 h-7"
+            />
 
-                    <h3 className="text-lg font-bold">
-                      Connect WhatsApp
-                    </h3>
-
-                  </div>
-
-                  <p className="text-gray-300 leading-relaxed-6">
-
-                    Connect your business number
-                    and activate AI automation.
-
-                  </p>
-
-                </div>
-
-                <div className="
-                  w-10
-                  h-10
-                  rounded-full
-                  bg-green-500
-                  flex
-                  items-center
-                  justify-center
-                  text-black
-                  font-black
-                  text-xl
-                ">
-                  →
-                </div>
-
-              </div>
-
-            </div>
-
-            {/* DESKTOP */}
-
-            <div
-              onClick={() =>
-                showDesktopOnly(
-                  "Dashboard & Analytics"
-                )
-              }
-              className="
-                rounded-[20px]
-                px-4 py-3
-                bg-white/10
-                border
-                border-white/10
-                backdrop-blur-2xl
-                cursor-pointer
-              "
-            >
-
-              <div className="flex items-center gap-3 mb-3">
-
-                <span className="text-2xl">
-                  💻
-                </span>
-
-                <h3 className="text-lg font-bold">
-                  Explore on Desktop
-                </h3>
-
-              </div>
-
-              <p className="text-gray-300 leading-relaxed-6">
-
-                Access Dashboard and Analytics
-                on Desktop or Laptop for the
-                complete experience.
-
-              </p>
-
-            </div>
-
-            {/* UPGRADE PLAN */}
-
-            <div
-              onClick={() =>
-                router.push(
-                  "/subscription"
-                )
-              }
-              className="
-                rounded-[24px]
-                p-4
-                bg-gradient-to-r
-                from-purple-600/30
-                via-pink-500/20
-                to-purple-600/30
-                border
-                border-purple-400/30
-                backdrop-blur-2xl
-                cursor-pointer
-              "
-            >
-
-              <div className="flex items-center justify-between">
-
-                <div>
-
-                  <h3 className="text-xl font-bold mb-2">
-
-                    Upgrade your plan
-
-                  </h3>
-
-                  <p className="text-gray-300">
-
-                    Unlock premium features,
-                    advanced analytics,
-                    and priority support.
-
-                  </p>
-
-                </div>
-
-                <div className="
-                  px-3
-                  py-2
-                  rounded-full
-                  bg-purple-500
-                  font-semibold
-                ">
-                  View Plans
-                </div>
-
-              </div>
-
-            </div>
-           
-          </div>
+            <h3 className="text-lg font-bold">
+              Connect WhatsApp
+            </h3>
 
           </div>
 
-        ) : (
+          <p className="text-sm text-gray-300 leading-6">
+
+            Connect your business number and activate AI automation.
+
+          </p>
+
+        </div>
+
+        <div className="
+          w-10
+          h-10
+          rounded-full
+          bg-green-500
+          flex
+          items-center
+          justify-center
+          text-black
+          font-black
+          text-xl
+          shrink-0
+        ">
+          →
+        </div>
+
+      </div>
+
+    </div>
+
+    {/* DESKTOP */}
+
+    <div
+      onClick={() =>
+        showDesktopOnly(
+          "Dashboard & Analytics"
+        )
+      }
+      className="
+        rounded-[20px]
+        px-4
+        py-3
+        bg-white/10
+        border
+        border-white/10
+        backdrop-blur-2xl
+        cursor-pointer
+      "
+    >
+
+      <div className="flex items-center gap-3 mb-2">
+
+        <span className="text-xl">
+          💻
+        </span>
+
+        <h3 className="text-lg font-bold">
+          Explore on Desktop
+        </h3>
+
+      </div>
+
+      <p className="text-sm text-gray-300 leading-6">
+
+        Access Dashboard and Analytics on Desktop or Laptop for the complete experience.
+
+      </p>
+
+    </div>
+
+    {/* UPGRADE PLAN */}
+
+    <div
+      onClick={() =>
+        router.push("/subscription")
+      }
+      className="
+        rounded-[20px]
+        px-4
+        py-3
+        bg-gradient-to-r
+        from-purple-600/30
+        via-pink-500/20
+        to-purple-600/30
+        border
+        border-purple-400/30
+        backdrop-blur-2xl
+        cursor-pointer
+      "
+    >
+
+      <div className="flex items-center justify-between gap-4">
+
+        <div className="flex-1">
+
+          <h3 className="text-lg font-bold mb-2">
+
+            Upgrade your plan
+
+          </h3>
+
+          <p className="text-sm text-gray-300 leading-6">
+
+            Unlock premium features, advanced analytics, and priority support.
+
+          </p>
+
+        </div>
+
+        <div className="
+          px-3
+          py-2
+          rounded-full
+          bg-purple-500
+          text-sm
+          font-semibold
+          shrink-0
+        ">
+          View Plans
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+) : (
 
           <div className="grid grid-cols-3 gap-5">
 
@@ -709,198 +704,119 @@ export default function WelcomePage() {
 
         )}
 
-        {/* INDICATORS */}
+       {/* INDICATORS */}
 
-        <div className="flex justify-center gap-2 mt-4">
-          {backgrounds.map((_, index) => (
-            <div
-              key={index}
-              className={`h-2 rounded-full transition-all duration-500 ${
-                index === bgIndex
-                  ? "w-8 bg-green-400"
-                  : "w-2 bg-white/40"
-              }`}
-            />
-          ))}
-        </div>
+<div className="flex justify-center gap-2 mt-5 mb-4">
+  {backgrounds.map((_, index) => (
+    <div
+      key={index}
+      className={`h-2 rounded-full transition-all duration-500 ${
+        index === bgIndex
+          ? "w-8 bg-green-400"
+          : "w-2 bg-white/40"
+      }`}
+    />
+  ))}
+</div>
 
-        {/* SUPPORT BOT */}
+{/* SUPPORT BOT */}
 
-        <div className="fixed bottom-24 right-5 z-50">
-          <button
-            onClick={() =>
-              window.open(
-                "https://solomon-n8n.duckdns.org/webhook/a7935547-15a5-4742-8ac0-b8fab937d44c/chat",
-                "_blank"
-              )
-            }
-            className="
-              relative
-              flex
-              items-center
-              justify-center
-              w-14
-              h-14
-              rounded-full
-              bg-gradient-to-r
-              from-blue-500
-              via-cyan-500
-              to-purple-600
-              shadow-2xl
-              hover:scale-110
-              transition
-              duration-300
-            "
-          >
-            <span className="text-2xl">
-              🤖
-            </span>
+<div className="fixed bottom-24 right-5 z-50">
+  <button
+    onClick={() =>
+      window.open(
+        "https://solomon-n8n.duckdns.org/webhook/a7935547-15a5-4742-8ac0-b8fab937d44c/chat",
+        "_blank"
+      )
+    }
+    className="
+      relative
+      flex
+      items-center
+      justify-center
+      w-14
+      h-14
+      rounded-full
+      bg-gradient-to-r
+      from-blue-500
+      via-cyan-500
+      to-purple-600
+      shadow-2xl
+      transition
+      duration-300
+    "
+  >
+    <span className="text-2xl">
+      🤖
+    </span>
 
-            <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-20 animate-ping"></span>
-          </button>
-        </div>
+    <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-20 animate-ping"></span>
+  </button>
+</div>
 
-        {/* MOBILE BOTTOM NAVIGATION */}
+{/* MOBILE BOTTOM NAVIGATION */}
 
-        {isMobile && (
-          <div
-            className="
-              fixed
-              bottom-0
-              left-0
-              right-0
-              h-16
-              bg-black/85
-              backdrop-blur-2xl
-              border-t
-              border-white/10
-              flex
-              items-center
-              justify-around
-              z-50
-            "
-          >
+{isMobile && (
+  <div
+    className="
+      fixed
+      bottom-0
+      left-0
+      right-0
+      h-16
+      bg-black/90
+      backdrop-blur-2xl
+      border-t
+      border-white/10
+      flex
+      items-center
+      justify-around
+      z-50
+    "
+  >
 
-            {/* HOME */}
+    <button
+      onClick={() => router.push("/welcome")}
+      className="flex flex-col items-center text-white"
+    >
+      <span className="text-2xl">🏠</span>
+      <span className="text-[11px] mt-1">Home</span>
+    </button>
 
-            <button
-              onClick={() =>
-                router.push("/welcome")
-              }
-              className="
-                flex
-                flex-col
-                items-center
-                text-white
-              "
-            >
-              <span className="text-2xl">
-                🏠
-              </span>
+    <button
+      onClick={() => showDesktopOnly("Dashboard")}
+      className="flex flex-col items-center text-white"
+    >
+      <span className="text-2xl">📊</span>
+      <span className="text-[11px] mt-1">Dashboard</span>
+    </button>
 
-              <span className="text-[11px] mt-1">
-                Home
-              </span>
-            </button>
+    <button
+      onClick={() => showDesktopOnly("Analytics")}
+      className="flex flex-col items-center text-white"
+    >
+      <span className="text-2xl">📈</span>
+      <span className="text-[11px] mt-1">Analytics</span>
+    </button>
 
-            {/* DASHBOARD */}
+    <button
+      onClick={handleLogout}
+      className="flex flex-col items-center text-red-400"
+    >
+      <span className="text-2xl">🚪</span>
+      <span className="text-[11px] mt-1">Logout</span>
+    </button>
 
-            <button
-              onClick={() =>
-                showDesktopOnly(
-                  "Dashboard"
-                )
-              }
-              className="
-                flex
-                flex-col
-                items-center
-                text-white
-              "
-            >
-              <span className="text-2xl">
-                📊
-              </span>
+    <button
+      onClick={() => router.push("/settings")}
+      className="flex flex-col items-center text-white"
+    >
+      <span className="text-2xl">⚙️</span>
+      <span className="text-[11px] mt-1">Settings</span>
+    </button>
 
-              <span className="text-[11px] mt-1">
-                Dashboard
-              </span>
-            </button>
-
-            {/* ANALYTICS */}
-
-            <button
-              onClick={() =>
-                showDesktopOnly(
-                  "Analytics"
-                )
-              }
-              className="
-                flex
-                flex-col
-                items-center
-                text-white
-              "
-            >
-              <span className="text-2xl">
-                📈
-              </span>
-
-              <span className="text-[11px] mt-1">
-                Analytics
-              </span>
-            </button>
-
-            {/* LOGOUT */}
-
-            <button
-              onClick={handleLogout}
-              className="
-                flex
-                flex-col
-                items-center
-                text-red-400
-              "
-            >
-              <span className="text-2xl">
-                🚪
-              </span>
-
-              <span className="text-[11px] mt-1">
-                Logout
-              </span>
-            </button>
-
-            {/* SETTINGS */}
-
-            <button
-              onClick={() =>
-                router.push("/settings")
-              }
-              className="
-                flex
-                flex-col
-                items-center
-                text-white
-              "
-            >
-              <span className="text-2xl">
-                ⚙️
-              </span>
-
-              <span className="text-[11px] mt-1">
-                Settings
-              </span>
-            </button>
-
-          </div>
-        )}
-
-      </div>
-    </div>
-  );
-}
-
+  </div>
+)}
 /* =========================
    PREMIUM CARD COMPONENT
 ========================= */
