@@ -463,7 +463,7 @@ export default function WelcomePage() {
      <img
   src="https://res.cloudinary.com/djnjhphf5/image/upload/v1781861552/ChatGPT_Image_Jun_19_2026_01_31_18_PM_yuzjrt.png"
   alt="WhatsApp Automation"
-  className="w-[100x] mt-8 object-contain"
+  className="w-[60x] mt-6 object-contain"
 />
 
     </div>
