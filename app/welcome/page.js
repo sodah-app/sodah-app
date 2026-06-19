@@ -343,7 +343,7 @@ export default function WelcomePage() {
 
       <div className="absolute inset-0 bg-gradient-to-br from-black/90 via-slate-950/80 to-black/90 backdrop-blur-sm" />
 
-     <div className="relative z-20 h-screen overflow-hidden flex flex-col px-4 py-3 pb-20">
+    <div className="relative z-20 min-h-screen flex flex-col px-4 py-3 pb-24 overflow-y-auto">
         {/* TOP BAR */}
 
       <div className="flex items-center justify-between mb-4">
