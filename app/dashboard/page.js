@@ -62,14 +62,15 @@ export default function Dashboard() {
   // ======================================================
 
   useEffect(() => {
-    const loadBusinessId = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+    const {
+  data: { session },
+} = await supabase.auth.getSession();
 
-       if (!session?.user) {
-  router.push("/signup");
+console.log("SESSION:", session);
+
+if (!session?.user) {
+  console.log("No active session found");
+  router.replace("/login");
   return;
 }
 
