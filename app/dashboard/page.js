@@ -170,7 +170,22 @@ const fetchData = async () => {
   try {
     setLoading(true);
 
-    console.log("Dashboard business ID:", businessId);
+    console.log(
+      "Dashboard business ID:",
+      businessId
+    );
+
+    const [
+      appointmentsResult,
+      customersResult,
+    ] = await Promise.all([
+      supabase
+        .from("appointments")
+        .select("*")
+        .eq("business_id", businessId)
+        .order("created_at", {
+          ascending: false,
+        }),
 
       supabase
         .from("customers")
