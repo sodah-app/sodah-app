@@ -2,7 +2,7 @@
 import ResponsiveContainer from "../../components/ui/ResponsiveContainer";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { supabase } from "@/lib/supabase";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -101,29 +101,28 @@ export default function AuthPage() {
   };
 
   // GOOGLE LOGIN
-  const handleGoogleLogin =
-    async () => {
-      try {
-        setLoading(true);
+ const handleGoogleLogin = async () => {
+  try {
+    setLoading(true);
 
-        await signIn(
-          "google",
-          {
-            callbackUrl:
-              "/welcome",
-          }
-        );
-      } catch (error) {
-        console.log(error);
+    const { error } =
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
 
-        triggerError(
-          "Google login failed."
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (error) {
+      throw error;
+    }
+  } catch (error) {
+    console.error(error);
 
+    triggerError("Google login failed.");
+    setLoading(false);
+  }
+};
   // LOGIN / REGISTER
   const handleSubmit =
     async () => {
