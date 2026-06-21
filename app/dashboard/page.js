@@ -174,11 +174,7 @@ const fetchData = async () => {
       "Dashboard business ID:",
       businessId
     );
-   const [
-  appointmentsResult,
-  customersResult,
-] = await Promise.all([
-
+   
     const [
       appointmentsResult,
       customersResult,
