@@ -54,76 +54,32 @@ export default function Dashboard() {
 // ======================================================
 // BUSINESS ID
 // ======================================================
-const [businessId, setBusinessId] =
-  useState(null);
-
 useEffect(() => {
-  const loadBusinessId = async () => {
-    try {
-      setLoading(true);
+  const debugBusiness = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
+    console.log("AUTH USER:", user);
 
-      if (authError || !user) {
-        console.error(
-          "Unable to load authenticated user",
-          authError
-        );
-
-        return;
-      }
-
-      const {
-        data: business,
-        error,
-      } = await supabase
+    const { data: businesses, error } =
+      await supabase
         .from("businesses")
-        .select("business_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+        .select("*");
 
-      if (error) {
-        throw error;
-      }
+    console.log(
+      "BUSINESSES TABLE:",
+      businesses
+    );
 
-      if (!business?.business_id) {
-        console.error(
-          "No business_id found for user:",
-          user.id
-        );
-
-        return;
-      }
-
-      console.log(
-        "Loaded business ID:",
-        business.business_id
-      );
-
-      setBusinessId(
-        business.business_id
-      );
-
-      localStorage.setItem(
-        "business_id",
-        business.business_id
-      );
-    } catch (error) {
-      console.error(
-        "Business ID load error:",
-        error
-      );
-    } finally {
-      setLoading(false);
-    }
+    console.log(
+      "BUSINESSES ERROR:",
+      error
+    );
   };
 
-  loadBusinessId();
+  debugBusiness();
 }, []);
-
 // ======================================================
 // NORMALIZERS
 // ======================================================
@@ -948,6 +904,22 @@ useEffect(() => {
     </div>
   );
 }
+
+<button
+  className="bg-red-500 px-4 py-2 rounded"
+  onClick={async () => {
+    const result = await supabase
+      .from("appointments")
+      .select("*");
+
+    console.log(
+      "ALL APPOINTMENTS:",
+      result
+    );
+  }}
+>
+  Debug Appointments
+</button>
 
 // ======================================================
 // AI LIVE
