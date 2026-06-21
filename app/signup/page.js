@@ -1,4 +1,5 @@
 "use client";
+
 import ResponsiveContainer from "../../components/ui/ResponsiveContainer";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -109,7 +110,7 @@ export default function AuthPage() {
       await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}/welcome`,
         },
       });
 
