@@ -57,46 +57,45 @@ export default function Dashboard() {
 // ======================================================
 useEffect(() => {
   const loadBusinessId = async () => {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    console.log("AUTH USER:", user);
+      console.log("SESSION:", session);
 
-    if (userError || !user) {
-      console.error(
-        "Unable to load authenticated user",
-        userError
-      );
+      if (!session?.user) {
+        console.error("No active session");
+        setLoading(false);
+        return;
+      }
 
+      const userId = session.user.id;
+
+      console.log("USER ID:", userId);
+
+      const {
+        data: business,
+        error: businessError,
+      } = await supabase
+        .from("businesses")
+        .select("business_id")
+        .eq("user_id", userId)
+        .single();
+
+      console.log("BUSINESS:", business);
+      console.log("BUSINESS ERROR:", businessError);
+
+      if (businessError || !business) {
+        setLoading(false);
+        return;
+      }
+
+      setBusinessId(business.business_id);
+    } catch (err) {
+      console.error(err);
       setLoading(false);
-      return;
     }
-
-    const {
-      data: business,
-      error: businessError,
-    } = await supabase
-      .from("businesses")
-      .select("*")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    console.log("BUSINESS:", business);
-    console.log("BUSINESS ERROR:", businessError);
-
-    if (businessError || !business) {
-      setLoading(false);
-      return;
-    }
-
-    setBusinessId(business.business_id);
-
-    console.log(
-      "CURRENT BUSINESS ID:",
-      business.business_id
-    );
   };
 
   loadBusinessId();
@@ -653,27 +652,51 @@ useEffect(() => {
                 Dashboard
               </h1>
 
-          <button
-  className="bg-red-500 text-white px-3 py-2 rounded text-sm"
-  onClick={async () => {
-    const result = await supabase
-      .from("appointments")
-      .select("*");
+        useEffect(() => {
+  const loadBusinessId = async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    console.log(
-      "ALL APPOINTMENTS:",
-      result
-    );
+      console.log("SESSION:", session);
 
-    console.log(
-      "CURRENT BUSINESS ID:",
-      businessId
-    );
-  }}
->
-  Debug Appointments
-</button>
+      if (!session?.user) {
+        console.error("No active session");
+        setLoading(false);
+        return;
+      }
 
+      const userId = session.user.id;
+
+      console.log("USER ID:", userId);
+
+      const {
+        data: business,
+        error: businessError,
+      } = await supabase
+        .from("businesses")
+        .select("business_id")
+        .eq("user_id", userId)
+        .single();
+
+      console.log("BUSINESS:", business);
+      console.log("BUSINESS ERROR:", businessError);
+
+      if (businessError || !business) {
+        setLoading(false);
+        return;
+      }
+
+      setBusinessId(business.business_id);
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+    }
+  };
+
+  loadBusinessId();
+}, []);
 
               <p>
                 Welcome back
