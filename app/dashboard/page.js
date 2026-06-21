@@ -24,6 +24,7 @@ export default function Dashboard() {
   const [customers, setCustomers] = useState([]);
   const [activePage, setActivePage] = useState("Dashboard");
   const [loading, setLoading] = useState(true);
+  const [businessId, setBusinessId] = useState(null);
 
   // ======================================================
   // DARK MODE
@@ -55,30 +56,50 @@ export default function Dashboard() {
 // BUSINESS ID
 // ======================================================
 useEffect(() => {
-  const debugBusiness = async () => {
+  const loadBusinessId = async () => {
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser();
 
     console.log("AUTH USER:", user);
 
-    const { data: businesses, error } =
-      await supabase
-        .from("businesses")
-        .select("*");
+    if (userError || !user) {
+      console.error(
+        "Unable to load authenticated user",
+        userError
+      );
+
+      setLoading(false);
+      return;
+    }
+
+    const {
+      data: business,
+      error: businessError,
+    } = await supabase
+      .from("businesses")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    console.log("BUSINESS:", business);
+    console.log("BUSINESS ERROR:", businessError);
+
+    if (businessError || !business) {
+      setLoading(false);
+      return;
+    }
+
+    setBusinessId(business.business_id);
 
     console.log(
-      "BUSINESSES TABLE:",
-      businesses
-    );
-
-    console.log(
-      "BUSINESSES ERROR:",
-      error
+      "CURRENT BUSINESS ID:",
+      business.business_id
     );
   };
 
-  debugBusiness();
+  loadBusinessId();
 }, []);
 // ======================================================
 // NORMALIZERS
@@ -632,6 +653,28 @@ useEffect(() => {
                 Dashboard
               </h1>
 
+          <button
+  className="bg-red-500 text-white px-3 py-2 rounded text-sm"
+  onClick={async () => {
+    const result = await supabase
+      .from("appointments")
+      .select("*");
+
+    console.log(
+      "ALL APPOINTMENTS:",
+      result
+    );
+
+    console.log(
+      "CURRENT BUSINESS ID:",
+      businessId
+    );
+  }}
+>
+  Debug Appointments
+</button>
+
+
               <p>
                 Welcome back
               </p>
@@ -904,22 +947,6 @@ useEffect(() => {
     </div>
   );
 }
-
-<button
-  className="bg-red-500 px-4 py-2 rounded"
-  onClick={async () => {
-    const result = await supabase
-      .from("appointments")
-      .select("*");
-
-    console.log(
-      "ALL APPOINTMENTS:",
-      result
-    );
-  }}
->
-  Debug Appointments
-</button>
 
 // ======================================================
 // AI LIVE
