@@ -12,7 +12,12 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+} from "react";
 import { supabase } from "@/lib/supabase";
 export default function Dashboard() {
   const [appointments, setAppointments] = useState([]);
@@ -54,42 +59,66 @@ const [businessId, setBusinessId] =
 
 useEffect(() => {
   const loadBusinessId = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    try {
+      setLoading(true);
 
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
 
-    const { data, error } = await supabase
-      .from("businesses")
-      .select("business_id")
-      .eq("user_id", user.id)
-      .single();
+      if (authError || !user) {
+        console.error(
+          "Unable to load authenticated user",
+          authError
+        );
 
-    if (error || !data?.business_id) {
-      console.error(
-        "Business ID not found",
-        error
+        return;
+      }
+
+      const {
+        data: business,
+        error,
+      } = await supabase
+        .from("businesses")
+        .select("business_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      if (!business?.business_id) {
+        console.error(
+          "No business_id found for user:",
+          user.id
+        );
+
+        return;
+      }
+
+      console.log(
+        "Loaded business ID:",
+        business.business_id
       );
 
+      setBusinessId(
+        business.business_id
+      );
+
+      localStorage.setItem(
+        "business_id",
+        business.business_id
+      );
+    } catch (error) {
+      console.error(
+        "Business ID load error:",
+        error
+      );
+    } finally {
       setLoading(false);
-      return;
     }
-
-    console.log(
-      "Loaded business ID:",
-      data.business_id
-    );
-
-    localStorage.setItem(
-      "business_id",
-      data.business_id
-    );
-
-    setBusinessId(data.business_id);
   };
 
   loadBusinessId();
@@ -115,22 +144,29 @@ const normalizeAppointments = (
       "No phone",
 
     Date:
-      item.appointment_date || "",
+      item.appointment_date ||
+      item.date ||
+      "",
 
     Time:
-      item.appointment_time || "",
+      item.appointment_time ||
+      item.time ||
+      "",
 
     Appointment_status:
-      item.status || "Pending",
+      item.status ||
+      item.appointment_status ||
+      "Pending",
 
-    Query: item.notes || "",
+    Query:
+      item.notes || "",
 
-    query: item.notes || "",
+    query:
+      item.notes || "",
 
     lead_status:
       item.lead_status || "new",
   }));
-
 const normalizeCustomers = (
   data = []
 ) =>
@@ -160,91 +196,90 @@ const normalizeCustomers = (
 // ======================================================
 // FETCH DATA
 // ======================================================
-const fetchData = async () => {
-  if (!businessId) {
-    console.log("No business ID found");
-    setLoading(false);
-    return;
-  }
+const fetchData = useCallback(
+  async () => {
+    if (!businessId) return;
 
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    console.log(
-      "Dashboard business ID:",
-      businessId
-    );
-   
-    const [
-      appointmentsResult,
-      customersResult,
-    ] = await Promise.all([
-      supabase
-        .from("appointments")
-        .select("*")
-        .eq("business_id", businessId)
-        .order("created_at", {
-          ascending: false,
-        }),
+      console.log(
+        "Fetching dashboard data for:",
+        businessId
+      );
 
-      supabase
-        .from("customers")
-        .select("*")
-        .eq("business_id", businessId)
-        .order("created_at", {
-          ascending: false,
-        }),
-    ]);
+      const [
+        appointmentsResult,
+        customersResult,
+      ] = await Promise.all([
+        supabase
+          .from("appointments")
+          .select("*")
+          .eq(
+            "business_id",
+            businessId
+          )
+          .order("created_at", {
+            ascending: false,
+          }),
 
-    console.log(
-      "Appointments found:",
-      appointmentsResult.data
-    );
+        supabase
+          .from("customers")
+          .select("*")
+          .eq(
+            "business_id",
+            businessId
+          )
+          .order("created_at", {
+            ascending: false,
+          }),
+      ]);
 
-    console.log(
-      "Customers found:",
-      customersResult.data
-    );
+      if (
+        appointmentsResult.error
+      ) {
+        throw appointmentsResult.error;
+      }
 
-    console.log(
-      "Appointments error:",
-      appointmentsResult.error
-    );
+      if (
+        customersResult.error
+      ) {
+        throw customersResult.error;
+      }
 
-    console.log(
-      "Customers error:",
-      customersResult.error
-    );
+      console.log(
+        "Appointments:",
+        appointmentsResult.data
+      );
 
-    if (appointmentsResult.error) {
-      throw appointmentsResult.error;
+      console.log(
+        "Customers:",
+        customersResult.data
+      );
+
+      setAppointments(
+        normalizeAppointments(
+          appointmentsResult.data ||
+            []
+        )
+      );
+
+      setCustomers(
+        normalizeCustomers(
+          customersResult.data || []
+        )
+      );
+    } catch (error) {
+      console.error(
+        "Dashboard fetch error:",
+        error
+      );
+    } finally {
+      setLoading(false);
     }
-
-    if (customersResult.error) {
-      throw customersResult.error;
-    }
-
-    setAppointments(
-      normalizeAppointments(
-        appointmentsResult.data || []
-      )
-    );
-
-    setCustomers(
-      normalizeCustomers(
-        customersResult.data || []
-      )
-    );
-  } catch (err) {
-    console.error(
-      "Dashboard Supabase fetch error:",
-      err
-    );
-  } finally {
-    setLoading(false);
-  }
-};
-
+  },
+  [businessId]
+);
 // ======================================================
 // AUTO REFRESH
 // ======================================================
@@ -253,15 +288,52 @@ useEffect(() => {
 
   fetchData();
 
-  const interval = setInterval(
-    fetchData,
-    4000
-  );
+  const channel = supabase
+    .channel(
+      `dashboard-${businessId}`
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "appointments",
+        filter: `business_id=eq.${businessId}`,
+      },
+      (payload) => {
+        console.log(
+          "Appointment updated:",
+          payload
+        );
 
-  return () =>
-    clearInterval(interval);
-}, [businessId]);
+        fetchData();
+      }
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "customers",
+        filter: `business_id=eq.${businessId}`,
+      },
+      (payload) => {
+        console.log(
+          "Customer updated:",
+          payload
+        );
 
+        fetchData();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(
+      channel
+    );
+  };
+}, [businessId, fetchData]);
   // ======================================================
   // MAIN STATS
   // ======================================================
