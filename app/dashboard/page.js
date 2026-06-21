@@ -174,6 +174,15 @@ const fetchData = async () => {
       "Dashboard business ID:",
       businessId
     );
+   const [
+  appointmentsResult,
+  customersResult,
+] = await Promise.all([
+
+    const [
+      appointmentsResult,
+      customersResult,
+    ] = await Promise.all([
       supabase
         .from("appointments")
         .select("*")
@@ -228,74 +237,6 @@ const fetchData = async () => {
     setCustomers(
       normalizeCustomers(
         customersResult.data || []
-      )
-    );
-  } catch (err) {
-    console.error(
-      "Dashboard Supabase fetch error:",
-      err
-    );
-  } finally {
-    setLoading(false);
-  }
-};
-    const [
-      appointmentsResult,
-      customersResult,
-    ] = await Promise.all([
-      supabase
-        .from("appointments")
-        .select("*")
-        .eq(
-          "business_id",
-          businessId
-        )
-        .order("created_at", {
-          ascending: false,
-        }),
-
-      supabase
-        .from("customers")
-        .select("*")
-        .eq(
-          "business_id",
-          businessId
-        )
-        .order("created_at", {
-          ascending: false,
-        }),
-    ]);
-
-    if (appointmentsResult.error)
-      throw appointmentsResult.error;
-
-    if (customersResult.error)
-      throw customersResult.error;
-
-    console.log(
-      "Appointments:",
-      appointmentsResult.data
-    );
-
-    console.log(
-      "Customers:",
-      customersResult.data
-    );
-
-   console.log(
-  "Appointments found:",
-  appointmentsResult.data
-);
-
-setAppointments(
-  normalizeAppointments(
-    appointmentsResult.data
-  )
-);
-
-    setCustomers(
-      normalizeCustomers(
-        customersResult.data
       )
     );
   } catch (err) {
