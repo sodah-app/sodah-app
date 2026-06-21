@@ -162,17 +162,23 @@ const normalizeCustomers = (
 // ======================================================
 const fetchData = async () => {
   if (!businessId) {
+    console.log("No business ID found");
     setLoading(false);
     return;
   }
 
-  try {
-    setLoading(true);
+  console.log("Dashboard business ID:", businessId);
 
-    console.log(
-      "Dashboard business ID:",
-      businessId
-    );
+  const { data, error } = await supabase
+    .from("appointments")
+    .select("*")
+    .eq("business_id", businessId);
+
+  console.log("Appointments data:", data);
+  console.log("Appointments error:", error);
+
+  setLoading(false);
+};
 
     const [
       appointmentsResult,
