@@ -167,19 +167,68 @@ const fetchData = async () => {
     return;
   }
 
-  console.log("Dashboard business ID:", businessId);
+  try {
+    setLoading(true);
 
-  const { data, error } = await supabase
-    .from("appointments")
-    .select("*")
-    .eq("business_id", businessId);
+    console.log("Dashboard business ID:", businessId);
 
-  console.log("Appointments data:", data);
-  console.log("Appointments error:", error);
+      supabase
+        .from("customers")
+        .select("*")
+        .eq("business_id", businessId)
+        .order("created_at", {
+          ascending: false,
+        }),
+    ]);
 
-  setLoading(false);
+    console.log(
+      "Appointments found:",
+      appointmentsResult.data
+    );
+
+    console.log(
+      "Customers found:",
+      customersResult.data
+    );
+
+    console.log(
+      "Appointments error:",
+      appointmentsResult.error
+    );
+
+    console.log(
+      "Customers error:",
+      customersResult.error
+    );
+
+    if (appointmentsResult.error) {
+      throw appointmentsResult.error;
+    }
+
+    if (customersResult.error) {
+      throw customersResult.error;
+    }
+
+    setAppointments(
+      normalizeAppointments(
+        appointmentsResult.data || []
+      )
+    );
+
+    setCustomers(
+      normalizeCustomers(
+        customersResult.data || []
+      )
+    );
+  } catch (err) {
+    console.error(
+      "Dashboard Supabase fetch error:",
+      err
+    );
+  } finally {
+    setLoading(false);
+  }
 };
-
     const [
       appointmentsResult,
       customersResult,
