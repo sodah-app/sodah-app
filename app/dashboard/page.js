@@ -18,21 +18,28 @@ import {
   useState,
   useCallback,
 } from "react";
+
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+
 export default function Dashboard() {
+  const router = useRouter();
+
   const [appointments, setAppointments] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [activePage, setActivePage] = useState("Dashboard");
   const [loading, setLoading] = useState(true);
   const [businessId, setBusinessId] = useState(null);
+  const [darkMode, setDarkMode] = useState(false);
 
   // ======================================================
   // DARK MODE
   // ======================================================
-  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("dashboard_dark_mode");
+    const savedTheme = localStorage.getItem(
+      "dashboard_dark_mode"
+    );
 
     if (savedTheme === "true") {
       setDarkMode(true);
@@ -46,74 +53,79 @@ export default function Dashboard() {
 
     localStorage.setItem(
       "dashboard_dark_mode",
-      newValue
+      String(newValue)
     );
   };
 
   // ======================================================
- // ======================================================
-// ======================================================
-// BUSINESS ID
-// ======================================================
-useEffect(() => {
-  const loadBusinessId = async () => {
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+  // BUSINESS ID
+  // ======================================================
 
-      console.log("SESSION:", session);
+  useEffect(() => {
+    const loadBusinessId = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      if (!session?.user) {
-        console.error("No active session");
+       if (!session?.user) {
+  router.push("/login");
+  return;
+}
+
+        const userId = session.user.id;
+
+        const {
+          data: business,
+          error,
+        } = await supabase
+          .from("businesses")
+          .select("business_id")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (error) {
+          console.error(
+            "BUSINESS ERROR:",
+            error
+          );
+
+          setLoading(false);
+          return;
+        }
+
+        if (!business?.business_id) {
+          setLoading(false);
+
+          router.push("/welcome");
+
+          return;
+        }
+
+        console.log(
+          "ACTIVE BUSINESS ID:",
+          business.business_id
+        );
+
+        setBusinessId(
+          business.business_id
+        );
+      } catch (error) {
+        console.error(
+          "LOAD BUSINESS ERROR:",
+          error
+        );
+
         setLoading(false);
-        return;
       }
+    };
 
-      const userId = session.user.id;
-
-      console.log("USER ID:", userId);
-
-      const {
-        data: business,
-        error: businessError,
-      } = await supabase
-        .from("businesses")
-        .select("business_id")
-        .eq("user_id", userId)
-       .maybeSingle();
-
-      console.log("BUSINESS:", business);
-      console.log("BUSINESS ERROR:", businessError);
-
-      if (businessError) {
-  console.error("BUSINESS ERROR:", businessError);
-  setLoading(false);
-  return;
-}
-
-if (!business) {
-  console.log("No business found for this user.");
-  setLoading(false);
-
-  // Send new users to the welcome/setup flow
-  router.push("/welcome");
-
-  return;
-}
-
-setBusinessId(business.business_id);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
-  };
-
-  loadBusinessId();
-}, []);
+    loadBusinessId();
+  }, [router]);
 // ======================================================
 // NORMALIZERS
 // ======================================================
+
 const normalizeAppointments = (
   data = []
 ) =>
@@ -143,17 +155,16 @@ const normalizeAppointments = (
     Appointment_status:
       item.status ||
       item.appointment_status ||
-      "Pending",
+      "pending",
 
-    Query:
-      item.notes || "",
+    Query: item.notes || "",
 
-    query:
-      item.notes || "",
+    query: item.notes || "",
 
     lead_status:
       item.lead_status || "new",
   }));
+
 const normalizeCustomers = (
   data = []
 ) =>
@@ -183,6 +194,7 @@ const normalizeCustomers = (
 // ======================================================
 // FETCH DATA
 // ======================================================
+
 const fetchData = useCallback(
   async () => {
     if (!businessId) return;
@@ -222,6 +234,16 @@ const fetchData = useCallback(
           }),
       ]);
 
+      console.log(
+        "Appointments result:",
+        appointmentsResult
+      );
+
+      console.log(
+        "Customers result:",
+        customersResult
+      );
+
       if (
         appointmentsResult.error
       ) {
@@ -233,16 +255,6 @@ const fetchData = useCallback(
       ) {
         throw customersResult.error;
       }
-
-      console.log(
-        "Appointments:",
-        appointmentsResult.data
-      );
-
-      console.log(
-        "Customers:",
-        customersResult.data
-      );
 
       setAppointments(
         normalizeAppointments(
@@ -267,9 +279,11 @@ const fetchData = useCallback(
   },
   [businessId]
 );
+
 // ======================================================
 // AUTO REFRESH
 // ======================================================
+
 useEffect(() => {
   if (!businessId) return;
 
@@ -287,12 +301,7 @@ useEffect(() => {
         table: "appointments",
         filter: `business_id=eq.${businessId}`,
       },
-      (payload) => {
-        console.log(
-          "Appointment updated:",
-          payload
-        );
-
+      () => {
         fetchData();
       }
     )
@@ -304,12 +313,7 @@ useEffect(() => {
         table: "customers",
         filter: `business_id=eq.${businessId}`,
       },
-      (payload) => {
-        console.log(
-          "Customer updated:",
-          payload
-        );
-
+      () => {
         fetchData();
       }
     )
@@ -383,10 +387,9 @@ useEffect(() => {
     };
 
     appointments.forEach((item) => {
-      const rawDate =
-        item.appointment_date ||
-        item.created_at;
-
+     const rawDate =
+  item.Date ||
+  item.created_at;
       if (!rawDate) return;
 
       const date = new Date(rawDate);
@@ -409,24 +412,25 @@ useEffect(() => {
   // ======================================================
   // UNIQUE CUSTOMERS
   // ======================================================
-  const uniqueCustomers =
-    useMemo(() => {
-      const merged = [
-        ...customers,
-        ...appointments,
-      ];
+ const uniqueCustomers = useMemo(() => {
+  const merged = [
+    ...customers,
+    ...appointments,
+  ];
 
-      return Array.from(
-        new Map(
-          merged.map((item) => [
-            item.Phone ||
-              item.phone ||
-              `temp-${Math.random()}`,
-            item,
-          ])
-        ).values()
-      );
-    }, [customers, appointments]);
+  return Array.from(
+    new Map(
+      merged.map((item) => [
+        item.Phone ||
+        item.phone ||
+        item.id ||
+        item.customer_id ||
+        item.Name,
+        item,
+      ])
+    ).values()
+  );
+}, [customers, appointments]);
 
   // ======================================================
   // NEW LEADS
@@ -636,20 +640,6 @@ useEffect(() => {
             🤖 AI Assistant Active
           </div>
 
-          <div
-            className="text-red-400 cursor-pointer"
-            onClick={() => {
-             const handleLogout = async () => {
-  await supabase.auth.signOut();
-
-  localStorage.clear();
-
-  window.location.href = "/login";
-};
-            }}
-          >
-            Logout
-          </div>
         </div>
       </div>
 
@@ -658,6 +648,7 @@ useEffect(() => {
       ====================================================== */}
       <div className="flex-1 p-6 overflow-hidden">
         {/* DASHBOARD */}
+
         {activePage ===
           "Dashboard" && (
           <>
@@ -1086,10 +1077,14 @@ function CustomersTable({
         </div>
       </div>
 
-      {customers.map(
-        (customer, index) => (
-          <div
-            key={index}
+     {customers.map((customer, index) => (
+  <div
+    key={
+      customer.id ||
+      customer.customer_id ||
+      customer.Phone ||
+      index
+    }
             className={`grid grid-cols-4 px-3 py-2 text-sm ${
               darkMode
                 ? index % 2 === 0
@@ -1142,13 +1137,9 @@ function AppointmentsTable({
   return (
     <div
       className={`rounded-xl shadow-xl p-4 flex flex-col ${
-        full
-          ? "h-full"
-          : "h-[380px]"
+        full ? "h-full" : "h-[380px]"
       } ${
-        darkMode
-          ? "bg-[#0f172a]"
-          : "bg-white"
+        darkMode ? "bg-[#0f172a]" : "bg-white"
       }`}
     >
       <h3 className="text-sm font-semibold mb-2">
@@ -1175,53 +1166,36 @@ function AppointmentsTable({
           full ? "flex-1" : ""
         }`}
       >
-        {appointments.map(
-          (item, index) => (
-            <div
-              key={index}
-              className={`grid grid-cols-6 text-sm px-2 ${
-                darkMode
-                  ? index % 2 === 0
-                    ? "bg-[#1e293b]"
-                    : "bg-[#0f172a]"
-                  : index % 2 === 0
-                  ? "bg-gray-200"
-                  : "bg-white"
-              }`}
-              style={{
-                height: "40px",
-                alignItems:
-                  "center",
-              }}
-            >
-              <div>
-                {index + 1}
-              </div>
-
-              <div>
-                {item.Name}
-              </div>
-
-              <div>
-                {item.Phone}
-              </div>
-
-              <div>
-                {item.Date}
-              </div>
-
-              <div>
-                {item.Time}
-              </div>
-
-              <div>
-                {
-                  item.Appointment_status
-                }
-              </div>
-            </div>
-          )
-        )}
+        {appointments.map((item, index) => (
+          <div
+            key={
+              item.id ||
+              item.customer_id ||
+              item.Phone ||
+              index
+            }
+            className={`grid grid-cols-6 text-sm px-2 ${
+              darkMode
+                ? index % 2 === 0
+                  ? "bg-[#1e293b]"
+                  : "bg-[#0f172a]"
+                : index % 2 === 0
+                ? "bg-gray-200"
+                : "bg-white"
+            }`}
+            style={{
+              height: "40px",
+              alignItems: "center",
+            }}
+          >
+            <div>{index + 1}</div>
+            <div>{item.Name}</div>
+            <div>{item.Phone}</div>
+            <div>{item.Date}</div>
+            <div>{item.Time}</div>
+            <div>{item.Appointment_status}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
