@@ -69,7 +69,7 @@ export default function Dashboard() {
         } = await supabase.auth.getSession();
 
        if (!session?.user) {
-  router.push("/login");
+  router.push("/signup");
   return;
 }
 
