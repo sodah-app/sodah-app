@@ -174,11 +174,6 @@ const fetchData = async () => {
       "Dashboard business ID:",
       businessId
     );
-
-    const [
-      appointmentsResult,
-      customersResult,
-    ] = await Promise.all([
       supabase
         .from("appointments")
         .select("*")
