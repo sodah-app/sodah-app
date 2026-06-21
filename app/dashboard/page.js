@@ -217,11 +217,16 @@ const fetchData = async () => {
       customersResult.data
     );
 
-    setAppointments(
-      normalizeAppointments(
-        appointmentsResult.data
-      )
-    );
+   console.log(
+  "Appointments found:",
+  appointmentsResult.data
+);
+
+setAppointments(
+  normalizeAppointments(
+    appointmentsResult.data
+  )
+);
 
     setCustomers(
       normalizeCustomers(
