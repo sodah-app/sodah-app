@@ -652,52 +652,6 @@ useEffect(() => {
                 Dashboard
               </h1>
 
-        useEffect(() => {
-  const loadBusinessId = async () => {
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      console.log("SESSION:", session);
-
-      if (!session?.user) {
-        console.error("No active session");
-        setLoading(false);
-        return;
-      }
-
-      const userId = session.user.id;
-
-      console.log("USER ID:", userId);
-
-      const {
-        data: business,
-        error: businessError,
-      } = await supabase
-        .from("businesses")
-        .select("business_id")
-        .eq("user_id", userId)
-        .single();
-
-      console.log("BUSINESS:", business);
-      console.log("BUSINESS ERROR:", businessError);
-
-      if (businessError || !business) {
-        setLoading(false);
-        return;
-      }
-
-      setBusinessId(business.business_id);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
-  };
-
-  loadBusinessId();
-}, []);
-
               <p>
                 Welcome back
               </p>
