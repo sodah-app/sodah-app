@@ -81,17 +81,28 @@ useEffect(() => {
         .from("businesses")
         .select("business_id")
         .eq("user_id", userId)
-        .single();
+       .maybeSingle();
 
       console.log("BUSINESS:", business);
       console.log("BUSINESS ERROR:", businessError);
 
-      if (businessError || !business) {
-        setLoading(false);
-        return;
-      }
+      if (businessError) {
+  console.error("BUSINESS ERROR:", businessError);
+  setLoading(false);
+  return;
+}
 
-      setBusinessId(business.business_id);
+if (!business) {
+  console.log("No business found for this user.");
+  setLoading(false);
+
+  // Send new users to the welcome/setup flow
+  router.push("/welcome");
+
+  return;
+}
+
+setBusinessId(business.business_id);
     } catch (err) {
       console.error(err);
       setLoading(false);
