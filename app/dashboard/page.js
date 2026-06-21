@@ -639,10 +639,13 @@ useEffect(() => {
           <div
             className="text-red-400 cursor-pointer"
             onClick={() => {
-              localStorage.clear();
+             const handleLogout = async () => {
+  await supabase.auth.signOut();
 
-              window.location.href =
-                "/login";
+  localStorage.clear();
+
+  window.location.href = "/login";
+};
             }}
           >
             Logout
