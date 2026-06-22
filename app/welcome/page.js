@@ -537,7 +537,7 @@ export default function WelcomePage() {
       <div className="flex justify-center">
 
         <img
-          src="https://res.cloudinary.com/djnjhphf5/image/upload/v1781861552/ChatGPT_Image_Jun_19_2026_01_31_18_PM_yuzjrt.png"
+          src="https://res.cloudinary.com/djnjhphf5/image/upload/v1782120827/ChatGPT_Image_Jun_22_2026_01_32_43_PM_a2ivz2.png"
           alt="WhatsApp Automation"
           className="h-[220px] w-auto object-contain"
         />
