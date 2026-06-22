@@ -9,10 +9,12 @@ const handler = NextAuth({
     }),
   ],
 
-  secret: process.env.NEXTAUTH_SECRET,
-
   pages: {
-    signIn: "/signup",
+    signIn: "/login",
+  },
+
+  session: {
+    strategy: "jwt",
   },
 });
 

@@ -398,77 +398,155 @@ export default function WelcomePage() {
 
         </div>
 
-    {/* HERO */}
+{/* HERO */}
 
-<div className="mb-4">
+<div
+  className={`${
+    isMobile ? "mb-4" : "mb-5"
+  }`}
+>
 
-  <div className="flex justify-between items-start gap-2">
+  {isMobile ? (
 
-    <div className="flex-1">
+    <div className="flex justify-between items-start gap-2">
 
-      <h2 className="text-[32px] leading-[36px] font-black">
+      <div className="flex-1">
 
-        Welcome to
+        <h2 className="text-[32px] leading-[36px] font-black">
 
-        <br />
+          Welcome to
 
-        <span className="text-green-400">
-          Sodah
-        </span>
+          <br />
 
-        <br />
+          <span className="text-green-400">
+            Sodah
+          </span>
 
-        Automation
+          <br />
 
-      </h2>
+          Automation
 
-      <p className="text-gray-300 text-[15px] leading-7 mt-3 max-w-[180px]">
+        </h2>
 
-        Manage your business, automate conversations and scale faster with AI.
+        <p className="text-gray-300 text-[15px] leading-7 mt-3 max-w-[180px]">
 
-      </p>
+          Manage your business, automate conversations and scale faster with AI.
 
-      <div className="flex gap-3 mt-4">
+        </p>
 
-        <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 min-w-[100px]">
+        <div className="flex gap-3 mt-4">
 
-          <p className="text-green-400 text-xl font-bold">
-            10K+
-          </p>
+          <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 min-w-[100px]">
 
-          <p className="text-gray-400 text-sm">
-            Businesses
-          </p>
+            <p className="text-green-400 text-xl font-bold">
+              10K+
+            </p>
 
-        </div>
+            <p className="text-gray-400 text-sm">
+              Businesses
+            </p>
 
-        <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 min-w-[100px]">
+          </div>
 
-          <p className="text-yellow-400 text-xl font-bold">
-            99.9%
-          </p>
+          <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 min-w-[100px]">
 
-          <p className="text-gray-400 text-sm">
-            Uptime
-          </p>
+            <p className="text-yellow-400 text-xl font-bold">
+              99.9%
+            </p>
+
+            <p className="text-gray-400 text-sm">
+              Uptime
+            </p>
+
+          </div>
 
         </div>
 
       </div>
 
+      <div className="flex-shrink-0">
+
+        <img
+          src="https://res.cloudinary.com/djnjhphf5/image/upload/v1781861552/ChatGPT_Image_Jun_19_2026_01_31_18_PM_yuzjrt.png"
+          alt="WhatsApp Automation"
+          className="w-[190px] mt-5 object-contain -ml-4"
+        />
+
+      </div>
+
     </div>
 
-    <div className="flex-shrink-0">
+  ) : (
 
-      <img
-        src="https://res.cloudinary.com/djnjhphf5/image/upload/v1781861552/ChatGPT_Image_Jun_19_2026_01_31_18_PM_yuzjrt.png"
-        alt="WhatsApp Automation"
-        className="w-[190px] mt-5 object-contain -ml-4"
-      />
+    <div className="grid grid-cols-2 items-center gap-8 h-[240px]">
+
+      <div className="max-w-[700px]">
+
+        <p className="uppercase tracking-[6px] text-green-300 text-sm font-semibold mb-4">
+
+          AI Powered WhatsApp Automation
+
+        </p>
+
+        <h2 className="text-5xl xl:text-6xl leading-[1.05] font-black mb-5">
+
+          Welcome to{" "}
+
+          <span className="text-green-400">
+            Sodah Automation
+          </span>
+
+        </h2>
+
+        <p className="text-lg text-gray-300 leading-8 max-w-[600px]">
+
+          Manage your business, automate conversations, capture leads and scale faster with AI powered workflows.
+
+        </p>
+
+        <div className="flex gap-4 mt-6">
+
+          <div className="bg-white/5 border border-white/10 rounded-2xl px-6 py-4 min-w-[140px]">
+
+            <p className="text-green-400 text-3xl font-bold">
+              10K+
+            </p>
+
+            <p className="text-gray-400">
+              Businesses
+            </p>
+
+          </div>
+
+          <div className="bg-white/5 border border-white/10 rounded-2xl px-6 py-4 min-w-[140px]">
+
+            <p className="text-yellow-400 text-3xl font-bold">
+              99.9%
+            </p>
+
+            <p className="text-gray-400">
+              Uptime
+            </p>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <div className="flex justify-center">
+
+        <img
+          src="https://res.cloudinary.com/djnjhphf5/image/upload/v1781861552/ChatGPT_Image_Jun_19_2026_01_31_18_PM_yuzjrt.png"
+          alt="WhatsApp Automation"
+          className="h-[220px] w-auto object-contain"
+        />
+
+      </div>
 
     </div>
 
-  </div>
+  )}
 
 </div>
         {/* MOBILE DESIGN */}

@@ -18,28 +18,27 @@ import {
   useState,
   useCallback,
 } from "react";
-
-import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-
 export default function Dashboard() {
-  const router = useRouter();
-
   const [appointments, setAppointments] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [activePage, setActivePage] = useState("Dashboard");
   const [loading, setLoading] = useState(true);
   const [businessId, setBusinessId] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
+useEffect(() => {
+  console.log(
+    "STATE APPOINTMENTS:",
+    appointments
+  );
+}, [appointments]);
 
   // ======================================================
   // DARK MODE
   // ======================================================
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem(
-      "dashboard_dark_mode"
-    );
+    const savedTheme = localStorage.getItem("dashboard_dark_mode");
 
     if (savedTheme === "true") {
       setDarkMode(true);
@@ -52,81 +51,85 @@ export default function Dashboard() {
     setDarkMode(newValue);
 
     localStorage.setItem(
-      "dashboard_dark_mode",
-      String(newValue)
-    );
+  "dashboard_dark_mode",
+  String(newValue)
+);
   };
 
   // ======================================================
-  // BUSINESS ID
-  // ======================================================
+ // ======================================================
+// ======================================================
+// BUSINESS ID
+// ======================================================
+useEffect(() => {
+  const loadBusinessId = async () => {
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-  useEffect(() => {
-    const {
-  data: { session },
-} = await supabase.auth.getSession();
+      if (sessionError) {
+        throw sessionError;
+      }
 
-console.log("SESSION:", session);
+      console.log(
+        "SESSION USER:",
+        session?.user?.id
+      );
 
-if (!session?.user) {
-  console.log("No active session found");
-  router.replace("/login");
-  return;
-}
+      if (!session?.user) {
+        console.error("No active session");
+        setLoading(false);
+        return;
+      }
 
-        const userId = session.user.id;
+      const userId = session.user.id;
 
-        const {
-          data: business,
-          error,
-        } = await supabase
-          .from("businesses")
-          .select("business_id")
-          .eq("user_id", userId)
-          .maybeSingle();
+      const {
+        data: business,
+        error: businessError,
+      } = await supabase
+        .from("businesses")
+        .select("business_id")
+        .eq("user_id", userId)
+        .single();
 
-        if (error) {
-          console.error(
-            "BUSINESS ERROR:",
-            error
-          );
+      if (businessError) {
+        throw businessError;
+      }
 
-          setLoading(false);
-          return;
-        }
-
-        if (!business?.business_id) {
-          setLoading(false);
-
-          router.push("/welcome");
-
-          return;
-        }
-
-        console.log(
-          "ACTIVE BUSINESS ID:",
-          business.business_id
-        );
-
-        setBusinessId(
-          business.business_id
-        );
-      } catch (error) {
+      if (!business?.business_id) {
         console.error(
-          "LOAD BUSINESS ERROR:",
-          error
+          "No business linked to user"
         );
 
         setLoading(false);
+        return;
       }
-    };
+console.log(
+  "BUSINESS ID:",
+  business.business_id
+);
 
-    loadBusinessId();
-  }, [router]);
+      setBusinessId(
+        business.business_id
+      );
+    } catch (error) {
+      console.error(
+        "Business load error:",
+        error
+      );
+
+      setLoading(false);
+    }
+  };
+
+  loadBusinessId();
+}, []);
 // ======================================================
 // NORMALIZERS
 // ======================================================
-
 const normalizeAppointments = (
   data = []
 ) =>
@@ -156,16 +159,17 @@ const normalizeAppointments = (
     Appointment_status:
       item.status ||
       item.appointment_status ||
-      "pending",
+      "Pending",
 
-    Query: item.notes || "",
+    Query:
+      item.notes || "",
 
-    query: item.notes || "",
+    query:
+      item.notes || "",
 
     lead_status:
       item.lead_status || "new",
   }));
-
 const normalizeCustomers = (
   data = []
 ) =>
@@ -195,7 +199,6 @@ const normalizeCustomers = (
 // ======================================================
 // FETCH DATA
 // ======================================================
-
 const fetchData = useCallback(
   async () => {
     if (!businessId) return;
@@ -235,16 +238,6 @@ const fetchData = useCallback(
           }),
       ]);
 
-      console.log(
-        "Appointments result:",
-        appointmentsResult
-      );
-
-      console.log(
-        "Customers result:",
-        customersResult
-      );
-
       if (
         appointmentsResult.error
       ) {
@@ -257,12 +250,47 @@ const fetchData = useCallback(
         throw customersResult.error;
       }
 
-      setAppointments(
-        normalizeAppointments(
-          appointmentsResult.data ||
-            []
-        )
+console.log(
+  "ACTIVE BUSINESS ID:",
+  businessId
+);
+
+console.log(
+  "APPOINTMENTS:",
+  appointmentsResult.data
+);
+
+console.log(
+  "CUSTOMERS:",
+  customersResult.data
+);
+
+console.log(
+  "APPOINTMENTS ERROR:",
+  appointmentsResult.error
+);
+
+      console.log(
+        "Appointments:",
+        appointmentsResult.data
       );
+
+      console.log(
+        "Customers:",
+        customersResult.data
+      );
+
+      const normalisedAppointments =
+  normalizeAppointments(
+    appointmentsResult.data || []
+  );
+
+console.log(
+  "NORMALISED APPOINTMENTS:",
+  normalisedAppointments
+);
+
+setAppointments(normalisedAppointments);
 
       setCustomers(
         normalizeCustomers(
@@ -280,11 +308,9 @@ const fetchData = useCallback(
   },
   [businessId]
 );
-
 // ======================================================
 // AUTO REFRESH
 // ======================================================
-
 useEffect(() => {
   if (!businessId) return;
 
@@ -302,7 +328,12 @@ useEffect(() => {
         table: "appointments",
         filter: `business_id=eq.${businessId}`,
       },
-      () => {
+      (payload) => {
+        console.log(
+          "Appointment updated:",
+          payload
+        );
+
         fetchData();
       }
     )
@@ -314,7 +345,12 @@ useEffect(() => {
         table: "customers",
         filter: `business_id=eq.${businessId}`,
       },
-      () => {
+      (payload) => {
+        console.log(
+          "Customer updated:",
+          payload
+        );
+
         fetchData();
       }
     )
@@ -388,9 +424,10 @@ useEffect(() => {
     };
 
     appointments.forEach((item) => {
-     const rawDate =
-  item.Date ||
-  item.created_at;
+      const rawDate =
+        item.appointment_date ||
+        item.created_at;
+
       if (!rawDate) return;
 
       const date = new Date(rawDate);
@@ -421,12 +458,11 @@ useEffect(() => {
 
   return Array.from(
     new Map(
-      merged.map((item) => [
+      merged.map((item, index) => [
         item.Phone ||
-        item.phone ||
-        item.id ||
-        item.customer_id ||
-        item.Name,
+          item.phone ||
+          item.id ||
+          `temp-${index}`,
         item,
       ])
     ).values()
@@ -641,6 +677,17 @@ useEffect(() => {
             🤖 AI Assistant Active
           </div>
 
+          <div
+            className="text-red-400 cursor-pointer"
+            onClick={() => {
+              localStorage.clear();
+
+              window.location.href =
+                "/login";
+            }}
+          >
+            Logout
+          </div>
         </div>
       </div>
 
@@ -649,7 +696,6 @@ useEffect(() => {
       ====================================================== */}
       <div className="flex-1 p-6 overflow-hidden">
         {/* DASHBOARD */}
-
         {activePage ===
           "Dashboard" && (
           <>
@@ -1078,14 +1124,10 @@ function CustomersTable({
         </div>
       </div>
 
-     {customers.map((customer, index) => (
-  <div
-    key={
-      customer.id ||
-      customer.customer_id ||
-      customer.Phone ||
-      index
-    }
+      {customers.map(
+        (customer, index) => (
+          <div
+            key={index}
             className={`grid grid-cols-4 px-3 py-2 text-sm ${
               darkMode
                 ? index % 2 === 0
@@ -1138,9 +1180,13 @@ function AppointmentsTable({
   return (
     <div
       className={`rounded-xl shadow-xl p-4 flex flex-col ${
-        full ? "h-full" : "h-[380px]"
+        full
+          ? "h-full"
+          : "h-[380px]"
       } ${
-        darkMode ? "bg-[#0f172a]" : "bg-white"
+        darkMode
+          ? "bg-[#0f172a]"
+          : "bg-white"
       }`}
     >
       <h3 className="text-sm font-semibold mb-2">
@@ -1162,42 +1208,48 @@ function AppointmentsTable({
         <div>Status</div>
       </div>
 
+     <div
+  className={`overflow-y-auto mt-2 ${
+    full ? "flex-1" : ""
+  }`}
+>
+  {appointments.length === 0 ? (
+    <div className="p-4 text-center text-gray-400">
+      No appointments found.
+    </div>
+  ) : (
+    appointments.map((item, index) => (
       <div
-        className={`overflow-y-auto mt-2 ${
-          full ? "flex-1" : ""
+        key={item.id}
+        className={`grid grid-cols-6 text-sm px-2 ${
+          darkMode
+            ? index % 2 === 0
+              ? "bg-[#1e293b]"
+              : "bg-[#0f172a]"
+            : index % 2 === 0
+            ? "bg-gray-200"
+            : "bg-white"
         }`}
+        style={{
+          height: "40px",
+          alignItems: "center",
+        }}
       >
-        {appointments.map((item, index) => (
-          <div
-            key={
-              item.id ||
-              item.customer_id ||
-              item.Phone ||
-              index
-            }
-            className={`grid grid-cols-6 text-sm px-2 ${
-              darkMode
-                ? index % 2 === 0
-                  ? "bg-[#1e293b]"
-                  : "bg-[#0f172a]"
-                : index % 2 === 0
-                ? "bg-gray-200"
-                : "bg-white"
-            }`}
-            style={{
-              height: "40px",
-              alignItems: "center",
-            }}
-          >
-            <div>{index + 1}</div>
-            <div>{item.Name}</div>
-            <div>{item.Phone}</div>
-            <div>{item.Date}</div>
-            <div>{item.Time}</div>
-            <div>{item.Appointment_status}</div>
-          </div>
-        ))}
+        <div>{index + 1}</div>
+
+        <div>{item.Name}</div>
+
+        <div>{item.Phone}</div>
+
+        <div>{item.Date}</div>
+
+        <div>{item.Time}</div>
+
+        <div>{item.Appointment_status}</div>
       </div>
+    ))
+  )}
+</div>
     </div>
   );
 }
