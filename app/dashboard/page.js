@@ -23,14 +23,65 @@ export default function Dashboard() {
   const [appointments, setAppointments] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [activePage, setActivePage] = useState("Dashboard");
-  const [loading, setLoading] = useState(true);
-  const [businessId, setBusinessId] = useState(null);
+ const [loading, setLoading] = useState(true);
+const [businessId, setBusinessId] = useState(null);
+const [session, setSession] = useState(null);
 useEffect(() => {
   console.log(
     "STATE APPOINTMENTS:",
     appointments
   );
 }, [appointments]);
+
+useEffect(() => {
+  let mounted = true;
+
+  const initializeAuth = async () => {
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
+    if (error) {
+      console.error(
+        "Session error:",
+        error
+      );
+      return;
+    }
+
+    console.log(
+      "INITIAL SESSION:",
+      session
+    );
+
+    if (mounted) {
+      setSession(session);
+    }
+  };
+
+  initializeAuth();
+
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange(
+    (_event, session) => {
+      console.log(
+        "AUTH EVENT:",
+        _event
+      );
+
+      if (mounted) {
+        setSession(session);
+      }
+    }
+  );
+
+  return () => {
+    mounted = false;
+    subscription.unsubscribe();
+  };
+}, []);
 
   // ======================================================
   // DARK MODE
@@ -63,58 +114,44 @@ useEffect(() => {
 // ======================================================
 useEffect(() => {
   const loadBusinessId = async () => {
+    if (!session?.user?.id) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        throw sessionError;
-      }
-
       console.log(
         "SESSION USER:",
-        session?.user?.id
+        session.user.id
       );
 
-      if (!session?.user) {
-        console.error("No active session");
-        setLoading(false);
-        return;
-      }
+    const { data, error } = await supabase
+  .from("businesses")
+  .select("business_id")
+  .eq("user_id", session.user.id)
+  .maybeSingle();
 
-      const userId = session.user.id;
+if (error) {
+  throw error;
+}
 
-      const {
-        data: business,
-        error: businessError,
-      } = await supabase
-        .from("businesses")
-        .select("business_id")
-        .eq("user_id", userId)
-        .single();
+console.log("BUSINESS RECORD:", data);
 
-      if (businessError) {
-        throw businessError;
-      }
+if (!data) {
+  console.error(
+    "No business linked to this user"
+  );
 
-      if (!business?.business_id) {
-        console.error(
-          "No business linked to user"
-        );
+  setLoading(false);
+  return;
+}
 
-        setLoading(false);
-        return;
-      }
+setBusinessId(data.business_id);
+
 console.log(
-  "BUSINESS ID:",
-  business.business_id
+  "ACTIVE BUSINESS:",
+  data.business_id
 );
-
-      setBusinessId(
-        business.business_id
-      );
     } catch (error) {
       console.error(
         "Business load error:",
@@ -126,7 +163,7 @@ console.log(
   };
 
   loadBusinessId();
-}, []);
+}, [session]);
 // ======================================================
 // NORMALIZERS
 // ======================================================
@@ -291,6 +328,11 @@ console.log(
 );
 
 setAppointments(normalisedAppointments);
+
+console.log(
+  "APPOINTMENT COUNT:",
+  normalisedAppointments.length
+);
 
       setCustomers(
         normalizeCustomers(
@@ -679,12 +721,10 @@ useEffect(() => {
 
           <div
             className="text-red-400 cursor-pointer"
-            onClick={() => {
-              localStorage.clear();
-
-              window.location.href =
-                "/login";
-            }}
+            onClick={async () => {
+  await supabase.auth.signOut();
+  window.location.href = "/login";
+}}
           >
             Logout
           </div>
@@ -972,7 +1012,10 @@ useEffect(() => {
             </div>
           </div>
         )}
-      </div>
+    </div>
+
+      <DashboardRefresher />
+
     </div>
   );
 }
@@ -1250,6 +1293,61 @@ function AppointmentsTable({
     ))
   )}
 </div>
+    </div>
+  );
+}
+
+
+
+function DashboardRefresher() {
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLoading(true);
+
+      setTimeout(() => {
+        setLoading(false);
+      }, 1500);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div
+      className="
+        fixed
+        bottom-4
+        right-4
+        z-50
+        bg-[#0f172a]
+        text-white
+        px-4
+        py-3
+        rounded-xl
+        shadow-2xl
+        border
+        border-green-500
+      "
+    >
+      <div className="flex items-center gap-2">
+        {loading ? (
+          <>
+            <span className="animate-spin">⟳</span>
+            <span className="text-xs">
+              Syncing Dashboard...
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+            <span className="text-xs">
+              Dashboard Live
+            </span>
+          </>
+        )}
+      </div>
     </div>
   );
 }

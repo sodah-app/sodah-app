@@ -6,160 +6,273 @@ import { useRouter } from "next/navigation";
 export default function QRConnectPage() {
   const router = useRouter();
 
-  const [businessId, setBusinessId] = useState(null);
+  const [businessId, setBusinessId] = useState("");
+  const [loading, setLoading] = useState(false);
   const [qrCode, setQrCode] = useState("");
-  const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
+  const [status, setStatus] = useState(
+    "Preparing WhatsApp connection..."
+  );
   const [error, setError] = useState("");
 
-  /* --------------------------------------------- */
-  /* LOAD BUSINESS ID                             */
-  /* --------------------------------------------- */
+  // ==========================================
+  // LOAD BUSINESS ID
+  // ==========================================
 
   useEffect(() => {
-    const id = localStorage.getItem("business_id");
+    const id =
+      localStorage.getItem("business_id") ||
+      "";
 
     if (!id) {
       setError("Business ID not found.");
-      setLoading(false);
       return;
     }
 
     setBusinessId(id);
   }, []);
 
-  /* --------------------------------------------- */
-  /* FETCH QR CODE                                */
-  /* --------------------------------------------- */
+  // ==========================================
+  // GENERATE QR
+  // ==========================================
 
-  const fetchQRCode = useCallback(async () => {
-    if (!businessId) return;
+  const generateQRCode = useCallback(
+    async (id) => {
+      if (!id) return;
 
-    try {
-      setLoading(true);
-      setError("");
+      try {
+        setLoading(true);
+        setError("");
+        setQrCode("");
 
-      const response = await fetch("/api/whatsapp/connect", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          businessId,
-        }),
-      });
+        const response = await fetch(
+          `/api/whatsapp/connect?businessId=${encodeURIComponent(
+            id
+          )}`,
+          {
+            method: "POST",
+            cache: "no-store",
+          }
+        );
 
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
+        const text =
+          await response.text();
+
+        let data = {};
+
+        if (text) {
+          try {
+            data = JSON.parse(text);
+          } catch {
+            throw new Error(
+              "Invalid server response."
+            );
+          }
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            data?.message ||
+              "Failed to generate QR."
+          );
+        }
+
+        // already connected
+        if (data.connected) {
+          setConnected(true);
+
+          setStatus(
+            "WhatsApp already connected."
+          );
+
+          setTimeout(() => {
+            router.replace(
+              "/welcome"
+            );
+          }, 1000);
+
+          return;
+        }
+
+        if (data.qrCode) {
+          setQrCode(data.qrCode);
+
+          setStatus(
+            "Scan the QR code using WhatsApp."
+          );
+
+          return;
+        }
+
+        throw new Error(
+          data.message ||
+            "QR code not returned."
+        );
+      } catch (err) {
+        console.error(err);
+
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to generate QR."
+        );
+      } finally {
+        setLoading(false);
       }
+    },
+    [router]
+  );
 
-      const data = await response.json();
-
-      console.log("QR response:", data);
-
-      if (data?.qr) {
-        setQrCode(data.qr);
-      } else {
-        throw new Error(data?.message || "QR code not returned");
-      }
-    } catch (err) {
-      console.error(err);
-      setError(err.message || "Failed to generate QR code");
-    } finally {
-      setLoading(false);
-    }
-  }, [businessId]);
-
-  /* --------------------------------------------- */
-  /* CHECK CONNECTION STATUS                      */
-  /* --------------------------------------------- */
-
-  const checkConnection = useCallback(async () => {
-    if (!businessId) return;
-
-    try {
-      const response = await fetch(
-        `/api/whatsapp/status?businessId=${businessId}`
-      );
-
-      if (!response.ok) return;
-
-      const data = await response.json();
-
-      if (data.connected) {
-        setConnected(true);
-
-        setTimeout(() => {
-          router.push("/mobile/automation");
-        }, 2000);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }, [businessId, router]);
-
-  /* --------------------------------------------- */
-  /* INIT                                          */
-  /* --------------------------------------------- */
+  // ==========================================
+  // INITIAL LOAD
+  // ==========================================
 
   useEffect(() => {
     if (!businessId) return;
 
-    fetchQRCode();
+    generateQRCode(businessId);
+  }, [
+    businessId,
+    generateQRCode,
+  ]);
 
-    const interval = setInterval(checkConnection, 5000);
+  // ==========================================
+  // CHECK STATUS
+  // ==========================================
 
-    return () => clearInterval(interval);
-  }, [businessId, fetchQRCode, checkConnection]);
+  useEffect(() => {
+    if (!businessId) return;
 
-  /* --------------------------------------------- */
-  /* UI                                            */
-  /* --------------------------------------------- */
+    const interval = setInterval(
+      async () => {
+        try {
+          const response =
+            await fetch(
+              `/api/whatsapp/status?businessId=${encodeURIComponent(
+                businessId
+              )}`,
+              {
+                cache:
+                  "no-store",
+              }
+            );
+
+          if (!response.ok)
+            return;
+
+          const data =
+            await response.json();
+
+          if (
+            data.connected
+          ) {
+            clearInterval(
+              interval
+            );
+
+            setConnected(
+              true
+            );
+
+            setStatus(
+              "✅ WhatsApp connected successfully."
+            );
+
+            // close QR page
+            setTimeout(() => {
+              router.replace(
+                "/welcome"
+              );
+            }, 1500);
+          }
+        } catch (err) {
+          console.error(
+            err
+          );
+        }
+      },
+      3000
+    );
+
+    return () =>
+      clearInterval(
+        interval
+      );
+  }, [businessId, router]);
+
+  // ==========================================
+  // UI
+  // ==========================================
 
   return (
-    <div className="min-h-screen bg-[#0B1120] text-white flex items-center justify-center p-5">
-      <div className="w-full max-w-md bg-[#111827] rounded-3xl p-6 text-center shadow-2xl">
+    <div className="min-h-screen bg-[#0B1120] flex items-center justify-center p-4 text-white">
+      <div className="w-full max-w-sm bg-[#111827] rounded-3xl p-6 shadow-2xl text-center">
+
         <img
           src="https://res.cloudinary.com/djnjhphf5/image/upload/v1779814901/sodah.io_logo_z6xflv.png"
           alt="Sodah.io"
-          className="w-20 h-20 mx-auto mb-5 rounded-2xl"
+          className="w-16 h-16 mx-auto mb-4 rounded-xl"
         />
 
-        <h1 className="text-3xl font-bold mb-3">
+        <h1 className="text-2xl font-bold mb-2">
           Connect WhatsApp
         </h1>
 
-        <p className="text-gray-400 mb-8">
-          Scan this QR code using WhatsApp to connect your AI assistant.
+        <p className="text-gray-400 text-sm mb-6">
+          Scan the QR code below
+          using WhatsApp.
         </p>
 
+        {error && (
+          <div className="mb-5 rounded-xl border border-red-500 bg-red-500/10 p-3 text-red-300 text-sm">
+            {error}
+          </div>
+        )}
+
         {loading ? (
-          <div className="w-72 h-72 mx-auto rounded-2xl bg-[#1E293B] animate-pulse" />
+          <div className="w-52 h-52 mx-auto rounded-2xl bg-slate-700 animate-pulse" />
         ) : qrCode ? (
-          <div className="bg-white p-4 rounded-2xl inline-block">
+          <div className="bg-white p-3 rounded-2xl inline-block">
             <img
               src={qrCode}
               alt="QR Code"
-              className="w-72 h-72"
+              className="w-52 h-52 sm:w-60 sm:h-60"
             />
           </div>
         ) : (
-          <div className="text-red-400">
-            {error || "Failed to load QR code"}
-          </div>
+          <button
+            onClick={() =>
+              generateQRCode(
+                businessId
+              )
+            }
+            className="w-full bg-green-600 hover:bg-green-700 py-3 rounded-xl"
+          >
+            Generate QR Code
+          </button>
         )}
 
         <div className="mt-6">
           {connected ? (
-            <div className="bg-green-500/20 border border-green-500 text-green-300 py-3 rounded-xl">
-              ✅ WhatsApp Connected Successfully
+            <div className="border border-green-500 bg-green-500/10 text-green-300 py-3 rounded-xl">
+              ✅ Connected
+              <br />
+              Redirecting...
             </div>
           ) : (
             <div className="text-sm text-gray-400">
-              Waiting for QR scan...
+              {status}
             </div>
           )}
         </div>
+
+        {businessId && (
+          <div className="mt-5 text-[11px] text-gray-500 break-all">
+            Business ID:
+            <br />
+            {businessId}
+          </div>
+        )}
       </div>
     </div>
   );
