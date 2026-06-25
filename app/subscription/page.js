@@ -119,8 +119,8 @@ export default function SubscriptionPage() {
       user.planExpiry =
         expiry.toISOString();
 
-      user.aiUsageLimit =
-        "0.5GB";
+     user.aiUsageLimit =
+  "500 AI Replies";
 
       localStorage.setItem(
         "user",
@@ -167,87 +167,106 @@ export default function SubscriptionPage() {
     }
   };
 
-  /* =====================================================
-     PLAN CARD
-  ===================================================== */
+/* =====================================================
+   PLAN CARD
+===================================================== */
 
-  const PlanCard = ({
-    title,
-    price,
-    features,
-    buttonText,
-    buttonClass,
-    borderClass,
-    onClick,
-    subtitle,
-    badge,
-  }) => (
-    <div
-      className={`
-        bg-white/5
-        ${borderClass}
-        border
-        rounded-2xl
-        px-5
-        pt-5
-        pb-4
-        backdrop-blur-sm
-        flex
-        flex-col
-        justify-between
-        h-full
-        transition
-        hover:scale-[1.01]
-      `}
-    >
-      <div>
-        {badge && (
-          <div className="inline-block mb-3 px-3 py-1 rounded-full bg-green-500/20 border border-green-400 text-green-300 text-xs font-semibold">
-            {badge}
-          </div>
-        )}
+const PlanCard = ({
+  title,
+  price,
+  features,
+  buttonText,
+  buttonClass,
+  borderClass,
+  onClick,
+  subtitle,
+  badge,
+}) => (
+  <div
+    className={`
+      bg-white/5
+      ${borderClass}
+      border
+      rounded-xl
+      px-4
+      py-4
+      backdrop-blur-sm
+      flex
+      flex-col
+      justify-between
+      h-full
+      transition-all
+      duration-300
+      hover:scale-[1.02]
+    `}
+  >
+    <div>
 
-        <h3 className="text-xl font-semibold mb-2">
-          {title}
-        </h3>
+      {badge && (
+        <div className="inline-flex mb-3 px-3 py-1 rounded-full bg-green-500/20 border border-green-400 text-green-300 text-[11px] font-semibold">
+          {badge}
+        </div>
+      )}
 
-        <p className="text-3xl font-bold mb-3">
+      <h3 className="text-lg font-semibold mb-1">
+        {title}
+      </h3>
+
+      {price && (
+        <p className="text-2xl font-bold mb-2">
           {price}
         </p>
+      )}
 
-        {subtitle && (
-          <p className="text-sm text-purple-300 mb-3">
-            {subtitle}
-          </p>
-        )}
+      {subtitle && (
+        <p className="text-xs text-purple-300 mb-3">
+          {subtitle}
+        </p>
+      )}
 
-        <ul className="text-sm text-gray-300 space-y-2">
-          {features.map(
-            (feature, index) => (
-              <li key={index}>
-                ✔ {feature}
-              </li>
-            )
-          )}
-        </ul>
-      </div>
+      <ul className="text-[13px] text-gray-300 space-y-1.5">
 
-      <button
-        onClick={onClick}
-        className={`
-          mt-6
-          py-3
-          rounded-xl
-          font-semibold
-          transition
-          w-full
-          ${buttonClass}
-        `}
-      >
-        {buttonText}
-      </button>
+        {features.map((feature, index) => (
+
+          <li
+            key={index}
+            className="flex items-start gap-2"
+          >
+            <span className="text-green-400 mt-[2px]">
+              ✓
+            </span>
+
+            <span>
+              {feature}
+            </span>
+
+          </li>
+
+        ))}
+
+      </ul>
+
     </div>
-  );
+
+    <button
+      onClick={onClick}
+      className={`
+        mt-4
+        py-2.5
+        rounded-lg
+        font-semibold
+        text-sm
+        transition-all
+        duration-300
+        w-full
+        ${buttonClass}
+      `}
+    >
+      {buttonText}
+    </button>
+
+  </div>
+);
 
   return (
     <div className="min-h-screen overflow-hidden bg-gradient-to-br from-[#0f172a] via-[#064e3b] to-[#020617] text-white px-4 py-5 flex flex-col">
@@ -276,16 +295,16 @@ export default function SubscriptionPage() {
 
       {/* PLANS */}
 
-      <div
+     <div
         className="
           w-full
-          max-w-7xl
+          max-w-6xl
           mx-auto
           grid
           grid-cols-1
           sm:grid-cols-2
           xl:grid-cols-4
-          gap-4
+          gap-3
           items-stretch
         "
       >
@@ -294,20 +313,19 @@ export default function SubscriptionPage() {
 
         <PlanCard
           title="Starter"
-          badge="7 Day Free Trial"
+          badge="7-Day Free Trial"
           price="Free"
           features={[
-            "0.5GB AI Usage",
-            "WhatsApp Connection",
-            "AI Auto Reply",
-            "Basic Customer Support",
+            "500 AI Replies / Month",
+            "1 WhatsApp Connection",
+            "AI Auto Replies",
             "Basic FAQ Responses",
-            "Limited Dashboard",
-            "Limited Analytics",
+            "Lead Capture",
+            "Basic Dashboard",
+            "Basic Analytics",
             "Community Support",
-            "No Appointment Scheduling",
-            "No Follow-up Messages",
-            "No Reminder Messages",
+            "Email Support",
+            "Upgrade Anytime",
           ]}
           buttonText="Start Free Trial"
           buttonClass="bg-white/10 hover:bg-white/20 text-white"
@@ -317,26 +335,23 @@ export default function SubscriptionPage() {
           }
         />
 
-        {/* PRO */}
+       {/* PRO */}
 
         <PlanCard
           title="Pro"
           badge="Most Popular"
           price="$29/mo"
           features={[
-            "5.5GB AI Usage",
-            "AI Auto Reply",
-            "Lead Capture",
-            "Customer Support Automation",
+            "5,000 AI Replies / Month",
+            "Everything in Starter",
             "Appointment Scheduling",
-            "Dashboard Access",
-            "Analytics Access",
-            "Customer Management",
+            "Lead Management",
+            "Customer Database",
+            "Analytics Dashboard",
             "Inventory Tracking",
             "Priority Support",
-            "No Follow-up Messages",
-            "No Reminder Messages",
-            "No Group Automation",
+            "Custom AI Responses",
+            "Business Automation",
           ]}
           buttonText="Upgrade Now"
           buttonClass="bg-green-500 hover:bg-green-600 text-black"
@@ -346,23 +361,18 @@ export default function SubscriptionPage() {
           }
         />
 
-        {/* PREMIUM */}
+       {/* PREMIUM */}
 
         <PlanCard
           title="Premium"
           badge="Best Value"
           price="$79/mo"
           features={[
-            "20GB AI Usage",
+            "20,000 AI Replies / Month",
+            "Everything in Pro",
             "Unlimited Business Automation",
-            "AI Auto Reply",
-            "Lead Capture",
-            "Appointment Scheduling",
-            "Customer Management",
-            "Inventory Tracking",
-            "Smart Follow-up Messages",
+            "Smart Follow-Up Messages",
             "Reminder Messages",
-            "Incomplete Chat Recovery",
             "Group Chat Automation",
             "Advanced Analytics",
             "Advanced Integrations",
@@ -377,22 +387,24 @@ export default function SubscriptionPage() {
           }
         />
 
-        {/* CUSTOM */}
+       {/* CUSTOM */}
 
         <PlanCard
           title="Custom Automation 🤖"
-          price=""
+          badge="Enterprise"
+          price="Contact Us"
           subtitle="Tailored For Your Business"
           features={[
-            "Everything In Premium",
-            "Custom Workflows",
+            "Unlimited AI Replies",
+            "Everything in Premium",
+            "Custom AI Workflows",
             "AI Voice Call Automation",
             "Dedicated Setup Team",
-            "Dedicated Support",
-            "Business-Specific AI Training",
+            "Business AI Training",
             "Sales Automation",
             "Operations Automation",
             "Enterprise Integrations",
+            "Dedicated Account Manager",
           ]}
           buttonText="Contact on WhatsApp 💬"
           buttonClass="bg-purple-500 hover:bg-purple-600 text-white"
@@ -406,23 +418,23 @@ export default function SubscriptionPage() {
 
       </div>
 
-      {/* TRUST SECTION */}
+     {/* TRUST SECTION */}
 
-      <div className="w-full max-w-7xl mx-auto mt-6">
+      <div className="w-full max-w-6xl mx-auto mt-4">
 
         <div
           className="
             bg-white/5
             border
             border-white/10
-            rounded-2xl
-            p-5
+            rounded-xl
+            p-4
             backdrop-blur-sm
             text-center
           "
         >
 
-          <h3 className="text-xl font-semibold mb-3">
+          <h3 className="text-lg font-semibold mb-4">
             Why Businesses Choose Sodah.io 🚀
           </h3>
 
@@ -438,36 +450,51 @@ export default function SubscriptionPage() {
           >
 
             <div>
+
               <div className="text-2xl mb-2">
                 🤖
               </div>
 
+              <h4 className="font-semibold text-white mb-1">
+                24/7 AI Support
+              </h4>
+
               <p>
-                AI automatically replies to customers
-                24/7 without missing leads.
+                Instantly reply to customers and never miss a sales opportunity.
               </p>
+
             </div>
 
             <div>
+
               <div className="text-2xl mb-2">
                 📈
               </div>
 
+              <h4 className="font-semibold text-white mb-1">
+                Increase Sales
+              </h4>
+
               <p>
-                Increase conversions through smart
-                automation and customer engagement.
+                Automate conversations, qualify leads, and grow your business faster.
               </p>
+
             </div>
 
             <div>
+
               <div className="text-2xl mb-2">
                 ⚡
               </div>
 
+              <h4 className="font-semibold text-white mb-1">
+                Quick Setup
+              </h4>
+
               <p>
-                Connect WhatsApp in minutes and start
-                automating immediately.
+                Connect WhatsApp in minutes and start automating immediately.
               </p>
+
             </div>
 
           </div>
@@ -481,14 +508,12 @@ export default function SubscriptionPage() {
       <div className="text-center mt-4">
 
         <button
-          onClick={() =>
-            router.push("/welcome")
-          }
+          onClick={() => router.push("/welcome")}
           className="
+            text-sm
             text-gray-400
             hover:text-white
             transition
-            text-sm
           "
         >
           ← Back
