@@ -2,110 +2,123 @@
 
 import { useEffect, useState } from "react";
 
-export default function TrialNotification({
-  trialEndDate,
+export default function SubscriptionNotification({
+  subscriptionEndDate,
+  isTrial = false,
 }) {
-  const [message, setMessage] =
-    useState("");
-
-  const [show, setShow] =
-    useState(false);
+  const [show, setShow] = useState(false);
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [color, setColor] = useState("green");
 
   useEffect(() => {
-    if (!trialEndDate) return;
+    if (!subscriptionEndDate) return;
 
-    const endDate = new Date(
-      trialEndDate
-    );
-
+    const end = new Date(subscriptionEndDate);
     const now = new Date();
 
-    const diff =
-      endDate.getTime() -
-      now.getTime();
+    const diff = end.getTime() - now.getTime();
 
-    const daysLeft = Math.ceil(
-      diff / (1000 * 60 * 60 * 24)
-    );
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
 
-    const hoursLeft = Math.ceil(
-      diff / (1000 * 60 * 60)
-    );
+    if (days > 7) return;
 
-    // 2 DAYS LEFT
-    if (
-      daysLeft <= 2 &&
-      daysLeft > 1
-    ) {
+    if (days <= 7 && days > 3) {
+      setTitle("📅 Subscription Reminder");
       setMessage(
-        "⚠️ Your free trial will expire in 2 days."
+        `Your ${isTrial ? "free trial" : "subscription"} will expire in ${days} days. Renew now to avoid interruption.`
       );
-
+      setColor("blue");
       setShow(true);
     }
 
-    // 3 HOURS LEFT
-    else if (
-      hoursLeft <= 3 &&
-      hoursLeft > 0
-    ) {
+    else if (days <= 3 && days > 1) {
+      setTitle("⚠️ Subscription Expiring Soon");
       setMessage(
-        "⏰ Your subscription will expire in 3 hours."
+        `Only ${days} days remaining. Your AI Auto Reply and automation services will pause if your subscription expires.`
       );
-
+      setColor("yellow");
       setShow(true);
     }
 
-    // EXPIRED
+    else if (days === 1) {
+      setTitle("🚨 Final Reminder");
+      setMessage(
+        "Your subscription expires tomorrow. Renew today to keep all AI services running."
+      );
+      setColor("red");
+      setShow(true);
+    }
+
     else if (diff <= 0) {
+      setTitle("❌ Subscription Expired");
       setMessage(
-        "❌ Your subscription has expired."
+        "Your subscription has expired. AI Auto Reply and Automation have been paused. Renew now to restore all services."
       );
-
+      setColor("red");
       setShow(true);
     }
 
-    // AUTO HIDE
-    const timer = setTimeout(() => {
-      setShow(false);
-    }, 6000);
+  }, [subscriptionEndDate, isTrial]);
 
-    return () =>
-      clearTimeout(timer);
+  if (!show) return null;
 
-  }, [trialEndDate]);
-
-  if (!show || !message)
-    return null;
+  const styles = {
+    blue: "border-blue-500 bg-blue-500/10",
+    yellow: "border-yellow-500 bg-yellow-500/10",
+    red: "border-red-500 bg-red-500/10",
+    green: "border-green-500 bg-green-500/10",
+  };
 
   return (
-    <div className="fixed top-5 right-5 z-[9999] animate-slideIn">
+    <div className="fixed top-6 right-6 z-[9999] animate-slideIn">
 
-      <div className="bg-black/90 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl px-5 py-4 max-w-sm">
+      <div
+        className={`w-[380px] rounded-2xl border backdrop-blur-xl shadow-2xl p-6 bg-[#111827] ${styles[color]}`}
+      >
 
-        <p className="text-white text-sm font-medium">
+        <h2 className="text-xl font-bold text-white">
+          {title}
+        </h2>
+
+        <p className="text-gray-300 mt-3 leading-7">
           {message}
         </p>
+
+        <button
+          className="mt-6 w-full py-3 rounded-xl bg-green-500 hover:bg-green-600 text-black font-bold transition"
+          onClick={() => window.location.href="/subscription"}
+        >
+          Renew Subscription
+        </button>
+
+        <button
+          className="mt-3 w-full py-3 rounded-xl border border-white/10 text-gray-300"
+          onClick={() => setShow(false)}
+        >
+          Remind Me Later
+        </button>
 
       </div>
 
       <style jsx>{`
         @keyframes slideIn {
-          0% {
+          from {
             opacity: 0;
             transform: translateX(100px);
           }
 
-          100% {
+          to {
             opacity: 1;
             transform: translateX(0);
           }
         }
 
         .animate-slideIn {
-          animation: slideIn 0.4s ease;
+          animation: slideIn .4s ease;
         }
       `}</style>
+
     </div>
   );
 }

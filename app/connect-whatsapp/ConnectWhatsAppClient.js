@@ -145,7 +145,7 @@ useEffect(() => {
 
         setStatus("WhatsApp connected successfully.");
 
-        router.replace("/welcome");
+       router.replace("/welcome?connected=true");
       }
     } catch (error) {
       console.error(

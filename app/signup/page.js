@@ -195,13 +195,22 @@ export default function AuthPage() {
             return;
           }
 
-          localStorage.setItem(
-            "sodah-user",
-            JSON.stringify(
-              data.user
-            )
-          );
+         localStorage.setItem(
+  "user",
+  JSON.stringify(data.user)
+);
 
+localStorage.setItem(
+  "isLoggedIn",
+  "true"
+);
+
+if (data.token) {
+  localStorage.setItem(
+    "token",
+    data.token
+  );
+}
           triggerSuccess(
             "Login successful!"
           );

@@ -1,20 +1,23 @@
 import { NextResponse } from "next/server";
 
 export function middleware(req) {
-  const url = req.nextUrl;
+  const blocked = req.cookies.get("blocked")?.value === "true";
 
-  const blocked = req.cookies.get("blocked");
-  const loggedIn = req.cookies.get("token"); // Replace with your auth cookie name
+  const { pathname } = req.nextUrl;
 
-  // Redirect unauthenticated users
-  if (!loggedIn) {
-    return NextResponse.redirect(new URL("/login", req.url));
+  // Allow these pages even when blocked
+  if (
+    pathname.startsWith("/subscription") ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/api")
+  ) {
+    return NextResponse.next();
   }
 
-  // Redirect expired subscriptions
-  if (blocked?.value === "true") {
+  // Subscription expired
+  if (blocked) {
     return NextResponse.redirect(
-      new URL("/subscription-expired", req.url)
+      new URL("/subscription", req.url)
     );
   }
 

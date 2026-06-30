@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import InstallationButton from "@/components/InstallationButton";
 
 /* =========================================
    IMAGE ASSETS
@@ -203,6 +205,10 @@ export default function Home() {
         <p className="text-[10px] md:text-xs text-gray-400">
           AI WhatsApp Automation
         </p>
+
+
+
+
       </div>
     </div>
 
@@ -242,6 +248,19 @@ export default function Home() {
         </button>
 
       </div>
+
+
+
+<div className="flex flex-wrap gap-4 mt-8">
+  <Link
+    href="/signup"
+    className="rounded-xl bg-[#0B1F1A] px-8 py-4 text-white font-semibold hover:opacity-90 transition"
+  >
+    Start Free Trial
+  </Link>
+
+  <InstallationButton />
+</div>
 
       {/* ================================= HERO ================================= */}
 

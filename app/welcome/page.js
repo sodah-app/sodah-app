@@ -2,9 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import WelcomeCompleteModal from "@/components/WelcomeCompleteModal";
 
 export default function WelcomePage() {
   const router = useRouter();
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const [isMobile, setIsMobile] = useState(false);
 
@@ -73,6 +75,17 @@ export default function WelcomePage() {
     return () =>
       clearInterval(interval);
   }, []);
+
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.get("connected") === "true") {
+    setShowSuccess(true);
+
+    // Remove the parameter so it only shows once
+    window.history.replaceState({}, "", "/welcome");
+  }
+}, []);
 
   /* =========================
      CLOCK
@@ -893,11 +906,17 @@ export default function WelcomePage() {
       <span className="text-[11px] mt-1">Settings</span>
     </button>
 
-  </div>
+ </div>
 )}
+
+<WelcomeCompleteModal
+    open={showSuccess}
+    onClose={() => setShowSuccess(false)}
+/>
+
 </div>
-    </div>
-  );
+</div>
+);
 }
 /* =========================
    PREMIUM CARD COMPONENT

@@ -26,7 +26,7 @@ export async function POST(req) {
       return NextResponse.json(
         {
           success: false,
-          message: "User not found",
+          message: "User not found.",
         },
         { status: 404 }
       );
@@ -41,37 +41,58 @@ export async function POST(req) {
       return NextResponse.json(
         {
           success: false,
-          message: "Invalid password",
+          message: "Invalid password.",
         },
         { status: 401 }
       );
     }
 
-    const today = new Date();
+    const now = new Date();
 
+    // =====================================
     // Automatically expire trial
+    // =====================================
+
     if (
       user.trialEndDate &&
-      today > new Date(user.trialEndDate)
+      now > new Date(user.trialEndDate)
     ) {
       user.subscriptionStatus = "expired";
       await user.save();
     }
 
+    // =====================================
+    // Remaining time
+    // =====================================
+
     let remainingDays = 0;
+    let remainingHours = 0;
 
     if (user.trialEndDate) {
+      const diff =
+        new Date(user.trialEndDate).getTime() -
+        now.getTime();
+
       remainingDays = Math.max(
         0,
-        Math.ceil(
-          (new Date(user.trialEndDate) - today) /
-            (1000 * 60 * 60 * 24)
-        )
+        Math.ceil(diff / (1000 * 60 * 60 * 24))
+      );
+
+      remainingHours = Math.max(
+        0,
+        Math.ceil(diff / (1000 * 60 * 60))
       );
     }
 
-    // If subscription is expired
-    if (user.subscriptionStatus === "expired") {
+    // =====================================
+    // Subscription check
+    // =====================================
+
+    const expired =
+      user.subscriptionStatus === "expired" ||
+      user.plan === "Expired";
+
+    if (expired) {
       const response = NextResponse.json(
         {
           success: false,
@@ -85,42 +106,61 @@ export async function POST(req) {
       response.cookies.set("blocked", "true", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        sameSite: "strict",
         path: "/",
+        maxAge: 60 * 60 * 24,
       });
 
       response.cookies.set("token", user._id.toString(), {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        sameSite: "strict",
         path: "/",
+        maxAge: 60 * 60 * 24 * 30,
       });
 
       return response;
     }
 
+    // =====================================
+    // Remove password
+    // =====================================
+
+    const {
+      password: _password,
+      ...safeUser
+    } = user.toObject();
+
+    // =====================================
     // Successful login
+    // =====================================
+
     const response = NextResponse.json({
       success: true,
-      message: "Login successful",
+      message: "Login successful.",
       remainingDays,
-      subscriptionStatus: user.subscriptionStatus,
-      trialEndDate: user.trialEndDate,
-      user,
+      remainingHours,
+      subscriptionStatus:
+        user.subscriptionStatus,
+      trialEndDate:
+        user.trialEndDate,
+      user: safeUser,
     });
 
     response.cookies.set("token", user._id.toString(), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "strict",
       path: "/",
+      maxAge: 60 * 60 * 24 * 30,
     });
 
     response.cookies.set("blocked", "false", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "strict",
       path: "/",
+      maxAge: 60 * 60 * 24,
     });
 
     return response;
@@ -130,7 +170,7 @@ export async function POST(req) {
     return NextResponse.json(
       {
         success: false,
-        message: "Server error",
+        message: "Server error.",
       },
       { status: 500 }
     );
