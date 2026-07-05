@@ -4,36 +4,47 @@ export default function WelcomeCompleteModal({ open, onClose }) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md px-6">
-      <div className="w-full max-w-md rounded-3xl border border-green-500/40 bg-[#111827] p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-[92%] max-w-lg max-h-[80vh] overflow-y-auto rounded-3xl border border-green-500/30 bg-[#111827] p-6 md:p-8 shadow-2xl animate-in fade-in zoom-in duration-300"
+      >
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-5 right-5 text-gray-400 hover:text-white text-3xl transition"
+        >
+          ×
+        </button>
 
         {/* Icon */}
         <div className="flex justify-center mb-5">
-          <div className="w-20 h-20 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center text-5xl">
-            🎉
+          <div className="flex h-20 w-20 items-center justify-center rounded-full border border-green-500/40 bg-green-500/20 text-5xl">
+            ✅
           </div>
         </div>
 
         {/* Title */}
-        <h2 className="text-4xl font-extrabold text-white text-center">
+        <h2 className="text-center text-3xl md:text-4xl font-extrabold text-white">
           Congratulations!
         </h2>
 
         {/* Subtitle */}
-        <p className="text-center text-green-400 text-xl font-semibold mt-2">
+        <p className="mt-2 text-center text-xl font-semibold text-green-400">
           WhatsApp Connected Successfully
         </p>
 
         {/* Description */}
-        <p className="text-gray-300 text-center mt-6 leading-7">
+        <p className="mt-6 text-center leading-7 text-gray-300">
           Your <span className="font-semibold text-white">WhatsApp</span> has
           been securely connected to{" "}
-          <span className="font-semibold text-green-400">
-            Sodah.io
-          </span>.
+          <span className="font-semibold text-green-400">Sodah.io</span>.
         </p>
 
-        <p className="text-gray-300 text-center mt-4 leading-7">
+        <p className="mt-4 text-center leading-7 text-gray-300">
           Your{" "}
           <span className="font-semibold text-green-400">
             AI Auto Reply
@@ -42,57 +53,43 @@ export default function WelcomeCompleteModal({ open, onClose }) {
           WhatsApp messages 24 hours a day, 7 days a week.
         </p>
 
-        <p className="text-gray-400 text-center mt-4 leading-7">
-          Thank you for choosing{" "}
-          <span className="text-green-400 font-semibold">
-            Sodah.io
-          </span>.
-          <br />
-          Your automation is now ready to save time, engage customers, and
-          never miss another message.
-        </p>
-
-        {/* Status Cards */}
+        {/* Features */}
         <div className="mt-8 space-y-3">
-
-          <div className="rounded-xl border border-green-500/20 bg-white/5 p-4 flex items-center">
-            <span className="text-green-400 text-xl mr-3">✅</span>
-            <span className="text-white">
-              AI Auto Reply Enabled
-            </span>
-          </div>
-
-          <div className="rounded-xl border border-green-500/20 bg-white/5 p-4 flex items-center">
-            <span className="text-green-400 text-xl mr-3">✅</span>
-            <span className="text-white">
-              Smart Conversations Activated
-            </span>
-          </div>
-
-          <div className="rounded-xl border border-green-500/20 bg-white/5 p-4 flex items-center">
-            <span className="text-green-400 text-xl mr-3">✅</span>
-            <span className="text-white">
-              Dashboard Connected
-            </span>
-          </div>
-
-          <div className="rounded-xl border border-green-500/20 bg-white/5 p-4 flex items-center">
-            <span className="text-green-400 text-xl mr-3">✅</span>
-            <span className="text-white">
-              Ready to Receive Messages
-            </span>
-          </div>
-
+          {[
+            "AI Auto Reply Enabled",
+            "Smart Conversations Activated",
+            "Dashboard Connected",
+            "Ready to Receive Messages",
+          ].map((item) => (
+            <div
+              key={item}
+              className="flex items-center rounded-xl border border-green-500/20 bg-white/5 p-4"
+            >
+              <span className="mr-3 text-xl text-green-400">✅</span>
+              <span className="text-white">{item}</span>
+            </div>
+          ))}
         </div>
 
-        {/* Button */}
+        {/* Trial Card */}
+        <div className="mt-6 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4">
+          <h3 className="font-semibold text-white">
+            🎉 Your Free Trial Has Started
+          </h3>
+
+          <p className="mt-1 text-sm text-gray-300">
+            You have <span className="font-semibold text-green-400">7 days</span>{" "}
+            of full access to all premium features.
+          </p>
+        </div>
+
+        {/* Exit Button */}
         <button
           onClick={onClose}
-          className="mt-8 w-full rounded-2xl bg-gradient-to-r from-green-500 to-emerald-400 py-4 text-lg font-bold text-black transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
+          className="mt-8 w-full rounded-2xl bg-gradient-to-r from-green-500 to-emerald-400 py-4 text-lg font-bold text-black transition hover:scale-[1.02]"
         >
-          Close
+          Exit
         </button>
-
       </div>
     </div>
   );

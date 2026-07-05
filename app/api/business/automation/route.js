@@ -13,40 +13,33 @@ function generateBusinessId() {
 export async function POST(request) {
   try {
     const body = await request.json();
-console.log("REQUEST BODY:", body);
-
-console.log("PRICE:", body.priceRange);
-console.log("AI:", body.aiNumber);
-console.log("SUPPORT:", body.supportNumber);
-console.log("WORKING:", body.workingDays);
-console.log("FULL NAME:", body.fullName);
-console.log("BUSINESS:", body.businessName);
 
     console.log("REQUEST BODY:", body);
+    console.log("PRICE:", body.priceRange);
+    console.log("AI:", body.aiNumber);
+    console.log("SUPPORT:", body.supportNumber);
+    console.log("WORKING:", body.workingDays);
+    console.log("FULL NAME:", body.fullName);
+    console.log("BUSINESS:", body.businessName);
 
     // ==========================================================
     // 1. CHECK LIVE WHATSAPP SESSION BEFORE SAVING ANY DATA
     // ==========================================================
     const appUrl =
-  process.env.NEXT_PUBLIC_APP_URL ||
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  "https://sodah-app.vercel.app";
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      "https://sodah-app.vercel.app";
 
-console.log("APP URL =", appUrl);
+    console.log("APP URL =", appUrl);
 
-console.log(
-  "CONNECT URL =",
-  `${appUrl}/api/connect-whatsapp`
-);
-try {
-
-const checkResponse = await fetch(
-  `${appUrl}/api/connect-whatsapp`,
-  {
-    method: "GET",
-    cache: "no-store",
-  }
-);
+    try {
+      const checkResponse = await fetch(
+        `${appUrl}/api/connect-whatsapp`,
+        {
+          method: "GET",
+          cache: "no-store",
+        }
+      );
 
       if (checkResponse.ok) {
         const checkData = await checkResponse.json();
@@ -76,14 +69,8 @@ const checkResponse = await fetch(
       );
     }
 
-   // ==========================================================
-// 2. PLACEHOLDER
-// ==========================================================
-// Duplicate checking will happen after Step 3
-// when aiNumber and supportNumber are available.
-
     // ==========================================================
-    // 3. EXTRACT REQUEST DATA (CAMELCASE FROM FRONTEND)
+    // 2. EXTRACT REQUEST DATA
     // ==========================================================
     const {
       email,
@@ -101,49 +88,62 @@ const checkResponse = await fetch(
       setupType = "business",
     } = body;
 
-// ==========================================================
-// 4. CHECK IF RECORD ALREADY EXISTS
-// ==========================================================
-
-const { data: existingBusiness, error: existingBusinessError } =
-  await supabase
-    .from("businesses")
-    .select("*")
-    .or(
-      `ai_number.eq.${aiNumber},support_number.eq.${supportNumber}`
-    )
-    .maybeSingle();
-
-if (existingBusinessError) {
-  return NextResponse.json(
-    {
-      success: false,
-      message: existingBusinessError.message,
-    },
-    { status: 500 }
-  );
-}
-
-if (existingBusiness) {
-  return NextResponse.json({
-    success: true,
-    alreadyExists: true,
-    whatsappConnected:
-      existingBusiness.whatsapp_connected === true,
-    business_id: existingBusiness.business_id,
-    message:
-      existingBusiness.whatsapp_connected
-        ? "WhatsApp already connected."
-        : "Information already saved. Continue to connect WhatsApp.",
-  });
-}
     // ==========================================================
-    // 5. GENERATE UNIQUE BUSINESS ID
+    // 3. CHECK FOR EXISTING BUSINESS
+    // ==========================================================
+    const { data: existingBusiness, error: existingBusinessError } =
+      await supabase
+        .from("businesses")
+        .select("*")
+        .or(
+          `ai_number.eq.${aiNumber},support_number.eq.${supportNumber}`
+        )
+        .maybeSingle();
+
+    if (existingBusinessError) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: existingBusinessError.message,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (existingBusiness) {
+      return NextResponse.json({
+        success: true,
+        alreadyExists: true,
+        whatsappConnected:
+          existingBusiness.whatsapp_connected === true,
+        business_id: existingBusiness.business_id,
+        message:
+          existingBusiness.whatsapp_connected
+            ? "WhatsApp already connected."
+            : "Information already saved. Continue to connect WhatsApp.",
+      });
+    }
+
+    // ==========================================================
+    // 4. GENERATE BUSINESS ID
     // ==========================================================
     const business_id = generateBusinessId();
 
     // ==========================================================
-    // 6. SAVE NEW BUSINESS RECORD
+    // 5. FREE TRIAL SUBSCRIPTION (7 DAYS)
+    // ==========================================================
+    const subscriptionPlan = "free_trial";
+    const subscriptionStatus = "active";
+
+    const subscriptionStart = new Date();
+
+    const subscriptionExpiry = new Date(subscriptionStart);
+    subscriptionExpiry.setDate(subscriptionExpiry.getDate() + 7);
+
+    const renewalDate = new Date(subscriptionExpiry);
+
+    // ==========================================================
+    // 6. INSERT BUSINESS
     // ==========================================================
     const { data, error } = await supabase
       .from("businesses")
@@ -165,7 +165,7 @@ if (existingBusiness) {
           location,
 
           price_range: priceRange,
-         
+
           services_description: body.serviceDescription,
 
           ai_number: aiNumber,
@@ -180,6 +180,13 @@ if (existingBusiness) {
 
           personal_goal: personalGoal,
 
+          // Subscription
+          subscription_plan: subscriptionPlan,
+          subscription_status: subscriptionStatus,
+          subscription_start: subscriptionStart,
+          subscription_expiry: subscriptionExpiry,
+          renewal_date: renewalDate,
+
           whatsapp_connected: false,
 
           status: "active",
@@ -189,7 +196,7 @@ if (existingBusiness) {
       .single();
 
     // ==========================================================
-    // 7. HANDLE DATABASE ERRORS
+    // 7. HANDLE ERRORS
     // ==========================================================
     if (error) {
       console.error("Supabase error:", error);
@@ -219,7 +226,7 @@ if (existingBusiness) {
     }
 
     // ==========================================================
-    // 8. SUCCESS RESPONSE
+    // 8. SUCCESS
     // ==========================================================
     return NextResponse.json({
       success: true,
