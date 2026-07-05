@@ -185,50 +185,27 @@ useEffect(() => {
      USER + SUBSCRIPTION
   ========================== */
 
-  useEffect(() => {
-    const storedUser = JSON.parse(
-      localStorage.getItem(
-        "user"
-      ) || "{}"
-    );
+ useEffect(() => {
+  const loadUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    const expiry =
-      storedUser.planExpiry;
-
-    if (
-      !expiry ||
-      storedUser.subscription !==
-        "active"
-    ) {
-      router.push(
-        "/subscription"
-      );
-      return;
-    }
-
-    const now = new Date();
-
-    const expiryDate =
-      new Date(expiry);
-
-    if (now > expiryDate) {
-      alert(
-        "Your subscription has expired."
-      );
-
-      router.push(
-        "/subscription"
-      );
-
+    if (!user) {
+      router.push("/");
       return;
     }
 
     setUser({
       fullName:
-        storedUser.fullName ||
-        "",
+        user.user_metadata?.full_name ||
+        user.email ||
+        "User",
     });
-  }, [router]);
+  };
+
+  loadUser();
+}, [router]);
 
   /* =========================
      ACTIONS

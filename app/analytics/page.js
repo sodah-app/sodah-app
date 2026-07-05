@@ -20,24 +20,49 @@ import { supabase } from "../../lib/supabase";
 export default function AnalyticsPage() {
   const [appointments, setAppointments] = useState([]);
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
+ const [loading, setLoading] = useState(true);
+const [businessId, setBusinessId] = useState(null);
+useEffect(() => {
+  const loadBusiness = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-  const businessId =
-    typeof window !== "undefined"
-      ? localStorage.getItem("business_id") || "BIZ_002"
-      : "BIZ_002";
+    if (!session?.user?.id) {
+      setLoading(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("businesses")
+      .select("business_id")
+      .eq("user_id", session.user.id)
+      .single();
+
+    if (!error && data) {
+      setBusinessId(data.business_id);
+    }
+
+    setLoading(false);
+  };
+
+  loadBusiness();
+}, []);
 
   // ======================================================
   // FETCH DATA FROM SUPABASE
   // ======================================================
-  const fetchData = async (showLoader = true) => {
-    try {
-      if (showLoader) setLoading(true);
+ const fetchData = async (showLoader = true) => {
+  try {
 
-      const [
-        appointmentsResult,
-        customersResult,
-      ] = await Promise.all([
+    if (!businessId) return;
+
+    if (showLoader) setLoading(true);
+
+    const [
+      appointmentsResult,
+      customersResult,
+    ] = await Promise.all([
         supabase
           .from("appointments")
           .select("*")
@@ -120,15 +145,17 @@ export default function AnalyticsPage() {
   // ======================================================
   // INITIAL LOAD + BACKGROUND REFRESH
   // ======================================================
-  useEffect(() => {
-    fetchData(true);
+ useEffect(() => {
+  if (!businessId) return;
 
-    const interval = setInterval(() => {
-      fetchData(false);
-    }, 4000);
+  fetchData(true);
 
-    return () => clearInterval(interval);
-  }, []);
+  const interval = setInterval(() => {
+    fetchData(false);
+  }, 4000);
+
+  return () => clearInterval(interval);
+}, [businessId]);
   // ======================================================
   // SUMMARY METRICS
   // ======================================================

@@ -155,135 +155,67 @@ export default function AuthPage() {
           }
         }
 
-        // LOGIN
-        if (isLogin) {
-          const response =
-            await fetch(
-              "/api/auth/login",
-              {
-                method: "POST",
 
-                headers: {
-                  "Content-Type":
-                    "application/json",
-                },
+// LOGIN
+if (isLogin) {
+  const {
+    data,
+    error,
+  } = await supabase.auth.signInWithPassword({
+    email: form.email,
+    password: form.password,
+  });
 
-                body: JSON.stringify(
-                  {
-                    email:
-                      form.email,
+  if (error) {
+    triggerError(error.message);
+    return;
+  }
 
-                    password:
-                      form.password,
-                  }
-                ),
-              }
-            );
+  triggerSuccess("Login successful!");
 
-          const data =
-            await response.json();
-
-          if (
-            !response.ok ||
-            !data.success
-          ) {
-            triggerError(
-              data.message ||
-                "User not found."
-            );
-
-            return;
-          }
-
-         localStorage.setItem(
-  "user",
-  JSON.stringify(data.user)
-);
-
-localStorage.setItem(
-  "isLoggedIn",
-  "true"
-);
-
-if (data.token) {
-  localStorage.setItem(
-    "token",
-    data.token
-  );
+  setTimeout(() => {
+    router.push("/welcome");
+  }, 1200);
 }
-          triggerSuccess(
-            "Login successful!"
-          );
 
-          setTimeout(() => {
-            router.push(
-              "/welcome"
-            );
-          }, 1200);
-        }
 
         // REGISTER
         else {
-          const response =
-            await fetch(
-              "/api/auth/register",
-              {
-                method: "POST",
+       const {
+  data,
+  error,
+} = await supabase.auth.signUp({
+  email: form.email,
+  password: form.password,
+  options: {
+    data: {
+      full_name: form.fullName,
+      phone: form.phone,
+    },
+  },
+});
 
-                headers: {
-                  "Content-Type":
-                    "application/json",
-                },
+if (error) {
+  triggerError(error.message);
+  return;
+}
 
-                body: JSON.stringify(
-                  {
-                    fullName:
-                      form.fullName,
+triggerSuccess(
+  "Account created successfully!"
+);
 
-                    phone:
-                      form.phone,
+setForm({
+  fullName: "",
+  phone: "",
+  email: "",
+  password: "",
+});
 
-                    email:
-                      form.email,
+setTimeout(() => {
+  setIsLogin(true);
+}, 1200);
 
-                    password:
-                      form.password,
-                  }
-                ),
-              }
-            );
 
-          const data =
-            await response.json();
-
-          if (
-            !response.ok ||
-            !data.success
-          ) {
-            triggerError(
-              data.message ||
-                "Registration failed."
-            );
-
-            return;
-          }
-
-          triggerSuccess(
-            "Account created successfully!"
-          );
-
-          // RESET FORM
-          setForm({
-            fullName: "",
-            phone: "",
-            email: "",
-            password: "",
-          });
-
-          // SWITCH TO LOGIN
-          setTimeout(() => {
-            setIsLogin(true);
-          }, 1200);
         }
       } catch (error) {
         console.log(error);

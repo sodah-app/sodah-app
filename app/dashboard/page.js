@@ -23,16 +23,33 @@ export default function Dashboard() {
   const [appointments, setAppointments] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [activePage, setActivePage] = useState("Dashboard");
- const [loading, setLoading] = useState(true);
-const [businessId, setBusinessId] = useState(null);
-const [session, setSession] = useState(null);
-useEffect(() => {
-  console.log(
-    "STATE APPOINTMENTS:",
-    appointments
-  );
-}, [appointments]);
+  const [loading, setLoading] = useState(true);
+  const [businessId, setBusinessId] = useState(null);
+  const [session, setSession] = useState(null);
 
+  useEffect(() => {
+  const checkSession = async () => {
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
+    console.log("SESSION:", session);
+    console.log("SESSION ERROR:", error);
+
+    if (session) {
+      console.log("USER:", session.user);
+    }
+  };
+
+  checkSession();
+}, []);
+
+  useEffect(() => {
+    console.log("STATE APPOINTMENTS:", appointments);
+  }, [appointments]);
+
+  // ...
 useEffect(() => {
   let mounted = true;
 
@@ -114,11 +131,21 @@ useEffect(() => {
 // ======================================================
 useEffect(() => {
   const loadBusinessId = async () => {
-    if (!session?.user?.id) {
-      setLoading(false);
-      return;
-    }
+   if (!session) {
+  console.log("No active session.");
 
+  setLoading(false);
+
+  return;
+}
+
+if (!session.user?.id) {
+  console.log("No authenticated user.");
+
+  setLoading(false);
+
+  return;
+}
     try {
       console.log(
         "SESSION USER:",
@@ -129,12 +156,11 @@ useEffect(() => {
   .from("businesses")
   .select("business_id")
   .eq("user_id", session.user.id)
-  .maybeSingle();
+  .single();
 
-if (error) {
-  throw error;
+if (!data?.business_id) {
+  throw new Error("Business not linked to this account.");
 }
-
 console.log("BUSINESS RECORD:", data);
 
 if (!data) {
