@@ -224,11 +224,11 @@ const normalizeAppointments = (
       item.appointment_status ||
       "Pending",
 
-    Query:
-      item.notes || "",
+    Service:
+      item.service || "",
 
-    query:
-      item.notes || "",
+    service:
+      item.service || "",
 
     lead_status:
       item.lead_status || "new",
@@ -245,14 +245,14 @@ const normalizeCustomers = (
     Phone:
       item.phone || "No phone",
 
-    Query:
+    Service:
       item.customer_message ||
-      item.query ||
+      item.service ||
       "",
 
-    query:
+    service:
       item.customer_message ||
-      item.query ||
+      item.service ||
       "",
 
     lead_status:
@@ -567,22 +567,22 @@ useEffect(() => {
             ""
         ).toLowerCase();
 
-        const query = String(
-          customer.query ||
-            customer.Query ||
+        const service = String(
+          customer.service ||
+            customer.Service ||
             customer.customer_message ||
             ""
         ).toLowerCase();
 
         return (
           status.includes("hot") ||
-          query.includes("price") ||
-          query.includes("book") ||
-          query.includes(
+          service.includes("price") ||
+        service.includes("book") ||
+         service.includes(
             "appointment"
           ) ||
-          query.includes("today") ||
-          query.includes(
+         service.includes("today") ||
+          service.includes(
             "available"
           )
         );
@@ -1189,7 +1189,7 @@ function CustomersTable({
         <div>
           {statusLabel
             ? "Status"
-            : "Query"}
+            : "Service"}
         </div>
       </div>
 
@@ -1221,16 +1221,21 @@ function CustomersTable({
                 "No phone"}
             </div>
 
-            <div
-              className={
-                statusColor
-              }
-            >
-              {statusLabel ||
-                customer.query ||
-                customer.Query ||
-                "No query"}
-            </div>
+          <div
+  className={
+    statusLabel
+      ? statusColor
+      : darkMode
+      ? "font-medium text-white"
+      : "font-medium text-gray-900"
+  }
+>
+  {statusLabel
+    ? statusLabel
+    : customer.service ||
+      customer.Service ||
+      "No service"}
+</div>
           </div>
         )
       )}
