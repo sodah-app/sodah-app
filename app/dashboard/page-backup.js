@@ -19,7 +19,6 @@ import {
   useCallback,
 } from "react";
 import { supabase } from "@/lib/supabase";
-import BackButton from "@/components/BackButton";
 export default function Dashboard() {
   const [appointments, setAppointments] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -170,7 +169,7 @@ if (!data) {
   );
 
   setLoading(false);
-  ;
+  return;
 }
 
 setBusinessId(data.business_id);
@@ -615,32 +614,10 @@ useEffect(() => {
     );
   }
 
- // ======================================================
-// UI
-// ======================================================
-
-return (
-  <>
-
-   <div className="absolute top-4 left-4 z-50">
-  <button
-    onClick={() => {
-      window.history.back();
-    }}
-    className="
-      px-4
-      py-2
-      rounded-lg
-      bg-blue-500
-      text-white
-      hover:bg-blue-600
-      transition
-    "
-  >
-    ← Back 
-  </button>
-</div>
-
+  // ======================================================
+  // UI
+  // ======================================================
+  return (
     <div
       className={`flex h-screen transition-all duration-300 ${
         darkMode
@@ -668,32 +645,6 @@ return (
             )
           }
         />
-
-       <div
-  onClick={() => {
-    window.location.href =
-      "/dashboard/business-ai";
-  }}
-  className="
-    mt-4
-    px-3
-    py-3
-    rounded-lg
-    cursor-pointer
-    text-sm
-    font-semibold
-    text-center
-    bg-gradient-to-r
-    from-purple-500
-    to-blue-500
-    hover:scale-105
-    transition-all
-    shadow-lg
-  "
->
-  🤖 Business Update AI
-</div>
-
 
         <SidebarItem
           title="Bookings"
@@ -1092,7 +1043,6 @@ return (
       <DashboardRefresher />
 
     </div>
-   </>
   );
 }
 

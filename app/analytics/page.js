@@ -15,10 +15,12 @@ import {
 } from "recharts";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
 export default function AnalyticsPage() {
   const [appointments, setAppointments] = useState([]);
+  const router = useRouter();
   const [customers, setCustomers] = useState([]);
  const [loading, setLoading] = useState(true);
 const [businessId, setBusinessId] = useState(null);
@@ -534,6 +536,12 @@ useEffect(() => {
           </div>
         </div>
       </div>
+     <button
+  onClick={() => router.push("/welcome")}
+  className="fixed bottom-6 left-6 z-50 w-12 h-12 rounded-full bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center text-white text-xl hover:bg-white/20 transition"
+>
+  ←
+</button>
 
       {/* STYLES */}
       <style jsx>{`

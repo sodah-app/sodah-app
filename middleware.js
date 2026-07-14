@@ -1,23 +1,34 @@
 import { NextResponse } from "next/server";
 
-export function middleware(req) {
-  const blocked = req.cookies.get("blocked")?.value === "true";
+export function middleware(request) {
+  const { pathname } = request.nextUrl;
 
-  const { pathname } = req.nextUrl;
+  // Public routes
+  const publicRoutes = [
+    "/",
+    "/login",
+    "/signup",
+    "/welcome",
+    "/subscription",
+    "/payment-success",
+    "/api",
+  ];
 
-  // Allow these pages even when blocked
   if (
-    pathname.startsWith("/subscription") ||
-    pathname.startsWith("/login") ||
-    pathname.startsWith("/api")
+    publicRoutes.some((route) =>
+      pathname.startsWith(route)
+    )
   ) {
     return NextResponse.next();
   }
 
-  // Subscription expired
-  if (blocked) {
+  // Authentication only
+  const token =
+    request.cookies.get("sb-access-token");
+
+  if (!token) {
     return NextResponse.redirect(
-      new URL("/subscription", req.url)
+      new URL("/", request.url)
     );
   }
 
@@ -26,16 +37,6 @@ export function middleware(req) {
 
 export const config = {
   matcher: [
-    "/dashboard/:path*",
-    "/automation/:path*",
-    "/chat/:path*",
-    "/services/:path*",
-    "/settings/:path*",
-    "/analytics/:path*",
-    "/profile/:path*",
-    "/connect-whatsapp/:path*",
-    "/setup-ai/:path*",
-    "/welcome/:path*",
-    "/admin/:path*",
+    "/((?!_next|favicon.ico).*)",
   ],
 };

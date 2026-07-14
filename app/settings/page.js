@@ -490,7 +490,27 @@ if (data && data.length > 0) {
 
 </div>
      
- </div>
+</div>
+
+      <button
+        onClick={() => router.push("/welcome")}
+        className="
+          fixed bottom-6 left-6 z-50
+          w-14 h-14
+          rounded-2xl
+          bg-white/10
+          border border-white/10
+          backdrop-blur-xl
+          flex items-center justify-center
+          text-white text-2xl
+          shadow-lg
+          hover:scale-105
+          transition-all duration-300
+        "
+      >
+        ←
+      </button>
+
     </div>
   );
 }

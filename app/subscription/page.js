@@ -48,13 +48,14 @@ export default function SubscriptionPage() {
         JSON.stringify(user)
       );
 
-      localStorage.removeItem(
-        "token"
-      );
+      localStorage.removeItem("token");
+localStorage.removeItem("isLoggedIn");
 
-      localStorage.removeItem(
-        "isLoggedIn"
-      );
+document.cookie =
+  "blocked=true; path=/";
+
+document.cookie =
+  "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
 
       alert(
         "Your subscription has expired. Please renew your plan."
@@ -171,7 +172,7 @@ export default function SubscriptionPage() {
    PLAN CARD
 ===================================================== */
 
-const PlanCard = ({
+function PlanCard({
   title,
   price,
   features,
@@ -181,92 +182,87 @@ const PlanCard = ({
   onClick,
   subtitle,
   badge,
-}) => (
-  <div
-    className={`
-      bg-white/5
-      ${borderClass}
-      border
-      rounded-xl
-      px-4
-      py-4
-      backdrop-blur-sm
-      flex
-      flex-col
-      justify-between
-      h-full
-      transition-all
-      duration-300
-      hover:scale-[1.02]
-    `}
-  >
-    <div>
-
-      {badge && (
-        <div className="inline-flex mb-3 px-3 py-1 rounded-full bg-green-500/20 border border-green-400 text-green-300 text-[11px] font-semibold">
-          {badge}
-        </div>
-      )}
-
-      <h3 className="text-lg font-semibold mb-1">
-        {title}
-      </h3>
-
-      {price && (
-        <p className="text-2xl font-bold mb-2">
-          {price}
-        </p>
-      )}
-
-      {subtitle && (
-        <p className="text-xs text-purple-300 mb-3">
-          {subtitle}
-        </p>
-      )}
-
-      <ul className="text-[13px] text-gray-300 space-y-1.5">
-
-        {features.map((feature, index) => (
-
-          <li
-            key={index}
-            className="flex items-start gap-2"
-          >
-            <span className="text-green-400 mt-[2px]">
-              ✓
-            </span>
-
-            <span>
-              {feature}
-            </span>
-
-          </li>
-
-        ))}
-
-      </ul>
-
-    </div>
-
-    <button
-      onClick={onClick}
+}) {
+  return (
+    <div
       className={`
-        mt-4
-        py-2.5
-        rounded-lg
-        font-semibold
-        text-sm
+        bg-white/5
+        ${borderClass}
+        border
+        rounded-xl
+        px-4
+        py-4
+        backdrop-blur-sm
+        flex
+        flex-col
+        justify-between
+        h-full
         transition-all
         duration-300
-        w-full
-        ${buttonClass}
+        hover:scale-[1.02]
       `}
     >
-      {buttonText}
-    </button>
+      <div>
+        {badge && (
+          <div className="inline-flex mb-3 px-3 py-1 rounded-full bg-green-500/20 border border-green-400 text-green-300 text-[11px] font-semibold">
+            {badge}
+          </div>
+        )}
 
-  </div>
-);
+        <h3 className="text-lg font-semibold mb-1">
+          {title}
+        </h3>
+
+        {price && (
+          <p className="text-2xl font-bold mb-2">
+            {price}
+          </p>
+        )}
+
+        {subtitle && (
+          <p className="text-xs text-purple-300 mb-3">
+            {subtitle}
+          </p>
+        )}
+
+        <ul className="text-[13px] text-gray-300 space-y-1.5">
+          {features.map((feature, index) => (
+            <li
+              key={index}
+              className="flex items-start gap-2"
+            >
+              <span className="text-green-400 mt-[2px]">
+                ✓
+              </span>
+
+              <span>{feature}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <button
+        onClick={onClick}
+        className={`
+          mt-4
+          py-2.5
+          rounded-lg
+          font-semibold
+          text-sm
+          transition-all
+          duration-300
+          w-full
+          ${buttonClass}
+        `}
+      >
+        {buttonText}
+      </button>
+    </div>
+  );
+}
+
+
+
 
   return (
     <div className="min-h-screen overflow-hidden bg-gradient-to-br from-[#0f172a] via-[#064e3b] to-[#020617] text-white px-4 py-5 flex flex-col">
@@ -370,11 +366,11 @@ const PlanCard = ({
           features={[
             "20,000 AI Replies / Month",
             "Everything in Pro",
-            "Unlimited Business Automation",
+            "AI Chat In All Language",
             "Smart Follow-Up Messages",
             "Reminder Messages",
             "Group Chat Automation",
-            "Advanced Analytics",
+            "Business Update Anytime",
             "Advanced Integrations",
             "Personal AI Assistant",
             "VIP Priority Support",

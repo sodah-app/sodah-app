@@ -72,21 +72,31 @@ export async function POST(request) {
     // ==========================================================
     // 2. EXTRACT REQUEST DATA
     // ==========================================================
-    const {
-      email,
-      businessName,
-      fullName,
-      industry,
-      location,
-      priceRange,
-      aiNumber,
-      supportNumber,
-      workingDays,
-      hours,
-      capabilities,
-      personalGoal,
-      setupType = "business",
-    } = body;
+   const {
+  email,
+  businessName,
+  fullName,
+  industry,
+  location,
+  priceRange,
+  aiNumber,
+  supportNumber,
+  workingDays,
+  hours,
+  capabilities,
+  personalGoal,
+  setupType = "business",
+  userId,
+} = body;
+if (!userId) {
+  return NextResponse.json(
+    {
+      success: false,
+      message: "User ID missing.",
+    },
+    { status: 400 }
+  );
+}
 
     // ==========================================================
     // 3. CHECK FOR EXISTING BUSINESS
@@ -145,55 +155,71 @@ export async function POST(request) {
     // ==========================================================
     // 6. INSERT BUSINESS
     // ==========================================================
-    const { data, error } = await supabase
-      .from("businesses")
-      .insert([
-        {
-          business_id,
+    const { data, error } =
+  await supabase
+    .from("businesses")
+    .insert([
+      {
+        user_id: userId,
 
-          setup_type: setupType,
+        business_id,
 
-          business_name:
-            setupType === "business"
-              ? businessName
-              : fullName,
+        setup_type: setupType,
 
-          full_name: fullName,
+        business_name:
+          setupType === "business"
+            ? businessName
+            : fullName,
 
-          industry,
-          email,
-          location,
+        full_name: fullName,
 
-          price_range: priceRange,
+        industry,
+        email,
+        location,
 
-          services_description: body.serviceDescription,
+        price_range: priceRange,
 
-          ai_number: aiNumber,
+        services_description:
+          body.serviceDescription,
 
-          support_number: supportNumber,
+        ai_number: aiNumber,
 
-          working_days: workingDays,
+        support_number:
+          supportNumber,
 
-          hours,
+        working_days:
+          workingDays,
 
-          capabilities,
+        hours,
 
-          personal_goal: personalGoal,
+        capabilities,
 
-          // Subscription
-          subscription_plan: subscriptionPlan,
-          subscription_status: subscriptionStatus,
-          subscription_start: subscriptionStart,
-          subscription_expiry: subscriptionExpiry,
-          renewal_date: renewalDate,
+        personal_goal:
+          personalGoal,
 
-          whatsapp_connected: false,
+        subscription_plan:
+          subscriptionPlan,
 
-          status: "active",
-        },
-      ])
-      .select()
-      .single();
+        subscription_status:
+          subscriptionStatus,
+
+        subscription_start:
+          subscriptionStart,
+
+        subscription_expiry:
+          subscriptionExpiry,
+
+        renewal_date:
+          renewalDate,
+
+        whatsapp_connected:
+          false,
+
+        status: "active",
+      },
+    ])
+    .select()
+    .single();
 
     // ==========================================================
     // 7. HANDLE ERRORS

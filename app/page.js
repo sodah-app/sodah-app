@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import InstallationButton from "@/components/InstallationButton";
-
 /* =========================================
    IMAGE ASSETS
 ========================================= */
@@ -258,8 +256,6 @@ export default function Home() {
   >
     Start Free Trial
   </Link>
-
-  <InstallationButton />
 </div>
 
       {/* ================================= HERO ================================= */}

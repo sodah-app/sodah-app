@@ -1,92 +1,146 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
-export default function InstallationButton() {
-  const [prompt, setPrompt] = useState<any>(null);
-  const [open, setOpen] = useState(false);
+interface BeforeInstallPromptEvent
+  extends Event {
+  prompt: () => Promise<void>;
+
+  userChoice: Promise<{
+    outcome: string;
+    platform: string;
+  }>;
+}
+
+type InstallContextType = {
+  installApp: () => void;
+  canInstall: boolean;
+};
+
+const InstallContext =
+  createContext<InstallContextType>({
+    installApp: () => {},
+    canInstall: false,
+  });
+
+export function InstallProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [
+    deferredPrompt,
+    setDeferredPrompt,
+  ] =
+    useState<BeforeInstallPromptEvent | null>(
+      null
+    );
+
+  const [
+    canInstall,
+    setCanInstall,
+  ] = useState(false);
 
   useEffect(() => {
-    const handler = (e: any) => {
+    const handler = (
+      e: Event
+    ) => {
       e.preventDefault();
-      setPrompt(e);
+
+      const installEvent =
+        e as BeforeInstallPromptEvent;
+
+      console.log(
+        "INSTALL AVAILABLE"
+      );
+
+      setDeferredPrompt(
+        installEvent
+      );
+
+      setCanInstall(true);
     };
 
-    window.addEventListener("beforeinstallprompt", handler);
-
-    const timer = setTimeout(() => {
-      setOpen(true);
-    }, 5000);
+    window.addEventListener(
+      "beforeinstallprompt",
+      handler
+    );
 
     return () => {
-      clearTimeout(timer);
-      window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handler
+      );
     };
   }, []);
 
-  const install = async () => {
-    if (prompt) {
-      prompt.prompt();
-      await prompt.userChoice;
-      setPrompt(null);
-      setOpen(false);
-      return;
-    }
+  const installApp =
+    async () => {
+      // Firefox fallback
+      const isFirefox =
+        navigator.userAgent
+          .toLowerCase()
+          .includes("firefox");
 
-    alert(
-      "Desktop:\nChrome/Edge → ⋮ → Install Sodah.io\n\nAndroid:\n⋮ → Install App\n\niPhone:\nShare → Add to Home Screen"
-    );
-  };
+      if (
+        !deferredPrompt
+      ) {
+        if (isFirefox) {
+          alert(
+            "Firefox does not support automatic installation.\n\nUse:\nMenu → Install"
+          );
+
+          return;
+        }
+
+        alert(
+          "Install prompt is not ready yet."
+        );
+
+        return;
+      }
+
+      try {
+        await deferredPrompt.prompt();
+
+        const choice =
+          await deferredPrompt.userChoice;
+
+        console.log(
+          choice
+        );
+
+        setDeferredPrompt(
+          null
+        );
+
+        setCanInstall(
+          false
+        );
+      } catch (err) {
+        console.log(err);
+      }
+    };
 
   return (
-    <>
-      {/* Floating Button */}
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed right-5 top-1/2 -translate-y-1/2 z-[9999] rounded-full bg-gradient-to-r from-blue-600 to-green-500 px-5 py-3 text-white font-bold shadow-2xl hover:scale-105 transition"
-      >
-        📲 Install
-      </button>
+    <InstallContext.Provider
+      value={{
+        installApp,
+        canInstall,
+      }}
+    >
+      {children}
+    </InstallContext.Provider>
+  );
+}
 
-      {/* Popup */}
-      {open && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-
-          <div className="w-[380px] rounded-3xl bg-[#0B1F1A] p-8 text-white shadow-2xl border border-green-500">
-
-            <h2 className="text-3xl font-bold mb-2">
-              📲 Install Sodah.io
-            </h2>
-
-            <p className="text-gray-300 mb-6">
-              Install Sodah.io for a faster experience with notifications,
-              offline access and one-click launching.
-            </p>
-
-            <button
-              onClick={install}
-              className="w-full rounded-xl bg-gradient-to-r from-green-400 to-emerald-600 py-3 text-black font-bold hover:scale-105 transition"
-            >
-              Install Now
-            </button>
-
-            <div className="mt-6 text-sm text-gray-400">
-              <p>💻 Chrome / Edge → ⋮ → Install App</p>
-              <p>📱 Android → ⋮ → Install App</p>
-              <p>🍎 iPhone → Share → Add to Home Screen</p>
-            </div>
-
-            <button
-              onClick={() => setOpen(false)}
-              className="mt-6 w-full text-gray-400 hover:text-white"
-            >
-              Maybe Later
-            </button>
-
-          </div>
-
-        </div>
-      )}
-    </>
+export function useInstall() {
+  return useContext(
+    InstallContext
   );
 }

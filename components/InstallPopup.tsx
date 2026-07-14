@@ -1,74 +1,109 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useInstall } from "./InstallationButton";
 
 export default function InstallPopup() {
-  const [prompt, setPrompt] = useState<any>(null);
-  const [open, setOpen] = useState(false);
+  const { installApp, canInstall } =
+    useInstall();
 
-  useEffect(() => {
-    const handler = (e: any) => {
-      e.preventDefault();
-      setPrompt(e);
-
-      if (!localStorage.getItem("sodah-install-popup")) {
-        setTimeout(() => setOpen(true), 5000);
-      }
-    };
-
-    window.addEventListener("beforeinstallprompt", handler);
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handler);
-    };
-  }, []);
-
-  const install = async () => {
-    if (!prompt) return;
-
-    prompt.prompt();
-    await prompt.userChoice;
-
-    localStorage.setItem("sodah-install-popup", "yes");
-    setOpen(false);
-  };
-
-  const later = () => {
-    localStorage.setItem("sodah-install-popup", "yes");
-    setOpen(false);
-  };
+  const [open, setOpen] =
+    useState(true);
 
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="w-[420px] rounded-2xl bg-white p-8 shadow-xl">
+  const isFirefox =
+    typeof navigator !== "undefined" &&
+    navigator.userAgent.includes(
+      "Firefox"
+    );
 
-        <h2 className="text-2xl font-bold">
+  return (
+    <div
+      className="
+      fixed inset-0
+      bg-black/60
+      flex items-center
+      justify-center
+      z-[99999]
+      px-4
+    "
+    >
+      <div
+        className="
+        bg-white
+        p-6
+        rounded-2xl
+        w-full
+        max-w-[340px]
+        text-center
+      "
+      >
+        <div className="text-5xl mb-4">
+          📲
+        </div>
+
+        <h2 className="font-bold text-2xl">
           Install Sodah
         </h2>
 
-        <p className="mt-4 text-gray-600">
-          Install Sodah for a faster, full-screen experience with one-click access from your desktop or phone.
-        </p>
+        {isFirefox ? (
+          <>
+            <p className="mt-3 text-gray-600">
+              Firefox does not support
+              automatic installation.
+            </p>
 
-        <div className="mt-8 flex gap-4">
+            <p className="mt-2 text-sm text-gray-500">
+              Use:
+              <br />
+              ☰ Menu → Install
+            </p>
+          </>
+        ) : (
+          <p className="mt-3 text-gray-600">
+            Install the app for
+            faster access.
+          </p>
+        )}
 
-          <button
-            onClick={install}
-            className="flex-1 rounded-xl bg-[#0B1F1A] py-3 text-white"
-          >
-            Install
-          </button>
+        {!isFirefox &&
+          canInstall && (
+            <button
+              onClick={
+                installApp
+              }
+              className="
+              mt-6
+              bg-green-500
+              text-white
+              px-6
+              py-3
+              rounded-xl
+              w-full
+            "
+            >
+              Install App
+            </button>
+          )}
 
-          <button
-            onClick={later}
-            className="flex-1 rounded-xl border py-3"
-          >
-            Maybe Later
-          </button>
-
-        </div>
+        <button
+          onClick={() =>
+            setOpen(false)
+          }
+          className="
+            mt-3
+            border
+            border-gray-300
+            px-6
+            py-3
+            rounded-xl
+            w-full
+            hover:bg-gray-100
+          "
+        >
+          Close
+        </button>
       </div>
     </div>
   );

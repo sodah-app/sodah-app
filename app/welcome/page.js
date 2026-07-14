@@ -3,16 +3,20 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import WelcomeCompleteModal from "@/components/WelcomeCompleteModal";
-
+import { getCurrentUser } from "@/lib/currentUser";
 export default function WelcomePage() {
   const router = useRouter();
   const [showSuccess, setShowSuccess] = useState(false);
 
   const [isMobile, setIsMobile] = useState(false);
 
-  const [user, setUser] = useState({
-    fullName: "",
-  });
+ const [user, setUser] = useState({
+  fullName: "",
+  email: "",
+  phone: "",
+  businessId: "",
+  businessName: "",
+});
 
   const [bgIndex, setBgIndex] = useState(0);
 
@@ -185,22 +189,30 @@ useEffect(() => {
      USER + SUBSCRIPTION
   ========================== */
 
- useEffect(() => {
+useEffect(() => {
   const loadUser = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const auth = await getCurrentUser();
 
-    if (!user) {
+    if (!auth.authenticated) {
       router.push("/");
       return;
     }
 
     setUser({
       fullName:
-        user.user_metadata?.full_name ||
-        user.email ||
+        auth.profile.fullName ||
+        auth.profile.email?.split("@")[0] ||
         "User",
+
+      email: auth.profile.email,
+
+      phone: auth.profile.phone,
+
+      businessId:
+        auth.business?.business_id || "",
+
+      businessName:
+        auth.business?.business_name || "",
     });
   };
 

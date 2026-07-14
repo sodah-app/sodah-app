@@ -102,24 +102,29 @@ export default function AuthPage() {
   };
 
   // GOOGLE LOGIN
- const handleGoogleLogin = async () => {
+const handleGoogleLogin = async () => {
   try {
     setLoading(true);
 
-    const { error } =
+    const { data, error } =
       await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/welcome`,
+          skipBrowserRedirect: true,
         },
       });
 
-    if (error) {
-      throw error;
+    if (error) throw error;
+
+    if (data?.url) {
+      window.open(
+        data.url,
+        "_self"
+      );
     }
   } catch (error) {
     console.error(error);
-
     triggerError("Google login failed.");
     setLoading(false);
   }
@@ -158,19 +163,23 @@ export default function AuthPage() {
 
 // LOGIN
 if (isLogin) {
-  const {
-    data,
-    error,
-  } = await supabase.auth.signInWithPassword({
-    email: form.email,
-    password: form.password,
-  });
+ const { data, error } = await supabase.auth.signUp({
+  email: form.email,
+  password: form.password,
+  options: {
+    data: {
+      full_name: form.fullName,
+      phone: form.phone,
+    },
+  },
+});
 
-  if (error) {
-    triggerError(error.message);
-    return;
-  }
+console.log("SIGNUP RESULT:", data);
 
+if (error) {
+  triggerError(error.message);
+  return;
+}
   triggerSuccess("Login successful!");
 
   setTimeout(() => {
@@ -181,10 +190,7 @@ if (isLogin) {
 
         // REGISTER
         else {
-       const {
-  data,
-  error,
-} = await supabase.auth.signUp({
+       const { data, error } = await supabase.auth.signUp({
   email: form.email,
   password: form.password,
   options: {
@@ -200,9 +206,46 @@ if (error) {
   return;
 }
 
-triggerSuccess(
-  "Account created successfully!"
-);
+// Wait until Supabase returns the user
+const user = data.user;
+
+if (user) {
+  const businessId =
+    "BIZ-" + Date.now();
+
+  const { error: businessError } =
+    await supabase
+      .from("businesses")
+      .insert({
+        business_id: businessId,
+        user_id: user.id,
+        business_name: form.fullName,
+      });
+
+  if (businessError) {
+    triggerError(businessError.message);
+    return;
+  }
+}
+
+// Create business automatically
+const { data: sessionData } = await supabase.auth.getSession();
+
+if (sessionData?.session?.user) {
+  const user = sessionData.session.user;
+
+  await supabase
+    .from("businesses")
+    .insert({
+      user_id: user.id,
+      email: user.email,
+      owner_name: form.fullName,
+      phone: form.phone,
+      business_name: `${form.fullName}'s Business`,
+    });
+}
+
+triggerSuccess("Account created successfully!");
 
 setForm({
   fullName: "",

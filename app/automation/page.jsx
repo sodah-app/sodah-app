@@ -2,6 +2,7 @@
 import ResponsiveContainer from "../../components/ui/ResponsiveContainer";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 /* -------------------------------------------------------------------------- */
 /* COUNTRY LIST                                                                */
@@ -412,7 +413,15 @@ useEffect(() => {
        STEP 1: SAVE TO YOUR INTERNAL API (SUPABASE)
        This prevents duplicate saves and returns business_id.
     ================================================================= */
+    const {
+  data: { user },
+} = await supabase.auth.getUser();
+
+if (!user) {
+  throw new Error("User not logged in.");
+}
     const apiPayload = {
+    userId: user.id,
       setupType: form.setupType,
 
       // Personal fields
@@ -627,6 +636,13 @@ return (
             </div>
           </div>
         </div>
+       
+         <button
+  onClick={() => router.push("/welcome")}
+  className="mt-8 w-14 h-14 rounded-2xl bg-white/10 border border-white/10 backdrop-blur-xl flex items-center justify-center text-white text-2xl hover:bg-white/20 hover:scale-105 transition-all duration-300"
+>
+  ←
+</button>
 
         {/* FOOTER */}
         <div className="bg-[#031d18] p-4 rounded-xl text-sm leading-7">

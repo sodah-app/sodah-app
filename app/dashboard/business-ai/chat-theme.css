@@ -1,0 +1,85 @@
+:root {
+  --chat--color-primary: #8b5cf6;
+  --chat--color-primary-shade-50: #7c3aed;
+
+  --chat--header-background: #020617;
+
+  --chat--message--user--background: #8b5cf6;
+  --chat--message--user--color: #ffffff;
+
+  --chat--message--bot--background: #0f172a;
+  --chat--message--bot--color: #ffffff;
+
+  --chat--border-radius: 20px;
+}
+
+/* Full screen */
+.n8n-chat-layout {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Header */
+.n8n-chat-header {
+  background: #020617 !important;
+  border-bottom: 1px solid #1e293b;
+}
+
+.n8n-chat-header h1 {
+  color: white !important;
+}
+
+/* Chat background */
+.n8n-chat-body {
+  background: #020617 !important;
+}
+
+/* Bot messages */
+.n8n-chat-message--bot {
+  background: #0f172a !important;
+  color: white !important;
+  border: 1px solid #1e293b;
+}
+
+/* User messages */
+.n8n-chat-message--user {
+  background: linear-gradient(
+    to right,
+    #8b5cf6,
+    #3b82f6
+  ) !important;
+
+  color: white !important;
+}
+
+/* Input */
+.n8n-chat-input {
+  background: #0f172a !important;
+  color: white !important;
+  border-top: 1px solid #1e293b;
+}
+
+/* Textbox */
+.n8n-chat-input textarea {
+  color: white !important;
+}
+
+/* Remove floating button */
+.n8n-chat-launcher {
+  display: none !important;
+}
+
+/* Welcome screen */
+.n8n-chat-welcome {
+  background: #020617 !important;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 20px;
+}

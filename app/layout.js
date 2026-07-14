@@ -1,29 +1,50 @@
 import "./globals.css";
 import Providers from "./providers";
+
 import RegisterSW from "@/components/RegisterSW";
 import InstallPopup from "@/components/InstallPopup";
 
+import {
+  InstallProvider,
+} from "@/components/InstallationButton";
+
 export const metadata = {
   title: "Sodah",
-  description: "AI-powered WhatsApp Business Automation",
 
-  manifest: "/manifest.json",
+  description:
+    "AI-powered WhatsApp Business Automation",
 
-  themeColor: "#0B1F1A",
+  manifest:
+    "/manifest.json",
 
   icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    icon:
+      "/icon-192.png",
+
+    apple:
+      "/apple-touch-icon.png",
   },
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({
+  children,
+}) {
   return (
     <html lang="en">
       <body className="bg-white text-black">
+
         <RegisterSW />
-        <InstallPopup />
-        <Providers>{children}</Providers>
+
+        <InstallProvider>
+
+          <InstallPopup />
+
+          <Providers>
+            {children}
+          </Providers>
+
+        </InstallProvider>
+
       </body>
     </html>
   );
