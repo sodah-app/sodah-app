@@ -5,6 +5,35 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+const detectRestrictedBrowser = () => {
+  if (typeof window === "undefined")
+    return false;
+
+  const ua =
+    navigator.userAgent.toLowerCase();
+
+  const isInApp =
+    ua.includes("instagram") ||
+    ua.includes("fban") ||
+    ua.includes("fbav") ||
+    ua.includes("whatsapp") ||
+    ua.includes("tiktok") ||
+    ua.includes("messenger") ||
+    ua.includes("telegram") ||
+    ua.includes("linkedin");
+
+  const isStandalone =
+    window.matchMedia(
+      "(display-mode: standalone)"
+    ).matches ||
+    window.navigator.standalone === true;
+
+  return (
+    isInApp || isStandalone
+  );
+};
+
+
 export default function AuthPage() {
   const router = useRouter();
 
@@ -24,6 +53,9 @@ export default function AuthPage() {
 
   const [shake, setShake] =
     useState(false);
+  
+ const [hideGoogle, setHideGoogle] =
+  useState(false);
 
   const [form, setForm] = useState({
     fullName: "",
@@ -57,6 +89,14 @@ export default function AuthPage() {
     return () =>
       clearInterval(interval);
   }, []);
+
+
+useEffect(() => {
+  setHideGoogle(
+    detectRestrictedBrowser()
+  );
+}, []);
+
 
   // ERROR ALERT
   const triggerError = (message) => {
@@ -104,8 +144,14 @@ export default function AuthPage() {
   // GOOGLE LOGIN
 const handleGoogleLogin = async () => {
   try {
-    setLoading(true);
+    if (hideGoogle) {
+  triggerError(
+    "Open Sodah.io in Safari or Chrome to use Google Sign-In."
+  );
+  return;
+}
 
+setLoading(true);
     const { data, error } =
       await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -118,16 +164,16 @@ const handleGoogleLogin = async () => {
     if (error) throw error;
 
     if (data?.url) {
-      window.open(
-        data.url,
-        "_self"
-      );
+     window.location.href =
+  data.url;
+
     }
-  } catch (error) {
-    console.error(error);
-    triggerError("Google login failed.");
-    setLoading(false);
-  }
+ } catch (error) {
+  console.error(error);
+  triggerError("Google login failed.");
+} finally {
+  setLoading(false);
+}
 };
   // LOGIN / REGISTER
   const handleSubmit =
@@ -163,28 +209,26 @@ const handleGoogleLogin = async () => {
 
 // LOGIN
 if (isLogin) {
- const { data, error } = await supabase.auth.signUp({
-  email: form.email,
-  password: form.password,
-  options: {
-    data: {
-      full_name: form.fullName,
-      phone: form.phone,
-    },
-  },
-});
+  const { data, error } =
+    await supabase.auth.signInWithPassword({
+      email: form.email,
+      password: form.password,
+    });
 
-console.log("SIGNUP RESULT:", data);
+  if (error) {
+    triggerError(error.message);
+    return;
+  }
 
-if (error) {
-  triggerError(error.message);
-  return;
-}
-  triggerSuccess("Login successful!");
+  triggerSuccess(
+    "Login successful!"
+  );
 
   setTimeout(() => {
     router.push("/welcome");
   }, 1200);
+
+  return;
 }
 
 
@@ -355,20 +399,36 @@ setTimeout(() => {
           </div>
 
           {/* GOOGLE */}
-          <button
-            onClick={
-              handleGoogleLogin
-            }
-            disabled={loading}
-            className="w-full bg-white text-black py-3 sm:py-4 rounded-2xl font-semibold flex items-center justify-center gap-3 hover:scale-[1.02] transition-all duration-300 text-sm sm:text-base"
-          >
-            <img
-              src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg"
-              className="w-5 h-5"
-            />
+          {/* GOOGLE */}
 
-            Continue with Google
-          </button>
+{!hideGoogle && (
+  <button
+    onClick={handleGoogleLogin}
+    disabled={loading}
+    className="w-full bg-white text-black py-3 sm:py-4 rounded-2xl font-semibold flex items-center justify-center gap-3 hover:scale-[1.02] transition-all duration-300 text-sm sm:text-base"
+  >
+    <img
+      src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg"
+      className="w-5 h-5"
+      alt="Google"
+    />
+
+    Continue with Google
+  </button>
+)}
+
+{hideGoogle && (
+  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 text-center mb-5">
+    <p className="text-yellow-300 text-sm">
+      Google Sign-In isn't available in this app browser.
+
+      Please continue with Email,
+      or open Sodah.io in Safari or Chrome.
+    </p>
+  </div>
+)}
+
+ 
 
           {/* DIVIDER */}
           <div className="flex items-center gap-3 my-5">
