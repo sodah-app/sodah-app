@@ -182,58 +182,103 @@ export default function Home() {
 
       {/* ================================= HEADER ================================= */}
 
-    <header className="fixed top-0 left-0 w-full z-50 backdrop-blur-xl bg-[#03130f]/90 border-b border-white/10">
+   <header
+  className="
+  fixed
+  top-0
+  left-0
+  w-full
+  z-50
+  bg-[#03130f]/80
+  backdrop-blur-xl
+  border-b
+  border-white/10
+"
+>
+  <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
 
-  <div className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-4 md:py-5 flex items-center justify-between">
-
-    {/* LOGO */}
-    <div className="flex items-center gap-2 md:gap-3">
+    <div className="flex items-center gap-4">
 
       <img
         src="https://res.cloudinary.com/djnjhphf5/image/upload/v1779814901/sodah.io_logo_z6xflv.png"
-        alt="Sodah"
-        className="w-10 h-10 md:w-12 md:h-12 object-contain"
+        className="w-14 h-14"
       />
 
       <div>
-        <h1 className="font-bold text-base md:text-lg lg:text-xl">
-          sodah.io
+
+        <h1 className="text-2xl font-black">
+          Sodah.io
         </h1>
 
-        <p className="text-[10px] md:text-xs text-gray-400">
+        <p className="text-xs text-gray-400">
           AI WhatsApp Automation
         </p>
 
-
-
-
       </div>
+
     </div>
 
-          <nav className="hidden md:flex items-center gap-8 text-sm text-gray-300">
+    <nav className="hidden lg:flex gap-8 text-gray-300">
 
-            <a href="#features" className="hover:text-white transition">
-              Features
-            </a>
+      <a href="#features">
+        Features
+      </a>
 
-            <a href="#demo" className="hover:text-white transition">
-              Demo
-            </a>
+      <a href="#demo">
+        Demo
+      </a>
 
-            <a href="#testimonials" className="hover:text-white transition">
-              Reviews
-            </a>
+      <a href="#reviews">
+        Reviews
+      </a>
 
-            <a href="#contact" className="hover:text-white transition">
-              Contact
-            </a>
+      <a href="#contact">
+        Contact
+      </a>
 
-          </nav>
+    </nav>
 
-        </div>
+    <div className="hidden xl:flex items-center gap-5">
 
-      </header>
+      <img
+        src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
+        className="w-7"
+      />
 
+      <img
+        src="https://upload.wikimedia.org/wikipedia/commons/8/87/Google_Chrome_icon_%282011%29.png"
+        className="w-7"
+      />
+
+      <img
+        src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg"
+        className="h-6"
+      />
+
+      <button
+       onClick={() =>
+  document.dispatchEvent(
+    new Event(
+      "open-install-popup"
+    )
+  )
+}
+        className="
+          px-5
+          py-3
+          rounded-xl
+          bg-green-500
+          text-black
+          font-bold
+        "
+      >
+        📲 Download App
+      </button>
+
+    </div>
+
+  </div>
+</header>
       {/* ================================= FLOATING FREE TRIAL ================================= */}
 
       <div className="fixed bottom-9 left-1/2 -translate-x-1/2 z-30">
@@ -259,108 +304,255 @@ export default function Home() {
 </div>
 
       {/* ================================= HERO ================================= */}
+<section className="relative min-h-screen pt-32 overflow-hidden">
 
-      <section className="relative min-h-screen flex items-center overflow-hidden pt-24">
+  {/* BACKGROUND */}
 
-        <div className="absolute inset-0">
+  <div className="absolute inset-0">
 
-          {SLIDES.map((src, index) => (
-            <img
-              key={index}
-              src={src}
-              alt={`Slide ${index + 1}`}
-              className={`absolute inset-0 w-full h-full object-cover transition-all duration-[2000ms]
-              ${
-                currentSlide === index
-                  ? "opacity-100 scale-105"
-                  : "opacity-0 scale-100"
-              }`}
-            />
-          ))}
+    {SLIDES.map((src, index) => (
+      <img
+        key={index}
+        src={src}
+        className={`
+          absolute inset-0
+          w-full h-full
+          object-cover
+          duration-[2000ms]
+          transition-all
+          ${
+            currentSlide === index
+              ? "opacity-100 scale-105"
+              : "opacity-0 scale-100"
+          }
+        `}
+      />
+    ))}
 
-          <div className="absolute inset-0 bg-gradient-to-r from-[#03130f]/95 via-[#03130f]/80 to-[#03130f]/90" />
+    <div className="absolute inset-0 bg-[#03130f]/85 backdrop-blur-sm" />
+
+  </div>
+
+  <div className="relative z-10 max-w-7xl mx-auto px-6">
+
+    <div className="grid lg:grid-cols-2 gap-20 items-center min-h-[85vh]">
+
+      {/* LEFT */}
+
+      <div>
+
+        <div
+          className="
+          inline-flex
+          items-center
+          gap-2
+          px-5
+          py-3
+          rounded-full
+          bg-green-500/10
+          border
+          border-green-500/30
+          text-green-300
+          mb-8
+        "
+        >
+          🚀 Trusted AI Automation Platform
+        </div>
+
+        <h1
+          className="
+          text-5xl
+          md:text-7xl
+          font-black
+          leading-[1.05]
+        "
+        >
+          Automate Your
+
+          <span className="block text-green-400">
+            WhatsApp Business
+          </span>
+
+          With AI.
+        </h1>
+
+        <p
+          className="
+          mt-8
+          text-xl
+          text-gray-300
+          leading-relaxed
+          max-w-2xl
+        "
+        >
+          AI-powered customer support,
+          instant replies,
+          bookings,
+          reminders and lead conversion
+          directly on WhatsApp.
+        </p>
+
+        {/* BUTTONS */}
+
+        <div className="flex flex-wrap gap-5 mt-10">
+
+          <button
+            onClick={goToSignup}
+            className="
+              px-8 py-4
+              rounded-2xl
+              bg-green-500
+              text-black
+              font-black
+              text-lg
+              hover:scale-105
+              transition
+              shadow-[0_0_40px_rgba(34,197,94,.4)]
+            "
+          >
+            🚀 Start Free Trial
+          </button>
+
+          <button
+           onClick={() =>
+  document.dispatchEvent(
+    new Event(
+      "open-install-popup"
+    )
+  )
+}
+            className="
+              px-8 py-4
+              rounded-2xl
+              border
+              border-white/20
+              bg-white/5
+              font-bold
+              hover:bg-white/10
+            "
+          >
+            📲 Download App
+          </button>
 
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 py-20 w-full">
+        {/* TRUSTED */}
 
-          <div className="grid md:grid-cols-2 gap-10 items-center">
+        <div className="mt-12">
 
-            <div>
+          <p className="text-gray-400 mb-5">
+            Trusted Technologies
+          </p>
 
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-400/20 text-green-300 text-sm mb-6">
-                🚀 Trusted AI Automation Platform
-              </div>
+          <div className="flex flex-wrap gap-6 items-center">
 
-              <h1 className="text-4xl md:text-7xl font-black leading-tight">
-
-                Automate Your{" "}
-
-                <span className="text-green-400">
-                  WhatsApp
-                </span>
-
-                <br />
-
-                Grow Your Business.
-
-              </h1>
-
-              <p className="mt-6 text-base md:text-lg text-gray-300 max-w-2xl leading-relaxed">
-
-                AI-powered replies, smart booking, automated follow-ups,
-                and instant lead conversion for modern businesses.
-
-              </p>
-
-              <div className="flex flex-wrap gap-3 mt-8">
-
-                {[
-                  "⚡ Instant Replies",
-                  "📅 Smart Booking",
-                  "🌍 Multi-language",
-                  "📊 Analytics Dashboard",
-                ].map((item) => (
-                  <span
-                    key={item}
-                    className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm hover:scale-105 transition"
-                  >
-                    {item}
-                  </span>
-                ))}
-
-              </div>
-
-            </div>
-
-            {/* HERO IMAGE */}
-
-            <div className="relative md:pl-0">
-
-              <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-[0_0_80px_rgba(34,197,94,0.2)] group">
-
-                 <img
-            src="https://res.cloudinary.com/djnjhphf5/image/upload/v1779811920/WhatsApp_Image_2026-05-26_at_7.58.55_PM_sw7wpc.jpg"
-            alt="AI Automation"
-            className="rounded-3xl shadow-2xl border border-white/10 transition duration-700 hover:scale-105"
-          />
-
-
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-
-              </div>
-
-              <div className="absolute -bottom-5 left-4 bg-green-400 text-black px-5 py-3 rounded-2xl font-bold shadow-2xl animate-bounce">
-                +40% More Bookings
-              </div>
-
-            </div>
+            {TRUSTED_LOGOS.map((logo) => (
+              <img
+                key={logo.name}
+                src={logo.src}
+                alt={logo.name}
+                className={`
+                  h-8
+                  opacity-80
+                  ${
+                    logo.invert
+                      ? "invert"
+                      : ""
+                  }
+                `}
+              />
+            ))}
 
           </div>
 
         </div>
 
-      </section>
+      </div>
+
+      {/* RIGHT */}
+
+      <div className="relative">
+
+        <div
+          className="
+          rounded-[35px]
+          overflow-hidden
+          border
+          border-white/10
+          shadow-[0_0_100px_rgba(34,197,94,.2)]
+        "
+        >
+          <img
+            src="https://res.cloudinary.com/djnjhphf5/image/upload/v1779811920/WhatsApp_Image_2026-05-26_at_7.58.55_PM_sw7wpc.jpg"
+            className="
+              w-full
+              rounded-[35px]
+              hover:scale-105
+              duration-700
+            "
+          />
+        </div>
+
+        {/* CARD */}
+
+        <div
+          className="
+          absolute
+          -left-8
+          bottom-10
+          bg-green-500
+          text-black
+          rounded-2xl
+          px-6
+          py-4
+          font-black
+          shadow-2xl
+        "
+        >
+          📈 +40% More Bookings
+        </div>
+
+        <div
+          className="
+          absolute
+          top-10
+          -right-10
+          bg-[#071d17]
+          border
+          border-green-500/30
+          rounded-2xl
+          px-6
+          py-4
+          backdrop-blur-xl
+        "
+        >
+          🤖 24/7 AI Assistant
+        </div>
+
+        <div
+          className="
+          absolute
+          top-1/2
+          -left-10
+          bg-[#071d17]
+          border
+          border-white/10
+          rounded-2xl
+          px-6
+          py-4
+          backdrop-blur-xl
+        "
+        >
+          ⚡ +60% Lead Conversion
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
 
       {/* ================================= METRICS ================================= */}
 

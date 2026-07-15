@@ -18,13 +18,13 @@ interface BeforeInstallPromptEvent
 }
 
 type InstallContextType = {
-  installApp: () => void;
+  installApp: () => Promise<void>;
   canInstall: boolean;
 };
 
 const InstallContext =
   createContext<InstallContextType>({
-    installApp: () => {},
+    installApp: async () => {},
     canInstall: false,
   });
 
@@ -47,6 +47,22 @@ export function InstallProvider({
   ] = useState(false);
 
   useEffect(() => {
+    // Already installed
+    const installed =
+      window.matchMedia(
+        "(display-mode: standalone)"
+      ).matches;
+
+    if (installed) {
+      console.log(
+        "APP ALREADY INSTALLED"
+      );
+
+      setCanInstall(false);
+
+      return;
+    }
+
     const handler = (
       e: Event
     ) => {
@@ -57,6 +73,10 @@ export function InstallProvider({
 
       console.log(
         "INSTALL AVAILABLE"
+      );
+
+      console.log(
+        navigator.userAgent
       );
 
       setDeferredPrompt(
@@ -81,50 +101,94 @@ export function InstallProvider({
 
   const installApp =
     async () => {
-      // Firefox fallback
-      const isFirefox =
-        navigator.userAgent
-          .toLowerCase()
-          .includes("firefox");
+      const ua =
+        navigator.userAgent.toLowerCase();
 
+      const isFirefox =
+        ua.includes(
+          "firefox"
+        ) &&
+        !ua.includes(
+          "chrome"
+        ) &&
+        !ua.includes(
+          "edg"
+        );
+
+      // Automatic prompt available
       if (
-        !deferredPrompt
+        deferredPrompt
       ) {
-        if (isFirefox) {
-          alert(
-            "Firefox does not support automatic installation.\n\nUse:\nMenu → Install"
+        try {
+          await deferredPrompt.prompt();
+
+          const choice =
+            await deferredPrompt.userChoice;
+
+          console.log(
+            "INSTALL RESULT",
+            choice
+          );
+
+          if (
+            choice.outcome ===
+            "accepted"
+          ) {
+            localStorage.setItem(
+              "sodah-installed",
+              "true"
+            );
+
+            localStorage.setItem(
+              "sodah-install-popup",
+              "true"
+            );
+          }
+
+          setDeferredPrompt(
+            null
+          );
+
+          setCanInstall(
+            false
           );
 
           return;
+        } catch (err) {
+          console.log(
+            "INSTALL ERROR",
+            err
+          );
         }
+      }
 
+      // Firefox fallback
+      if (isFirefox) {
         alert(
-          "Install prompt is not ready yet."
+          "Firefox does not support automatic installation.\n\nUse:\n☰ Menu → Install"
         );
 
         return;
       }
 
-      try {
-        await deferredPrompt.prompt();
-
-        const choice =
-          await deferredPrompt.userChoice;
-
-        console.log(
-          choice
+      // iPhone / Safari
+      const isIOS =
+        /iphone|ipad|ipod/i.test(
+          ua
         );
 
-        setDeferredPrompt(
-          null
+      if (isIOS) {
+        alert(
+          "To install Sodah:\n\nTap Share (⬆)\nThen tap:\nAdd to Home Screen"
         );
 
-        setCanInstall(
-          false
-        );
-      } catch (err) {
-        console.log(err);
+        return;
       }
+
+      // Android fallback
+      alert(
+        "To install Sodah:\n\nOpen browser menu (⋮)\nThen choose:\nAdd to Home Screen\nor\nInstall App"
+      );
     };
 
   return (

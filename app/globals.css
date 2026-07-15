@@ -1,1 +1,17 @@
 @import "tailwindcss";
+
+@keyframes popup {
+  0% {
+    opacity: 0;
+    transform:
+      scale(0.92)
+      translateY(15px);
+  }
+
+  100% {
+    opacity: 1;
+    transform:
+      scale(1)
+      translateY(0);
+  }
+}

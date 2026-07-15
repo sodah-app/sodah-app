@@ -1,108 +1,267 @@
 "use client";
 
-import { useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
+
 import { useInstall } from "./InstallationButton";
 
 export default function InstallPopup() {
-  const { installApp, canInstall } =
-    useInstall();
+  const {
+    installApp,
+    canInstall,
+  } = useInstall();
 
   const [open, setOpen] =
-    useState(true);
+    useState(false);
+
+  const [isFirefox, setIsFirefox] =
+    useState(false);
+
+  // ==========================
+  // INITIAL LOAD
+  // ==========================
+  useEffect(() => {
+    const installed =
+      window.matchMedia(
+        "(display-mode: standalone)"
+      ).matches;
+
+    const dismissed =
+      localStorage.getItem(
+        "sodah-install-popup"
+      );
+
+    const ua =
+      navigator.userAgent.toLowerCase();
+
+    const firefox =
+      ua.includes("firefox") &&
+      !ua.includes("chrome") &&
+      !ua.includes("edg");
+
+    setIsFirefox(firefox);
+
+    if (installed) return;
+
+    if (!dismissed) {
+      setTimeout(() => {
+        setOpen(true);
+      }, 1200);
+    }
+  }, []);
+
+  // ==========================
+  // OPEN FROM DOWNLOAD BUTTON
+  // ==========================
+  useEffect(() => {
+    const openPopup = () => {
+      const installed =
+        window.matchMedia(
+          "(display-mode: standalone)"
+        ).matches;
+
+      if (installed) return;
+
+      setOpen(true);
+    };
+
+    document.addEventListener(
+      "open-install-popup",
+      openPopup
+    );
+
+    return () => {
+      document.removeEventListener(
+        "open-install-popup",
+        openPopup
+      );
+    };
+  }, []);
+
+  // ==========================
+  // CLOSE
+  // ==========================
+  const closePopup = () => {
+    localStorage.setItem(
+      "sodah-install-popup",
+      "true"
+    );
+
+    setOpen(false);
+  };
+
+  // ==========================
+  // INSTALL
+  // ==========================
+  const handleInstall =
+    async () => {
+      if (isFirefox) {
+        alert(
+          "Firefox users:\n\n☰ Menu → Install"
+        );
+
+        return;
+      }
+
+      if (!canInstall) {
+        alert(
+          "Installation is not ready yet.\n\nPlease wait a few seconds and try again."
+        );
+
+        return;
+      }
+
+      try {
+        await installApp();
+
+        localStorage.setItem(
+          "sodah-install-popup",
+          "true"
+        );
+
+        setOpen(false);
+      } catch (err) {
+        console.log(err);
+      }
+    };
 
   if (!open) return null;
-
-  const isFirefox =
-    typeof navigator !== "undefined" &&
-    navigator.userAgent.includes(
-      "Firefox"
-    );
 
   return (
     <div
       className="
       fixed inset-0
-      bg-black/60
+      bg-black/65
+      backdrop-blur-sm
       flex items-center
       justify-center
-      z-[99999]
+      z-[999999]
       px-4
     "
     >
       <div
         className="
+        relative
         bg-white
-        p-6
-        rounded-2xl
+        rounded-[28px]
         w-full
-        max-w-[340px]
+        max-w-[290px]
+        p-6
         text-center
+        shadow-[0_25px_80px_rgba(0,0,0,0.45)]
+        animate-[popup_.35s_cubic-bezier(0.22,1,0.36,1)]
       "
       >
-        <div className="text-5xl mb-4">
+        {/* CLOSE */}
+
+        <button
+          onClick={closePopup}
+          className="
+          absolute
+          top-4
+          right-4
+          text-gray-400
+          hover:text-gray-700
+          text-lg
+          transition
+        "
+        >
+          ✕
+        </button>
+
+        {/* ICON */}
+
+        <div className="text-5xl">
           📲
         </div>
 
-        <h2 className="font-bold text-2xl">
+        {/* TITLE */}
+
+        <h2
+          className="
+          mt-3
+          text-[30px]
+          font-bold
+          text-gray-900
+        "
+        >
           Install Sodah
         </h2>
 
-        {isFirefox ? (
-          <>
-            <p className="mt-3 text-gray-600">
-              Firefox does not support
-              automatic installation.
-            </p>
+        {/* DESCRIPTION */}
 
-            <p className="mt-2 text-sm text-gray-500">
-              Use:
-              <br />
-              ☰ Menu → Install
-            </p>
-          </>
-        ) : (
-          <p className="mt-3 text-gray-600">
-            Install the app for
-            faster access.
+        <p
+          className="
+          mt-3
+          text-gray-500
+          text-sm
+          leading-6
+        "
+        >
+          Get faster access,
+          app notifications and
+          a smoother experience.
+        </p>
+
+        {/* FIREFOX */}
+
+        {isFirefox && (
+          <p
+            className="
+            mt-3
+            text-xs
+            text-gray-400
+          "
+          >
+            Firefox users:
+            <br />
+            ☰ Menu → Install
           </p>
         )}
 
-        {!isFirefox &&
-          canInstall && (
-            <button
-              onClick={
-                installApp
-              }
-              className="
-              mt-6
-              bg-green-500
-              text-white
-              px-6
-              py-3
-              rounded-xl
-              w-full
-            "
-            >
-              Install App
-            </button>
-          )}
+        {/* INSTALL BUTTON */}
 
         <button
-          onClick={() =>
-            setOpen(false)
+          onClick={
+            handleInstall
           }
           className="
-            mt-3
-            border
-            border-gray-300
-            px-6
-            py-3
-            rounded-xl
-            w-full
-            hover:bg-gray-100
-          "
+          mt-6
+          w-full
+          py-3.5
+          rounded-2xl
+          bg-gradient-to-r
+          from-green-500
+          to-emerald-600
+          text-white
+          font-bold
+          text-base
+          shadow-lg
+          hover:scale-[1.03]
+          active:scale-[0.97]
+          transition
+        "
         >
-          Close
+          📲 Install App
+        </button>
+
+        {/* LATER */}
+
+        <button
+          onClick={
+            closePopup
+          }
+          className="
+          mt-3
+          text-sm
+          text-gray-400
+          hover:text-gray-700
+          transition
+        "
+        >
+          Maybe Later
         </button>
       </div>
     </div>
