@@ -28,9 +28,7 @@ const detectRestrictedBrowser = () => {
     ).matches ||
     window.navigator.standalone === true;
 
-  return (
-    isInApp || isStandalone
-  );
+  return  isInApp;
 };
 
 
@@ -152,14 +150,21 @@ const handleGoogleLogin = async () => {
 }
 
 setLoading(true);
-    const { data, error } =
-      await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/welcome`,
-          skipBrowserRedirect: true,
-        },
-      });
+    await supabase.auth.signOut();
+
+const { data, error } =
+  await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${window.location.origin}/welcome`,
+      skipBrowserRedirect: true,
+
+      queryParams: {
+        prompt: "select_account",
+        access_type: "offline",
+      },
+    },
+  });
 
     if (error) throw error;
 

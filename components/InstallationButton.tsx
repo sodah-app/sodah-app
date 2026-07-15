@@ -47,17 +47,14 @@ export function InstallProvider({
   ] = useState(false);
 
   useEffect(() => {
-    // Already installed
     const installed =
       window.matchMedia(
         "(display-mode: standalone)"
-      ).matches;
+      ).matches ||
+      (window.navigator as any)
+        .standalone;
 
     if (installed) {
-      console.log(
-        "APP ALREADY INSTALLED"
-      );
-
       setCanInstall(false);
 
       return;
@@ -73,10 +70,6 @@ export function InstallProvider({
 
       console.log(
         "INSTALL AVAILABLE"
-      );
-
-      console.log(
-        navigator.userAgent
       );
 
       setDeferredPrompt(
@@ -104,18 +97,105 @@ export function InstallProvider({
       const ua =
         navigator.userAgent.toLowerCase();
 
+      console.log(
+        "USER AGENT:",
+        ua
+      );
+
+      const isIOS =
+        /iphone|ipad|ipod/i.test(
+          ua
+        );
+
+      const isAndroid =
+        /android/i.test(
+          ua
+        );
+
       const isFirefox =
         ua.includes(
           "firefox"
         ) &&
         !ua.includes(
           "chrome"
-        ) &&
-        !ua.includes(
-          "edg"
         );
 
-      // Automatic prompt available
+      const isSafari =
+        /^((?!chrome|android).)*safari/i.test(
+          ua
+        );
+
+      const isFacebook =
+        ua.includes(
+          "fban"
+        ) ||
+        ua.includes(
+          "fbav"
+        ) ||
+        ua.includes(
+          "facebook"
+        );
+
+      const isInstagram =
+        ua.includes(
+          "instagram"
+        );
+
+      const isTikTok =
+        ua.includes(
+          "tiktok"
+        );
+
+      const isWhatsApp =
+        ua.includes(
+          "whatsapp"
+        );
+
+      const isTelegram =
+        ua.includes(
+          "telegram"
+        );
+
+      const isLinkedIn =
+        ua.includes(
+          "linkedin"
+        );
+
+      const isInAppBrowser =
+        isFacebook ||
+        isInstagram ||
+        isTikTok ||
+        isWhatsApp ||
+        isTelegram ||
+        isLinkedIn;
+
+      // -----------------------------
+      // Opened inside app browser
+      // -----------------------------
+      if (
+        isInAppBrowser
+      ) {
+        let message =
+          "To install Sodah, first open this page in your phone browser.\n\n";
+
+        if (isIOS) {
+          message +=
+            "Tap ⋯ or Share button\nThen select:\nOpen in Safari";
+        } else {
+          message +=
+            "Tap ⋯ menu\nThen select:\nOpen in Browser or Chrome";
+        }
+
+        alert(
+          message
+        );
+
+        return;
+      }
+
+      // -----------------------------
+      // Native install prompt
+      // -----------------------------
       if (
         deferredPrompt
       ) {
@@ -143,51 +223,67 @@ export function InstallProvider({
               "sodah-install-popup",
               "true"
             );
+
+            setCanInstall(
+              false
+            );
           }
 
           setDeferredPrompt(
             null
           );
 
-          setCanInstall(
-            false
-          );
-
           return;
         } catch (err) {
           console.log(
-            "INSTALL ERROR",
             err
           );
         }
       }
 
-      // Firefox fallback
+      // -----------------------------
+      // Firefox
+      // -----------------------------
       if (isFirefox) {
         alert(
-          "Firefox does not support automatic installation.\n\nUse:\n☰ Menu → Install"
+          "Firefox does not support automatic installation.\n\nTap ☰ Menu\nThen choose:\nInstall"
         );
 
         return;
       }
 
-      // iPhone / Safari
-      const isIOS =
-        /iphone|ipad|ipod/i.test(
-          ua
-        );
-
-      if (isIOS) {
+      // -----------------------------
+      // iPhone Safari
+      // -----------------------------
+      if (
+        isIOS &&
+        isSafari
+      ) {
         alert(
-          "To install Sodah:\n\nTap Share (⬆)\nThen tap:\nAdd to Home Screen"
+          "To install Sodah:\n\n1. Tap Share ⬆️\n2. Scroll down\n3. Tap 'Add to Home Screen'"
         );
 
         return;
       }
 
+      // -----------------------------
       // Android fallback
+      // -----------------------------
+      if (
+        isAndroid
+      ) {
+        alert(
+          "To install Sodah:\n\nTap ⋮ Menu\nThen choose:\nInstall App\nor\nAdd to Home Screen"
+        );
+
+        return;
+      }
+
+      // -----------------------------
+      // Desktop fallback
+      // -----------------------------
       alert(
-        "To install Sodah:\n\nOpen browser menu (⋮)\nThen choose:\nAdd to Home Screen\nor\nInstall App"
+        "Installation is not available right now.\n\nTry opening Sodah in Chrome or Edge."
       );
     };
 

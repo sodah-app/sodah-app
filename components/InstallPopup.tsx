@@ -8,10 +8,8 @@ import {
 import { useInstall } from "./InstallationButton";
 
 export default function InstallPopup() {
-  const {
-    installApp,
-    canInstall,
-  } = useInstall();
+  const { installApp } =
+    useInstall();
 
   const [open, setOpen] =
     useState(false);
@@ -22,6 +20,16 @@ export default function InstallPopup() {
   const [isIOS, setIsIOS] =
     useState(false);
 
+  const [
+    isInAppBrowser,
+    setIsInAppBrowser,
+  ] = useState(false);
+
+  const [
+    browserName,
+    setBrowserName,
+  ] = useState("");
+
   // ==========================
   // INITIAL LOAD
   // ==========================
@@ -29,7 +37,11 @@ export default function InstallPopup() {
     const installed =
       window.matchMedia(
         "(display-mode: standalone)"
-      ).matches;
+      ).matches ||
+      (window.navigator as any)
+        .standalone;
+
+    if (installed) return;
 
     const dismissed =
       localStorage.getItem(
@@ -50,15 +62,81 @@ export default function InstallPopup() {
       ) &&
       !ua.includes(
         "chrome"
-      ) &&
-      !ua.includes(
-        "edg"
       );
 
-    setIsIOS(ios);
-    setIsFirefox(firefox);
+    const facebook =
+      ua.includes("fban") ||
+      ua.includes("fbav") ||
+      ua.includes(
+        "facebook"
+      );
 
-    if (installed) return;
+    const instagram =
+      ua.includes(
+        "instagram"
+      );
+
+    const tiktok =
+      ua.includes(
+        "tiktok"
+      );
+
+    const whatsapp =
+      ua.includes(
+        "whatsapp"
+      );
+
+    const telegram =
+      ua.includes(
+        "telegram"
+      );
+
+    const linkedin =
+      ua.includes(
+        "linkedin"
+      );
+
+    let browser = "";
+
+    if (facebook)
+      browser = "Facebook";
+
+    else if (instagram)
+      browser = "Instagram";
+
+    else if (tiktok)
+      browser = "TikTok";
+
+    else if (whatsapp)
+      browser = "WhatsApp";
+
+    else if (telegram)
+      browser = "Telegram";
+
+    else if (linkedin)
+      browser = "LinkedIn";
+
+    const inApp =
+      facebook ||
+      instagram ||
+      tiktok ||
+      whatsapp ||
+      telegram ||
+      linkedin;
+
+    setIsIOS(ios);
+
+    setIsFirefox(
+      firefox
+    );
+
+    setIsInAppBrowser(
+      inApp
+    );
+
+    setBrowserName(
+      browser
+    );
 
     if (!dismissed) {
       setTimeout(() => {
@@ -68,14 +146,16 @@ export default function InstallPopup() {
   }, []);
 
   // ==========================
-  // OPEN FROM DOWNLOAD BUTTON
+  // OPEN FROM BUTTON
   // ==========================
   useEffect(() => {
     const openPopup = () => {
       const installed =
         window.matchMedia(
           "(display-mode: standalone)"
-        ).matches;
+        ).matches ||
+        (window.navigator as any)
+          .standalone;
 
       if (installed) return;
 
@@ -112,33 +192,6 @@ export default function InstallPopup() {
   // ==========================
   const handleInstall =
     async () => {
-      // iPhone / iPad
-      if (isIOS) {
-        alert(
-          "To install Sodah:\n\n1. Tap the Share button.\n2. Select 'Add to Home Screen'.\n3. Tap Add."
-        );
-
-        return;
-      }
-
-      // Firefox
-      if (isFirefox) {
-        alert(
-          "Firefox users:\n\n☰ Menu → Install"
-        );
-
-        return;
-      }
-
-      // Chrome install not ready
-      if (!canInstall) {
-        alert(
-          "Installation is not ready yet.\n\nPlease wait a few seconds and try again."
-        );
-
-        return;
-      }
-
       try {
         await installApp();
 
@@ -173,7 +226,7 @@ export default function InstallPopup() {
         bg-white
         rounded-[28px]
         w-full
-        max-w-[300px]
+        max-w-[320px]
         p-6
         text-center
         shadow-[0_25px_80px_rgba(0,0,0,0.45)]
@@ -183,16 +236,18 @@ export default function InstallPopup() {
         {/* CLOSE */}
 
         <button
-          onClick={closePopup}
+          onClick={
+            closePopup
+          }
           className="
-            absolute
-            top-4
-            right-4
-            text-gray-400
-            hover:text-gray-700
-            text-lg
-            transition
-          "
+          absolute
+          top-4
+          right-4
+          text-gray-400
+          hover:text-gray-700
+          text-lg
+          transition
+        "
         >
           ✕
         </button>
@@ -228,43 +283,116 @@ export default function InstallPopup() {
         >
           Get faster access,
           notifications and a
-          smoother app experience.
+          smoother app
+          experience.
         </p>
+
+        {/* IN APP BROWSER */}
+
+        {isInAppBrowser && (
+          <div
+            className="
+            mt-5
+            rounded-2xl
+            bg-amber-50
+            border
+            border-amber-200
+            p-4
+            text-left
+          "
+          >
+            <p
+              className="
+              text-amber-800
+              text-sm
+              font-semibold
+            "
+            >
+              Open in Browser
+            </p>
+
+            <p
+              className="
+              mt-2
+              text-xs
+              text-amber-700
+              leading-6
+            "
+            >
+              You are using{" "}
+              <b>
+                {browserName}
+              </b>{" "}
+              browser.
+
+              <br />
+              <br />
+
+              Tap the
+              browser menu
+              (⋯)
+
+              <br />
+
+              Then select:
+
+              <br />
+
+              <b>
+                {isIOS
+                  ? "Open in Safari"
+                  : "Open in Browser / Chrome"}
+              </b>
+
+              <br />
+              <br />
+
+              Then install
+              Sodah.
+            </p>
+          </div>
+        )}
 
         {/* IOS */}
 
-        {isIOS && (
-          <p
-            className="
-            mt-4
-            text-xs
-            text-gray-400
-            leading-6
-          "
-          >
-            Tap Share ↗️
-            <br />
-            Then select
-            <br />
-            <b>Add to Home Screen</b>
-          </p>
-        )}
+        {!isInAppBrowser &&
+          isIOS && (
+            <p
+              className="
+              mt-5
+              text-xs
+              text-gray-500
+              leading-6
+            "
+            >
+              Tap Share ↗️
+              <br />
+              Then select
+              <br />
+              <b>
+                Add to Home
+                Screen
+              </b>
+            </p>
+          )}
 
         {/* FIREFOX */}
 
-        {isFirefox && (
-          <p
-            className="
-            mt-4
-            text-xs
-            text-gray-400
-          "
-          >
-            Firefox users:
-            <br />
-            ☰ Menu → Install
-          </p>
-        )}
+        {!isInAppBrowser &&
+          isFirefox && (
+            <p
+              className="
+              mt-5
+              text-xs
+              text-gray-500
+            "
+            >
+              Firefox users:
+              <br />
+              ☰ Menu →
+              Install
+            </p>
+          )}
 
         {/* BUTTON */}
 
@@ -289,7 +417,9 @@ export default function InstallPopup() {
           transition
         "
         >
-          {isIOS
+          {isInAppBrowser
+            ? "🌐 Open In Browser"
+            : isIOS
             ? "📲 Add to Home Screen"
             : "📲 Install App"}
         </button>
@@ -301,7 +431,7 @@ export default function InstallPopup() {
             closePopup
           }
           className="
-          mt-3
+          mt-4
           text-sm
           text-gray-400
           hover:text-gray-700
