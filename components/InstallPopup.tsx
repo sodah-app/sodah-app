@@ -19,6 +19,9 @@ export default function InstallPopup() {
   const [isFirefox, setIsFirefox] =
     useState(false);
 
+  const [isIOS, setIsIOS] =
+    useState(false);
+
   // ==========================
   // INITIAL LOAD
   // ==========================
@@ -36,11 +39,23 @@ export default function InstallPopup() {
     const ua =
       navigator.userAgent.toLowerCase();
 
-    const firefox =
-      ua.includes("firefox") &&
-      !ua.includes("chrome") &&
-      !ua.includes("edg");
+    const ios =
+      /iphone|ipad|ipod/.test(
+        ua
+      );
 
+    const firefox =
+      ua.includes(
+        "firefox"
+      ) &&
+      !ua.includes(
+        "chrome"
+      ) &&
+      !ua.includes(
+        "edg"
+      );
+
+    setIsIOS(ios);
     setIsFirefox(firefox);
 
     if (installed) return;
@@ -97,6 +112,16 @@ export default function InstallPopup() {
   // ==========================
   const handleInstall =
     async () => {
+      // iPhone / iPad
+      if (isIOS) {
+        alert(
+          "To install Sodah:\n\n1. Tap the Share button.\n2. Select 'Add to Home Screen'.\n3. Tap Add."
+        );
+
+        return;
+      }
+
+      // Firefox
       if (isFirefox) {
         alert(
           "Firefox users:\n\n☰ Menu → Install"
@@ -105,6 +130,7 @@ export default function InstallPopup() {
         return;
       }
 
+      // Chrome install not ready
       if (!canInstall) {
         alert(
           "Installation is not ready yet.\n\nPlease wait a few seconds and try again."
@@ -147,7 +173,7 @@ export default function InstallPopup() {
         bg-white
         rounded-[28px]
         w-full
-        max-w-[290px]
+        max-w-[300px]
         p-6
         text-center
         shadow-[0_25px_80px_rgba(0,0,0,0.45)]
@@ -159,14 +185,14 @@ export default function InstallPopup() {
         <button
           onClick={closePopup}
           className="
-          absolute
-          top-4
-          right-4
-          text-gray-400
-          hover:text-gray-700
-          text-lg
-          transition
-        "
+            absolute
+            top-4
+            right-4
+            text-gray-400
+            hover:text-gray-700
+            text-lg
+            transition
+          "
         >
           ✕
         </button>
@@ -182,7 +208,7 @@ export default function InstallPopup() {
         <h2
           className="
           mt-3
-          text-[30px]
+          text-[32px]
           font-bold
           text-gray-900
         "
@@ -197,20 +223,39 @@ export default function InstallPopup() {
           mt-3
           text-gray-500
           text-sm
-          leading-6
+          leading-7
         "
         >
           Get faster access,
-          app notifications and
-          a smoother experience.
+          notifications and a
+          smoother app experience.
         </p>
+
+        {/* IOS */}
+
+        {isIOS && (
+          <p
+            className="
+            mt-4
+            text-xs
+            text-gray-400
+            leading-6
+          "
+          >
+            Tap Share ↗️
+            <br />
+            Then select
+            <br />
+            <b>Add to Home Screen</b>
+          </p>
+        )}
 
         {/* FIREFOX */}
 
         {isFirefox && (
           <p
             className="
-            mt-3
+            mt-4
             text-xs
             text-gray-400
           "
@@ -221,7 +266,7 @@ export default function InstallPopup() {
           </p>
         )}
 
-        {/* INSTALL BUTTON */}
+        {/* BUTTON */}
 
         <button
           onClick={
@@ -244,7 +289,9 @@ export default function InstallPopup() {
           transition
         "
         >
-          📲 Install App
+          {isIOS
+            ? "📲 Add to Home Screen"
+            : "📲 Install App"}
         </button>
 
         {/* LATER */}
