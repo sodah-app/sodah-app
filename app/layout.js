@@ -3,6 +3,7 @@ import Providers from "./providers";
 
 import RegisterSW from "@/components/RegisterSW";
 import InstallPopup from "@/components/InstallPopup";
+import FacebookPixel from "@/components/FacebookPixel";
 
 import {
   InstallProvider,
@@ -14,15 +15,11 @@ export const metadata = {
   description:
     "AI-powered WhatsApp Business Automation",
 
-  manifest:
-    "/manifest.json",
+  manifest: "/manifest.json",
 
   icons: {
-    icon:
-      "/icon-192.png",
-
-    apple:
-      "/apple-touch-icon.png",
+    icon: "/icon-192.png",
+    apple: "/apple-touch-icon.png",
   },
 };
 
@@ -33,6 +30,10 @@ export default function RootLayout({
     <html lang="en">
       <body className="bg-white text-black">
 
+        {/* META PIXEL */}
+        <FacebookPixel />
+
+        {/* PWA */}
         <RegisterSW />
 
         <InstallProvider>
