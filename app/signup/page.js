@@ -214,26 +214,31 @@ const { data, error } =
 
 // LOGIN
 if (isLogin) {
-  const { data, error } =
-    await supabase.auth.signInWithPassword({
-      email: form.email,
-      password: form.password,
-    });
+ const { data, error } =
+  await supabase.auth.signInWithPassword({
+    email: form.email,
+    password: form.password,
+  });
 
-  if (error) {
-    triggerError(error.message);
-    return;
-  }
-
-  triggerSuccess(
-    "Login successful!"
-  );
-
-  setTimeout(() => {
-    router.push("/welcome");
-  }, 1200);
-
+if (error) {
+  triggerError(error.message);
   return;
+}
+
+const user = data.user;
+
+if (user) {
+  localStorage.setItem("user_id", user.id);
+  localStorage.setItem("user_email", user.email ?? "");
+}
+
+triggerSuccess("Login successful!");
+
+setTimeout(() => {
+  router.push("/welcome");
+}, 1200);
+
+return;
 }
 
 

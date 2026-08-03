@@ -123,11 +123,19 @@ if (form.setupType === "personal") {
     try {
 
       setLoading(true);
+   
+     const userId = localStorage.getItem("user_id");
 
-      const payload = {
+if (!userId) {
+  alert("Please log in again.");
+  return;
+}
 
-        setupType:
-          form.setupType,
+
+     const payload = {
+  userId,
+
+  setupType: form.setupType,
 
         businessName:
           form.setupType === "business"
