@@ -18,9 +18,13 @@ import {
   useState,
   useCallback,
 } from "react";
+
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import BackButton from "@/components/BackButton";
+import DashboardSidebar from "./sidebar";
 export default function Dashboard() {
+  const router = useRouter();
   const [appointments, setAppointments] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [activePage, setActivePage] = useState("Dashboard");
@@ -621,11 +625,10 @@ useEffect(() => {
 
 return (
   <>
-
-   <div className="absolute top-4 left-4 z-50">
+<div className="fixed top-4 left-4 z-[9999]">
   <button
     onClick={() => {
-      window.history.back();
+      router.replace("/welcome");
     }}
     className="
       px-4
@@ -651,160 +654,10 @@ return (
       {/* ======================================================
           SIDEBAR
       ====================================================== */}
-      <div className="w-60 bg-gradient-to-b from-[#0f172a] to-[#1e293b] text-white p-4 flex flex-col">
-        <h2 className="font-bold text-lg mb-6">
-          Sodah.io
-        </h2>
-
-        <SidebarItem
-          title="Dashboard"
-          active={
-            activePage ===
-            "Dashboard"
-          }
-          onClick={() =>
-            setActivePage(
-              "Dashboard"
-            )
-          }
-        />
-
-       <div
-  onClick={() => {
-    window.location.href =
-      "/dashboard/business-ai";
-  }}
-  className="
-    mt-4
-    px-3
-    py-3
-    rounded-lg
-    cursor-pointer
-    text-sm
-    font-semibold
-    text-center
-    bg-gradient-to-r
-    from-purple-500
-    to-blue-500
-    hover:scale-105
-    transition-all
-    shadow-lg
-  "
->
-  🤖 Business Update AI
-</div>
-
-
-        <SidebarItem
-          title="Bookings"
-          active={
-            activePage ===
-            "Bookings"
-          }
-          onClick={() =>
-            setActivePage(
-              "Bookings"
-            )
-          }
-        />
-
-        <SidebarItem
-          title="Customers"
-          active={
-            activePage ===
-            "Customers"
-          }
-          onClick={() =>
-            setActivePage(
-              "Customers"
-            )
-          }
-        />
-
-        <SidebarItem
-          title="New Leads"
-          active={
-            activePage ===
-            "New Leads"
-          }
-          onClick={() =>
-            setActivePage(
-              "New Leads"
-            )
-          }
-        />
-
-        <SidebarItem
-          title="Hot Leads"
-          active={
-            activePage ===
-            "Hot Leads"
-          }
-          onClick={() =>
-            setActivePage(
-              "Hot Leads"
-            )
-          }
-        />
-
-        <SidebarItem
-          title="Calendar"
-          active={
-            activePage ===
-            "Calendar"
-          }
-          onClick={() =>
-            setActivePage(
-              "Calendar"
-            )
-          }
-        />
-
-        <SidebarItem
-          title="Reports"
-          active={
-            activePage ===
-            "Reports"
-          }
-          onClick={() =>
-            setActivePage(
-              "Reports"
-            )
-          }
-        />
-
-        <SidebarItem
-          title="Settings"
-          active={
-            activePage ===
-            "Settings"
-          }
-          onClick={() =>
-            setActivePage(
-              "Settings"
-            )
-          }
-        />
-
-        {/* BOTTOM */}
-        <div className="mt-auto">
-          <AILiveIndicator />
-
-          <div className="bg-gradient-to-r from-purple-500 to-blue-500 p-2 rounded text-center text-xs mt-4 mb-4">
-            🤖 AI Assistant Active
-          </div>
-
-          <div
-            className="text-red-400 cursor-pointer"
-            onClick={async () => {
-  await supabase.auth.signOut();
-  window.location.href = "/login";
-}}
-          >
-            Logout
-          </div>
-        </div>
-      </div>
+      <DashboardSidebar
+  activePage={activePage}
+  setActivePage={setActivePage}
+/>
 
       {/* ======================================================
           MAIN CONTENT

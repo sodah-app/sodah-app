@@ -421,7 +421,7 @@ useEffect(() => {
           <br />
 
           <span className="text-green-400">
-            Sodah
+            Sodah 
           </span>
 
           <br />
@@ -486,7 +486,7 @@ useEffect(() => {
 
         <p className="uppercase tracking-[6px] text-green-300 text-sm font-semibold mb-4">
 
-          AI Powered WhatsApp Automation
+        Advanced AI Powered WhatsApp Automation
 
         </p>
 
@@ -495,7 +495,7 @@ useEffect(() => {
           Welcome to{" "}
 
           <span className="text-green-400">
-            Sodah Automation
+            Sodah AI Automation
           </span>
 
         </h2>

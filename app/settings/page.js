@@ -47,13 +47,22 @@ const [groupChatsEnabled, setGroupChatsEnabled] =
 useEffect(() => {
   const loadGroupChatSetting = async () => {
     try {
-      const { data, error } =
-        await supabase
-          .from("businesses")
-          .select("*")
-          .eq("status", "active")
-          .single();
+     const {
+  data: { session },
+} = await supabase.auth.getSession();
 
+if (!session?.user?.id)
+  return;
+
+const { data, error } =
+  await supabase
+    .from("businesses")
+    .select("*")
+    .eq(
+      "user_id",
+      session.user.id
+    )
+    .single();
       console.log(
         "Loaded Active Business:",
         data
@@ -154,15 +163,36 @@ const toggleGroupChats = async () => {
       newValue
     );
 
- const {
+const {
+  data: { session },
+} = await supabase.auth.getSession();
+
+if (!session?.user?.id) {
+  alert("User not logged in.");
+  return;
+}
+
+const {
   data: activeBusiness,
   error: businessError,
 } = await supabase
   .from("businesses")
   .select("*")
-  .eq("status", "active")
+  .eq(
+    "user_id",
+    session.user.id
+  )
   .single();
 
+console.log(
+  "BUSINESS:",
+  activeBusiness
+);
+
+console.log(
+  "ERROR:",
+  businessError
+);
 console.log(
   "Active Business:",
   activeBusiness

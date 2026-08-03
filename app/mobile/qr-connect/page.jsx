@@ -19,19 +19,27 @@ export default function QRConnectPage() {
   // LOAD BUSINESS ID
   // ==========================================
 
-  useEffect(() => {
-    const id =
-      localStorage.getItem("business_id") ||
-      "";
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
 
-    if (!id) {
-      setError("Business ID not found.");
-      return;
-    }
+  // 1. Try URL first (desktop behavior)
+  let id = params.get("businessId");
 
-    setBusinessId(id);
-  }, []);
+  // 2. Fall back to localStorage (mobile behavior)
+  if (!id) {
+    id = localStorage.getItem("business_id");
+  }
 
+  if (!id) {
+    setError("Business ID not found.");
+    return;
+  }
+
+  // Keep localStorage synchronized
+  localStorage.setItem("business_id", id);
+
+  setBusinessId(id);
+}, []);
   // ==========================================
   // GENERATE QR
   // ==========================================
