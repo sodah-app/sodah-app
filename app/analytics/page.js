@@ -537,7 +537,7 @@ useEffect(() => {
         </div>
       </div>
      <button
-  onClick={() => router.push("/welcome")}
+  onClick={() => router.push("/dashboard")}
   className="fixed bottom-6 left-6 z-50 w-12 h-12 rounded-full bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center text-white text-xl hover:bg-white/20 transition"
 >
   ←

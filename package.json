@@ -11,6 +11,7 @@
   "dependencies": {
     "@n8n/chat": "^1.28.3",
     "@supabase/auth-helpers-nextjs": "^0.15.0",
+    "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.106.1",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
@@ -20,11 +21,12 @@
     "mongoose": "^9.6.2",
     "next": "^15.5.20",
     "next-auth": "^4.24.14",
-    "openai": "^6.37.0",
+    "openai": "^7.4.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hot-toast": "^2.6.0",
-    "recharts": "^3.8.1"
+    "recharts": "^3.8.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",

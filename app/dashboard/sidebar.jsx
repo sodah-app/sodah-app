@@ -111,77 +111,58 @@ export default function DashboardSidebar({
         </div>
 
         <div
-          onClick={() =>
-            router.push(
-              "/dashboard/business-ai"
-            )
-          }
-          className="
-            mb-3
-            px-3
-            py-3
-            rounded-lg
-            cursor-pointer
-            text-sm
-            font-semibold
-            text-center
-            bg-gradient-to-r
-            from-purple-500
-            to-blue-500
-            hover:scale-105
-            transition-all
-            shadow-lg
-          "
-        >
-          🤖 Business Update AI
-        </div>
+  onClick={() =>
+    router.push("/dashboard/business-ai")
+  }
+  className="
+    mb-3
+    px-3
+    py-3
+    rounded-lg
+    cursor-pointer
+    text-sm
+    font-semibold
+    text-center
+    bg-gradient-to-r
+    from-purple-500
+    to-blue-500
+    hover:scale-105
+    transition-all
+    shadow-lg
+  "
+>
+  🤖 Business Update AI
+</div>
 
-        <div
-          onClick={() =>
-            router.push(
-              "/dashboard/email-ai"
-            )
-          }
-          className="
-            px-3
-            py-3
-            rounded-lg
-            cursor-pointer
-            text-sm
-            font-semibold
-            text-center
-            bg-gradient-to-r
-            from-green-500
-            to-cyan-500
-            hover:scale-105
-            transition-all
-            shadow-lg
-          "
-        >
-          📧 Email AI
-        </div>
-
+<div
+  onClick={() =>
+    router.push("/analytics")
+  }
+  className="
+    px-3
+    py-3
+    rounded-lg
+    cursor-pointer
+    text-sm
+    font-semibold
+    text-center
+    bg-gradient-to-r
+    from-green-500
+    to-emerald-500
+    hover:scale-105
+    transition-all
+    shadow-lg
+  "
+>
+  📊 Analytics
+</div>
       </div>
 
       {/* FOOTER */}
 
       <div className="mt-auto">
 
-        <div
-          className="
-            bg-gradient-to-r
-            from-purple-500
-            to-blue-500
-            p-2
-            rounded
-            text-center
-            text-xs
-            mt-5
-            mb-4
-          "
-        >
-          🤖 AI Assistant Active
-        </div>
+     
 
         <div
           className="

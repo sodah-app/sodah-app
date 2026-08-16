@@ -1,0 +1,52 @@
+import { NextResponse } from 'next/server';
+
+import { testImproveCampaign } from '@/lib/ai/campaign-ai';
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+
+    const originalMessage =
+      typeof body?.originalMessage === 'string'
+        ? body.originalMessage.trim()
+        : '';
+
+    if (!originalMessage) {
+      return NextResponse.json(
+        {
+          error: 'Original campaign message is required.',
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    const variants = await testImproveCampaign(
+      originalMessage,
+      body?.context,
+    );
+
+    return NextResponse.json({
+      success: true,
+      variants,
+    });
+  } catch (error) {
+    console.error('CAMPAIGN_TEST_IMPROVEMENT_ERROR:', error);
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Campaign test improvement failed.';
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: message,
+      },
+      {
+        status: 500,
+      },
+    );
+  }
+}

@@ -1,76 +1,101 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const VERIFY_TOKEN =
+  process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
+
+export async function GET(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+
+    const mode = searchParams.get("hub.mode");
+    const token = searchParams.get("hub.verify_token");
+    const challenge = searchParams.get("hub.challenge");
+
+    const tokenMatches =
+      !!VERIFY_TOKEN && token === VERIFY_TOKEN;
+
+    console.log("INSTAGRAM WEBHOOK VERIFY:", {
+      mode,
+      tokenReceived: !!token,
+      tokenMatches,
+      challenge,
+      envTokenExists: !!VERIFY_TOKEN,
+    });
+
+    /*
+     * Meta webhook verification.
+     *
+     * Meta expects the challenge value to be returned
+     * as plain text when the verification token matches.
+     */
+    if (
+      mode === "subscribe" &&
+      tokenMatches &&
+      challenge
+    ) {
+      return new Response(challenge, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/plain",
+        },
+      });
+    }
+
+    return NextResponse.json(
+      {
+        error: "Webhook verification failed.",
+        mode,
+        tokenReceived: !!token,
+        tokenMatches,
+        envTokenExists: !!VERIFY_TOKEN,
+      },
+      { status: 403 }
+    );
+  } catch (error) {
+    console.error(
+      "Instagram webhook verification error:",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        error: "Webhook verification failed.",
+      },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request) {
   try {
-    const payload = await request.json();
+    const body = await request.json();
 
     console.log(
-      "Evolution webhook:",
-      JSON.stringify(payload, null, 2)
+      "INSTAGRAM WEBHOOK:",
+      JSON.stringify(body, null, 2)
     );
 
-    const event = payload.event;
-
-    if (event !== "MESSAGES_UPSERT") {
-      return NextResponse.json({ success: true });
-    }
-
-    const instanceName = payload.instance;
-
-    const number =
-      payload.data?.key?.remoteJid
-        ?.replace("@s.whatsapp.net", "")
-        ?.replace("@g.us", "");
-
-    const message =
-      payload.data?.message?.conversation ||
-      payload.data?.message?.extendedTextMessage?.text;
-
-    if (!number || !message) {
-      return NextResponse.json({ success: true });
-    }
-
-    const completion =
-      await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "user",
-            content: message,
-          },
-        ],
-      });
-
-    const reply =
-      completion.choices[0].message.content;
-
-    await fetch(
-      `${process.env.EVOLUTION_API_URL}/message/sendText/${instanceName}`,
-      {
-        method: "POST",
-        headers: {
-          apikey: process.env.EVOLUTION_API_KEY,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          number,
-          text: reply,
-        }),
-      }
+    /*
+     * We acknowledge the webhook immediately.
+     *
+     * Instagram/Meta expects a successful HTTP response.
+     */
+    return NextResponse.json(
+      { received: true },
+      { status: 200 }
     );
-
-    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Webhook error:", error);
+    console.error(
+      "Instagram webhook error:",
+      error
+    );
 
     return NextResponse.json(
-      { success: false },
-      { status: 500 }
+      {
+        received: false,
+        error: "Invalid webhook payload.",
+      },
+      { status: 400 }
     );
   }
 }

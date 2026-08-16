@@ -1,42 +1,95 @@
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
-export function middleware(request) {
-  const { pathname } = request.nextUrl;
+export async function middleware(request) {
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
 
-  // Public routes
-  const publicRoutes = [
-    "/",
-    "/login",
-    "/signup",
-    "/welcome",
-    "/subscription",
-    "/payment-success",
-    "/api",
-  ];
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-  if (
-    publicRoutes.some((route) =>
-      pathname.startsWith(route)
-    )
-  ) {
-    return NextResponse.next();
+  const supabasePublishableKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+  /*
+   * Prevent the middleware from crashing with an
+   * obscure MIDDLEWARE_INVOCATION_FAILED error if
+   * the Supabase environment variables are missing.
+   */
+  if (!supabaseUrl || !supabasePublishableKey) {
+    console.error(
+      "[Middleware] Missing Supabase environment variables.",
+      {
+        hasSupabaseUrl: !!supabaseUrl,
+        hasPublishableKey: !!supabasePublishableKey,
+      }
+    );
+
+    return response;
   }
 
-  // Authentication only
-  const token =
-    request.cookies.get("sb-access-token");
+  const supabase = createServerClient(
+    supabaseUrl,
+    supabasePublishableKey,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
 
-  if (!token) {
-    return NextResponse.redirect(
-      new URL("/", request.url)
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(
+            ({ name, value }) => {
+              request.cookies.set(
+                name,
+                value
+              );
+            }
+          );
+
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          });
+
+          cookiesToSet.forEach(
+            ({ name, value, options }) => {
+              response.cookies.set(
+                name,
+                value,
+                options
+              );
+            }
+          );
+        },
+      },
+    }
+  );
+
+  try {
+    /*
+     * Refresh/validate the Supabase session.
+     *
+     * This keeps the browser session available
+     * to the server-side parts of the application.
+     */
+    await supabase.auth.getUser();
+  } catch (error) {
+    console.error(
+      "[Middleware] Supabase authentication error:",
+      error
     );
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
   matcher: [
-    "/((?!_next|favicon.ico).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

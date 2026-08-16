@@ -6,11 +6,11 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 const detectRestrictedBrowser = () => {
-  if (typeof window === "undefined")
+  if (typeof window === "undefined") {
     return false;
+  }
 
-  const ua =
-    navigator.userAgent.toLowerCase();
+  const ua = navigator.userAgent.toLowerCase();
 
   const isInApp =
     ua.includes("instagram") ||
@@ -22,38 +22,19 @@ const detectRestrictedBrowser = () => {
     ua.includes("telegram") ||
     ua.includes("linkedin");
 
-  const isStandalone =
-    window.matchMedia(
-      "(display-mode: standalone)"
-    ).matches ||
-    window.navigator.standalone === true;
-
-  return  isInApp;
+  return isInApp;
 };
-
 
 export default function AuthPage() {
   const router = useRouter();
 
   const [isLogin, setIsLogin] = useState(true);
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [showPassword, setShowPassword] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
-
-  const [success, setSuccess] =
-    useState("");
-
-  const [shake, setShake] =
-    useState(false);
-  
- const [hideGoogle, setHideGoogle] =
-  useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [shake, setShake] = useState(false);
+  const [hideGoogle, setHideGoogle] = useState(false);
 
   const [form, setForm] = useState({
     fullName: "",
@@ -62,46 +43,29 @@ export default function AuthPage() {
     password: "",
   });
 
-  // BACKGROUND IMAGES
   const bgImages = [
     "https://images.unsplash.com/photo-1516321497487-e288fb19713f?q=80&w=1600&auto=format&fit=crop",
-
     "https://images.unsplash.com/photo-1551434678-e076c223a692?q=80&w=1600&auto=format&fit=crop",
-
     "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=1600&auto=format&fit=crop",
   ];
 
-  const [activeBg, setActiveBg] =
-    useState(0);
+  const [activeBg, setActiveBg] = useState(0);
 
-  // BACKGROUND SLIDER
   useEffect(() => {
     const interval = setInterval(() => {
-      setActiveBg(
-        (prev) =>
-          (prev + 1) %
-          bgImages.length
-      );
+      setActiveBg((prev) => (prev + 1) % bgImages.length);
     }, 5000);
 
-    return () =>
-      clearInterval(interval);
+    return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    setHideGoogle(detectRestrictedBrowser());
+  }, []);
 
-useEffect(() => {
-  setHideGoogle(
-    detectRestrictedBrowser()
-  );
-}, []);
-
-
-  // ERROR ALERT
   const triggerError = (message) => {
     setSuccess("");
-
     setError(message);
-
     setShake(true);
 
     setTimeout(() => {
@@ -113,12 +77,8 @@ useEffect(() => {
     }, 3000);
   };
 
-  // SUCCESS ALERT
-  const triggerSuccess = (
-    message
-  ) => {
+  const triggerSuccess = (message) => {
     setError("");
-
     setSuccess(message);
 
     setTimeout(() => {
@@ -126,226 +86,336 @@ useEffect(() => {
     }, 3000);
   };
 
-  // HANDLE INPUT
   const handleChange = (e) => {
     setError("");
-
     setSuccess("");
 
-    setForm({
-      ...form,
-      [e.target.name]:
-        e.target.value,
-    });
+    setForm((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
   };
 
-  // GOOGLE LOGIN
-const handleGoogleLogin = async () => {
-  try {
-    if (hideGoogle) {
-  triggerError(
-    "Open Sodah.io in Safari or Chrome to use Google Sign-In."
-  );
-  return;
-}
-
-setLoading(true);
-    await supabase.auth.signOut();
-
-const { data, error } =
-  await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: `${window.location.origin}/welcome`,
-      skipBrowserRedirect: true,
-
-      queryParams: {
-        prompt: "select_account",
-        access_type: "offline",
-      },
-    },
-  });
-
-    if (error) throw error;
-
-    if (data?.url) {
-     window.location.href =
-  data.url;
-
+  /*
+   * ============================================================
+   * FIND USER'S BUSINESS
+   * ============================================================
+   *
+   * This is the important part of the new login flow.
+   *
+   * We don't ask the user for a business ID.
+   * We don't get it from WhatsApp.
+   *
+   * Supabase Auth gives us the logged-in user's ID.
+   *
+   * Then we find the business belonging to that user.
+   */
+  const findUserBusiness = async (userId) => {
+    if (!userId) {
+      throw new Error("Unable to determine logged-in user.");
     }
- } catch (error) {
-  console.error(error);
-  triggerError("Google login failed.");
-} finally {
-  setLoading(false);
-}
-};
-  // LOGIN / REGISTER
-  const handleSubmit =
-    async () => {
-      try {
-        setLoading(true);
 
-        // VALIDATION
-        if (
-          !form.email ||
-          !form.password
-        ) {
+    const { data, error } = await supabase
+      .from("businesses")
+      .select("business_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error(
+        "[Auth] Business lookup error:",
+        error
+      );
+
+      throw new Error(
+        "Unable to check your business information."
+      );
+    }
+
+    return data;
+  };
+
+  /*
+   * ============================================================
+   * ROUTE USER AFTER LOGIN
+   * ============================================================
+   *
+   * Business exists:
+   *      /channels
+   *
+   * Business does not exist:
+   *      /welcome
+   */
+  const routeAfterLogin = async (user) => {
+    const business = await findUserBusiness(user.id);
+
+    if (business?.business_id) {
+      console.log(
+        "[Auth] Existing business found:",
+        business.business_id
+      );
+
+      localStorage.setItem(
+        "business_id",
+        business.business_id
+      );
+
+      router.replace("/channels");
+
+      return;
+    }
+
+    console.log(
+      "[Auth] No business found. Sending user to onboarding."
+    );
+
+    localStorage.removeItem("business_id");
+
+    router.replace("/welcome");
+  };
+
+  /*
+   * ============================================================
+   * GOOGLE LOGIN
+   * ============================================================
+   */
+  const handleGoogleLogin = async () => {
+    try {
+      if (hideGoogle) {
+        triggerError(
+          "Open Sodah.io in Safari or Chrome to use Google Sign-In."
+        );
+
+        return;
+      }
+
+      setLoading(true);
+
+      await supabase.auth.signOut();
+
+      const { data, error } =
+        await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: `${window.location.origin}/welcome`,
+            skipBrowserRedirect: true,
+
+            queryParams: {
+              prompt: "select_account",
+              access_type: "offline",
+            },
+          },
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error("[Google Login]", error);
+
+      triggerError("Google login failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /*
+   * ============================================================
+   * LOGIN / REGISTER
+   * ============================================================
+   */
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+
+      setError("");
+      setSuccess("");
+
+      /*
+       * --------------------------------------------------------
+       * VALIDATION
+       * --------------------------------------------------------
+       */
+      if (!form.email || !form.password) {
+        triggerError(
+          "Please fill in your email and password."
+        );
+
+        return;
+      }
+
+      if (!isLogin) {
+        if (!form.fullName || !form.phone) {
           triggerError(
-            "Please fill in your details."
+            "Please complete all fields."
+          );
+
+          return;
+        }
+      }
+
+      /*
+       * ========================================================
+       * LOGIN
+       * ========================================================
+       */
+      if (isLogin) {
+        const { data, error } =
+          await supabase.auth.signInWithPassword({
+            email: form.email,
+            password: form.password,
+          });
+
+        if (error) {
+          triggerError(error.message);
+          return;
+        }
+
+        const user = data?.user;
+
+        if (!user) {
+          triggerError(
+            "Login succeeded but no user was returned."
           );
 
           return;
         }
 
-        if (!isLogin) {
-          if (
-            !form.fullName ||
-            !form.phone
-          ) {
-            triggerError(
-              "Please complete all fields."
-            );
+        /*
+         * Save user information locally.
+         */
+        localStorage.setItem(
+          "user_id",
+          user.id
+        );
 
-            return;
-          }
-        }
+        localStorage.setItem(
+          "user_email",
+          user.email ?? ""
+        );
 
+        triggerSuccess("Login successful!");
 
-// LOGIN
-if (isLogin) {
- const { data, error } =
-  await supabase.auth.signInWithPassword({
-    email: form.email,
-    password: form.password,
-  });
+        /*
+         * IMPORTANT:
+         *
+         * Do NOT blindly send the user to /welcome.
+         *
+         * First check whether their business exists.
+         */
+        await routeAfterLogin(user);
 
-if (error) {
-  triggerError(error.message);
-  return;
-}
+        return;
+      }
 
-const user = data.user;
+      /*
+       * ========================================================
+       * REGISTER
+       * ========================================================
+       *
+       * IMPORTANT:
+       *
+       * We DO NOT create a business here.
+       *
+       * The business is created by the /welcome
+       * onboarding form after the user provides
+       * their actual business information.
+       */
+      const { data, error } =
+        await supabase.auth.signUp({
+          email: form.email,
+          password: form.password,
+          options: {
+            data: {
+              full_name: form.fullName,
+              phone: form.phone,
+            },
+          },
+        });
 
-if (user) {
-  localStorage.setItem("user_id", user.id);
-  localStorage.setItem("user_email", user.email ?? "");
-}
+      if (error) {
+        triggerError(error.message);
+        return;
+      }
 
-triggerSuccess("Login successful!");
+      const user = data?.user;
 
-setTimeout(() => {
-  router.push("/welcome");
-}, 1200);
+      if (!user) {
+        triggerError(
+          "Account was created but no user was returned."
+        );
 
-return;
-}
+        return;
+      }
 
+      localStorage.setItem(
+        "user_id",
+        user.id
+      );
 
-        // REGISTER
-        else {
-       const { data, error } = await supabase.auth.signUp({
-  email: form.email,
-  password: form.password,
-  options: {
-    data: {
-      full_name: form.fullName,
-      phone: form.phone,
-    },
-  },
-});
+      localStorage.setItem(
+        "user_email",
+        user.email ?? form.email
+      );
 
-if (error) {
-  triggerError(error.message);
-  return;
-}
+      /*
+       * DO NOT insert into businesses here.
+       *
+       * /welcome will collect the business information
+       * and create the business record properly.
+       */
 
-// Wait until Supabase returns the user
-const user = data.user;
+      triggerSuccess(
+        "Account created successfully!"
+      );
 
-if (user) {
-  const businessId =
-    "BIZ-" + Date.now();
-
-  const { error: businessError } =
-    await supabase
-      .from("businesses")
-      .insert({
-        business_id: businessId,
-        user_id: user.id,
-        business_name: form.fullName,
+      setForm({
+        fullName: "",
+        phone: "",
+        email: "",
+        password: "",
       });
 
-  if (businessError) {
-    triggerError(businessError.message);
-    return;
-  }
-}
+      /*
+       * New user goes to onboarding.
+       */
+      setTimeout(() => {
+        router.replace("/welcome");
+      }, 1000);
+    } catch (error) {
+      console.error("[Auth]", error);
 
-// Create business automatically
-const { data: sessionData } = await supabase.auth.getSession();
-
-if (sessionData?.session?.user) {
-  const user = sessionData.session.user;
-
-  await supabase
-    .from("businesses")
-    .insert({
-      user_id: user.id,
-      email: user.email,
-      owner_name: form.fullName,
-      phone: form.phone,
-      business_name: `${form.fullName}'s Business`,
-    });
-}
-
-triggerSuccess("Account created successfully!");
-
-setForm({
-  fullName: "",
-  phone: "",
-  email: "",
-  password: "",
-});
-
-setTimeout(() => {
-  setIsLogin(true);
-}, 1200);
-
-
-        }
-      } catch (error) {
-        console.log(error);
-
-        triggerError(
-          "Something went wrong."
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
+      triggerError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-black flex items-center justify-center px-4 sm:px-6 md:px-8 lg:px-12 py-10">
-
       {/* BACKGROUND */}
       <div className="absolute inset-0">
-        {bgImages.map(
-          (img, index) => (
-            <div
-              key={index}
-              className={`absolute inset-0 bg-cover bg-center transition-all duration-[3000ms] ${
-                activeBg ===
-                index
-                  ? "opacity-100 scale-110"
-                  : "opacity-0 scale-100"
-              }`}
-              style={{
-                backgroundImage: `url(${img})`,
-              }}
-            />
-          )
-        )}
+        {bgImages.map((img, index) => (
+          <div
+            key={index}
+            className={`absolute inset-0 bg-cover bg-center transition-all duration-[3000ms] ${
+              activeBg === index
+                ? "opacity-100 scale-110"
+                : "opacity-0 scale-100"
+            }`}
+            style={{
+              backgroundImage: `url(${img})`,
+            }}
+          />
+        ))}
 
         <div className="absolute inset-0 bg-[#03130f]/88 backdrop-blur-sm" />
       </div>
@@ -357,7 +427,6 @@ setTimeout(() => {
 
       {/* TOASTS */}
       <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 space-y-3">
-
         {error && (
           <div className="bg-red-500/90 text-white px-5 py-3 rounded-2xl shadow-2xl animate-slide">
             {error}
@@ -379,17 +448,12 @@ setTimeout(() => {
         md:max-w-lg
         lg:max-w-2xl
         xl:max-w-2xl ${
-          shake
-            ? "animate-shake"
-            : ""
+          shake ? "animate-shake" : ""
         }`}
       >
-
         <div className="bg-black/35 border border-white/10 backdrop-blur-2xl rounded-[32px] p-5 sm:p-6 md:p-8 lg:p-10 shadow-[0_0_80px_rgba(34,197,94,0.15)]">
-
           {/* LOGO */}
           <div className="text-center mb-6">
-
             <img
               src="https://res.cloudinary.com/djnjhphf5/image/upload/v1779814901/sodah.io_logo_z6xflv.png"
               alt="Sodah"
@@ -409,36 +473,31 @@ setTimeout(() => {
           </div>
 
           {/* GOOGLE */}
-          {/* GOOGLE */}
+          {!hideGoogle && (
+            <button
+              onClick={handleGoogleLogin}
+              disabled={loading}
+              className="w-full bg-white text-black py-3 sm:py-4 rounded-2xl font-semibold flex items-center justify-center gap-3 hover:scale-[1.02] transition-all duration-300 text-sm sm:text-base"
+            >
+              <img
+                src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg"
+                className="w-5 h-5"
+                alt="Google"
+              />
 
-{!hideGoogle && (
-  <button
-    onClick={handleGoogleLogin}
-    disabled={loading}
-    className="w-full bg-white text-black py-3 sm:py-4 rounded-2xl font-semibold flex items-center justify-center gap-3 hover:scale-[1.02] transition-all duration-300 text-sm sm:text-base"
-  >
-    <img
-      src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg"
-      className="w-5 h-5"
-      alt="Google"
-    />
+              Continue with Google
+            </button>
+          )}
 
-    Continue with Google
-  </button>
-)}
-
-{hideGoogle && (
-  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 text-center mb-5">
-    <p className="text-yellow-300 text-sm">
-      Google Sign-In isn't available in this app browser.
-
-      Please continue with Email,
-      or open Sodah.io in Safari or Chrome.
-    </p>
-  </div>
-)}
-
- 
+          {hideGoogle && (
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 text-center mb-5">
+              <p className="text-yellow-300 text-sm">
+                Google Sign-In isn't available in this
+                app browser. Please continue with Email,
+                or open Sodah.io in Safari or Chrome.
+              </p>
+            </div>
+          )}
 
           {/* DIVIDER */}
           <div className="flex items-center gap-3 my-5">
@@ -458,12 +517,8 @@ setTimeout(() => {
                 type="text"
                 name="fullName"
                 placeholder="Full Name"
-                value={
-                  form.fullName
-                }
-                onChange={
-                  handleChange
-                }
+                value={form.fullName}
+                onChange={handleChange}
                 className="w-full bg-white/5 border border-white/10 rounded-2xl p-3.5 sm:p-4 text-white mb-3 outline-none focus:border-green-400 text-sm sm:text-base"
               />
 
@@ -472,9 +527,7 @@ setTimeout(() => {
                 name="phone"
                 placeholder="+1 234 567 8901"
                 value={form.phone}
-                onChange={
-                  handleChange
-                }
+                onChange={handleChange}
                 className="w-full bg-white/5 border border-white/10 rounded-2xl p-3.5 sm:p-4 text-white mb-3 outline-none focus:border-green-400 text-sm sm:text-base"
               />
             </>
@@ -492,7 +545,6 @@ setTimeout(() => {
 
           {/* PASSWORD */}
           <div className="relative mb-5">
-
             <input
               type={
                 showPassword
@@ -501,12 +553,8 @@ setTimeout(() => {
               }
               name="password"
               placeholder="Password"
-              value={
-                form.password
-              }
-              onChange={
-                handleChange
-              }
+              value={form.password}
+              onChange={handleChange}
               className="w-full bg-white/5 border border-white/10 rounded-2xl p-3.5 sm:p-4 text-white outline-none focus:border-green-400 text-sm sm:text-base"
             />
 
@@ -546,9 +594,7 @@ setTimeout(() => {
 
             <span
               onClick={() =>
-                setIsLogin(
-                  !isLogin
-                )
+                setIsLogin(!isLogin)
               }
               className="text-green-400 ml-2 cursor-pointer font-semibold"
             >
