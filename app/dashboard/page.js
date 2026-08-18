@@ -628,7 +628,7 @@ return (
 <div className="fixed top-4 left-4 z-[9999]">
   <button
     onClick={() => {
-      router.replace("/welcome");
+      router.replace("/channels");
     }}
     className="
       px-4

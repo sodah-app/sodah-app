@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import WelcomeCompleteModal from "@/components/WelcomeCompleteModal";
@@ -55,6 +55,38 @@ const BRAND_COLORS = {
 const SUPPORT_URL =
   "https://solomon-n8n.duckdns.org/webhook/a7935547-15a5-4742-8ac0-b8fab937d44c/chat";
 
+/*
+ * This endpoint is the source of truth for channel connection status.
+ *
+ * Expected response can be either:
+ *
+ * {
+ *   whatsapp: true,
+ *   instagram: true,
+ *   facebook: false,
+ *   tiktok: true
+ * }
+ *
+ * OR:
+ *
+ * {
+ *   channels: {
+ *     whatsapp: { connected: true },
+ *     instagram: { connected: true },
+ *     facebook: { connected: false },
+ *     tiktok: { connected: true }
+ *   }
+ * }
+ */
+const CHANNEL_STATUS_URL = "/api/channels/status";
+
+const EMPTY_CHANNEL_STATUS = {
+  whatsapp: false,
+  instagram: false,
+  facebook: false,
+  tiktok: false,
+};
+
 export default function WelcomePage() {
   const router = useRouter();
 
@@ -64,13 +96,14 @@ export default function WelcomePage() {
   const [showAbout, setShowAbout] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showChannelPicker, setShowChannelPicker] = useState(false);
 
   const [isMobile, setIsMobile] = useState(false);
   const [bgIndex, setBgIndex] = useState(0);
   const [idleMode, setIdleMode] = useState(false);
   const [currentTime, setCurrentTime] = useState("");
 
-  const idleTimer = useRef(null);
+ const idleTimer = useRef(null);
 
   const [user, setUser] = useState({
     fullName: "",
@@ -79,6 +112,81 @@ export default function WelcomePage() {
     businessId: "",
     businessName: "",
   });
+
+  /*
+   * Actual connection state for all four channels.
+   *
+   * IMPORTANT:
+   * These values are intentionally NOT hard-coded to true.
+   */
+  const [channelStatus, setChannelStatus] = useState(
+    EMPTY_CHANNEL_STATUS
+  );
+
+  const [channelStatusLoading, setChannelStatusLoading] = useState(true);
+
+  /*
+   * ============================================================
+   * MOBILE RESTRICTIONS
+   * ============================================================
+   *
+   * Only these THREE destinations are blocked on mobile:
+   *
+   * 1. Inbox
+   * 2. Leads / Dashboard
+   * 3. Analytics
+   *
+   * Channels are NOT blocked.
+   * Campaigns are NOT blocked.
+   * Settings are NOT blocked.
+   */
+  const showMobileRestriction = useCallback((featureName) => {
+    alert(
+      `${featureName} is not available on mobile.\n\nPlease open Sodah.io on a computer or laptop to use this feature.`
+    );
+  }, []);
+
+  const openInboxLogin = useCallback(() => {
+    if (isMobile) {
+      showMobileRestriction("Inbox");
+      return;
+    }
+
+    setShowMobileMenu(false);
+    setShowUserMenu(false);
+
+    router.push("/logins");
+  }, [isMobile, router, showMobileRestriction]);
+
+  const openLeads = useCallback(() => {
+    if (isMobile) {
+      showMobileRestriction("Leads");
+      return;
+    }
+
+    setShowMobileMenu(false);
+    setShowUserMenu(false);
+
+    router.push("/dashboard");
+  }, [isMobile, router, showMobileRestriction]);
+
+  const openAnalytics = useCallback(() => {
+    if (isMobile) {
+      showMobileRestriction("Analytics");
+      return;
+    }
+
+    setShowMobileMenu(false);
+    setShowUserMenu(false);
+
+    router.push("/analytics");
+  }, [isMobile, router, showMobileRestriction]);
+
+  /*
+   * ============================================================
+   * SCREEN SIZE
+   * ============================================================
+   */
 
   useEffect(() => {
     const checkScreen = () => {
@@ -94,6 +202,12 @@ export default function WelcomePage() {
     };
   }, []);
 
+  /*
+   * ============================================================
+   * BACKGROUND ROTATION
+   * ============================================================
+   */
+
   useEffect(() => {
     const interval = setInterval(() => {
       setBgIndex((previous) => (previous + 1) % BACKGROUNDS.length);
@@ -101,6 +215,12 @@ export default function WelcomePage() {
 
     return () => clearInterval(interval);
   }, []);
+
+  /*
+   * ============================================================
+   * SUCCESS PARAMETER
+   * ============================================================
+   */
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -111,6 +231,12 @@ export default function WelcomePage() {
       window.history.replaceState({}, "", "/welcome");
     }
   }, []);
+
+  /*
+   * ============================================================
+   * CLOCK
+   * ============================================================
+   */
 
   useEffect(() => {
     const updateClock = () => {
@@ -136,6 +262,12 @@ export default function WelcomePage() {
 
     return () => clearInterval(interval);
   }, []);
+
+  /*
+   * ============================================================
+   * IDLE MODE
+   * ============================================================
+   */
 
   useEffect(() => {
     const resetIdleTimer = () => {
@@ -168,6 +300,12 @@ export default function WelcomePage() {
       window.removeEventListener("touchstart", resetIdleTimer);
     };
   }, []);
+
+  /*
+   * ============================================================
+   * LOAD USER
+   * ============================================================
+   */
 
   useEffect(() => {
     let mounted = true;
@@ -213,17 +351,224 @@ export default function WelcomePage() {
   }, [router]);
 
   /*
-   * Open the AI support assistant.
+   * ============================================================
+   * NORMALIZE CHANNEL STATUS RESPONSE
+   * ============================================================
    *
-   * This is intentionally a modal instead of a new browser tab so
-   * the user can continue using the Sodah dashboard while receiving help.
+   * This keeps the UI flexible if the API returns either:
+   *
+   * true / false
+   *
+   * OR:
+   *
+   * { connected: true }
+   *
+   * OR:
+   *
+   * { status: "connected" }
    */
+  const normalizeChannelValue = (value) => {
+    if (typeof value === "boolean") {
+      return value;
+    }
+
+    if (typeof value === "string") {
+      return (
+        value.toLowerCase() === "connected" ||
+        value.toLowerCase() === "active" ||
+        value.toLowerCase() === "true"
+      );
+    }
+
+    if (value && typeof value === "object") {
+      if (typeof value.connected === "boolean") {
+        return value.connected;
+      }
+
+      if (typeof value.isConnected === "boolean") {
+        return value.isConnected;
+      }
+
+      if (typeof value.active === "boolean") {
+        return value.active;
+      }
+
+      if (typeof value.status === "string") {
+        return (
+          value.status.toLowerCase() === "connected" ||
+          value.status.toLowerCase() === "active"
+        );
+      }
+    }
+
+    return false;
+  };
+
+  /*
+   * ============================================================
+   * LOAD REAL CHANNEL CONNECTION STATUS
+   * ============================================================
+   *
+   * This is deliberately based on business_id.
+   *
+   * Every business gets its own channel status.
+   */
+  const loadChannelStatus = useCallback(
+    async (businessId, silent = false) => {
+      if (!businessId) {
+        setChannelStatus(EMPTY_CHANNEL_STATUS);
+
+        if (!silent) {
+          setChannelStatusLoading(false);
+        }
+
+        return;
+      }
+
+      try {
+        if (!silent) {
+          setChannelStatusLoading(true);
+        }
+
+        const response = await fetch(
+          `${CHANNEL_STATUS_URL}?business_id=${encodeURIComponent(
+            businessId
+          )}`,
+          {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store",
+            headers: {
+              Accept: "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Channel status request failed: ${response.status}`
+          );
+        }
+
+        const data = await response.json();
+
+        const channels =
+          data?.channels &&
+          typeof data.channels === "object"
+            ? data.channels
+            : data;
+
+        const nextStatus = {
+          whatsapp: normalizeChannelValue(channels?.whatsapp),
+          instagram: normalizeChannelValue(channels?.instagram),
+          facebook: normalizeChannelValue(channels?.facebook),
+          tiktok: normalizeChannelValue(channels?.tiktok),
+        };
+
+        setChannelStatus(nextStatus);
+      } catch (error) {
+        console.error(
+          "Failed to load channel connection status:",
+          error
+        );
+
+        /*
+         * Do NOT pretend a channel is connected when the server
+         * cannot confirm it.
+         */
+        setChannelStatus(EMPTY_CHANNEL_STATUS);
+      } finally {
+        if (!silent) {
+          setChannelStatusLoading(false);
+        }
+      }
+    },
+    []
+  );
+
+  /*
+   * ============================================================
+   * LOAD CHANNEL STATUS AFTER USER LOADS
+   * ============================================================
+   */
+
+  useEffect(() => {
+    if (!user.businessId) {
+      return;
+    }
+
+    loadChannelStatus(user.businessId);
+
+    /*
+     * Refresh every 10 seconds.
+     *
+     * This means that if a user connects Instagram, Facebook,
+     * TikTok or WhatsApp in another tab/page, the Welcome page
+     * will eventually update to Connected automatically.
+     */
+    const interval = setInterval(() => {
+      loadChannelStatus(user.businessId, true);
+    }, 10000);
+
+    const handleFocus = () => {
+      loadChannelStatus(user.businessId, true);
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        loadChannelStatus(user.businessId, true);
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibility
+    );
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibility
+      );
+    };
+  }, [user.businessId, loadChannelStatus]);
+
+  /*
+   * ============================================================
+   * OPEN SUPPORT
+   * ============================================================
+   */
+
   const openSupport = () => {
     setShowSupport(true);
     setShowMobileMenu(false);
     setShowUserMenu(false);
   };
 
+  /*
+   * ============================================================
+   * OPEN CHANNELS
+   * ============================================================
+   *
+   * IMPORTANT:
+   * Channels ARE allowed on mobile.
+   */
+  const openChannels = () => {
+    setShowMobileMenu(false);
+    setShowUserMenu(false);
+    router.push("/channels");
+  };
+
+  /*
+   * ============================================================
+   * WHATSAPP
+   * ============================================================
+   *
+   * WhatsApp is NOT blocked on mobile.
+   */
   const startAutomationSetup = () => {
     if (isMobile) {
       router.push("/mobile/automation");
@@ -233,11 +578,23 @@ export default function WelcomePage() {
     router.push("/connect-whatsapp");
   };
 
+  /*
+   * ============================================================
+   * GENERIC NAVIGATION
+   * ============================================================
+   */
+
   const navigate = (path) => {
     setShowMobileMenu(false);
     setShowUserMenu(false);
     router.push(path);
   };
+
+  /*
+   * ============================================================
+   * LOGOUT
+   * ============================================================
+   */
 
   const handleLogout = () => {
     try {
@@ -252,8 +609,14 @@ export default function WelcomePage() {
   };
 
   const showDesktopOnly = (pageName) => {
-    alert(`${pageName} is only available on Desktop or Laptop.`);
+    showMobileRestriction(pageName);
   };
+
+  /*
+   * ============================================================
+   * IDLE SCREEN
+   * ============================================================
+   */
 
   if (idleMode) {
     return (
@@ -312,6 +675,12 @@ export default function WelcomePage() {
       </div>
     );
   }
+
+  /*
+   * ============================================================
+   * MAIN PAGE
+   * ============================================================
+   */
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#020806] text-white">
@@ -372,13 +741,13 @@ export default function WelcomePage() {
             <TopBarButton
               icon="💬"
               label="Inbox"
-              onClick={() => navigate("/inbox")}
+              onClick={openInboxLogin}
             />
 
             <TopBarButton
               icon="🔗"
               label="Connect Channel"
-              onClick={() => navigate("/channels")}
+              onClick={openChannels}
             />
 
             <TopBarButton
@@ -410,6 +779,7 @@ export default function WelcomePage() {
             >
               <span>◆</span>
               <span>Subscription</span>
+
               <span className="rounded-full border border-purple-400/20 bg-purple-400/10 px-1.5 py-0.5 text-[8px] text-purple-300">
                 PRO
               </span>
@@ -490,6 +860,7 @@ export default function WelcomePage() {
                   >
                     <span>◆</span>
                     <span>Subscription</span>
+
                     <span className="ml-auto text-[8px] font-bold">
                       PRO
                     </span>
@@ -528,13 +899,13 @@ export default function WelcomePage() {
               <MobileTopButton
                 icon="💬"
                 label="Inbox"
-                onClick={() => navigate("/inbox")}
+                onClick={openInboxLogin}
               />
 
               <MobileTopButton
                 icon="🔗"
                 label="Connect Channel"
-                onClick={() => navigate("/channels")}
+                onClick={openChannels}
               />
 
               <MobileTopButton
@@ -731,10 +1102,10 @@ export default function WelcomePage() {
               CHANNELS
           ====================================================== */}
 
-          <section className="mb-6 rounded-[28px] border border-white/10 bg-[#07100d]/80 p-5 shadow-[0_25px_80px_rgba(0,0,0,0.25)] backdrop-blur-xl md:p-6">
+          <section className="mb-6 rounded-[28px] border border-cyan-400/20 bg-gradient-to-br from-cyan-500/[0.075] via-[#07141a]/[0.82] to-blue-500/[0.055] p-5 shadow-[0_25px_80px_rgba(0,0,0,0.25)] backdrop-blur-xl md:p-6">
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[2.5px] text-green-400/70">
+                <p className="text-[10px] font-bold uppercase tracking-[2.5px] text-cyan-400/80">
                   Omnichannel
                 </p>
 
@@ -749,8 +1120,8 @@ export default function WelcomePage() {
 
               <button
                 type="button"
-                onClick={() => navigate("/channels")}
-                className="shrink-0 text-sm font-bold text-cyan-400 transition hover:text-cyan-300"
+                onClick={openChannels}
+                className="shrink-0 rounded-xl border border-cyan-400/15 bg-cyan-400/[0.05] px-3 py-2 text-sm font-bold text-cyan-400 transition hover:border-cyan-400/30 hover:bg-cyan-400/[0.10] hover:text-cyan-300"
               >
                 Manage →
               </button>
@@ -761,8 +1132,14 @@ export default function WelcomePage() {
                 brand="whatsapp"
                 name="WhatsApp"
                 description="Business messaging"
-                status="Connected"
-                connected
+                status={
+                  channelStatusLoading
+                    ? "Checking..."
+                    : channelStatus.whatsapp
+                    ? "Connected"
+                    : "Connect"
+                }
+                connected={channelStatus.whatsapp}
                 onClick={startAutomationSetup}
               />
 
@@ -770,7 +1147,14 @@ export default function WelcomePage() {
                 brand="instagram"
                 name="Instagram"
                 description="Social conversations"
-                status="Connect"
+                status={
+                  channelStatusLoading
+                    ? "Checking..."
+                    : channelStatus.instagram
+                    ? "Connected"
+                    : "Connect"
+                }
+                connected={channelStatus.instagram}
                 onClick={() => navigate("/api/auth/instagram")}
               />
 
@@ -778,7 +1162,14 @@ export default function WelcomePage() {
                 brand="facebook"
                 name="Facebook"
                 description="Pages & Messenger"
-                status="Connect"
+                status={
+                  channelStatusLoading
+                    ? "Checking..."
+                    : channelStatus.facebook
+                    ? "Connected"
+                    : "Connect"
+                }
+                connected={channelStatus.facebook}
                 onClick={() => navigate("/channels/facebook")}
               />
 
@@ -786,7 +1177,14 @@ export default function WelcomePage() {
                 brand="tiktok"
                 name="TikTok"
                 description="Social engagement"
-                status="Connect"
+                status={
+                  channelStatusLoading
+                    ? "Checking..."
+                    : channelStatus.tiktok
+                    ? "Connected"
+                    : "Connect"
+                }
+                connected={channelStatus.tiktok}
                 onClick={() => navigate("/channels/tiktok")}
               />
             </div>
@@ -812,12 +1210,11 @@ export default function WelcomePage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {/* Leads retained as requested, but opens Dashboard */}
               <ActionCard
                 icon="👥"
                 title="Leads"
                 description="View your leads, customer activity, conversations and business pipeline."
-                onClick={() => navigate("/dashboard")}
+                onClick={openLeads}
                 accent="green"
                 badge="DASHBOARD"
               />
@@ -826,7 +1223,7 @@ export default function WelcomePage() {
                 icon="💬"
                 title="Inbox"
                 description="Manage conversations from your connected customer channels."
-                onClick={() => navigate("/inbox")}
+                onClick={openInboxLogin}
                 accent="cyan"
               />
 
@@ -835,20 +1232,14 @@ export default function WelcomePage() {
                 title="Campaigns"
                 description="Create and manage AI-powered outreach and automated follow-ups."
                 onClick={() => navigate("/whatsapp-campaign")}
-                accent="green"
+                accent="orange"
               />
 
               <ActionCard
                 icon="📈"
                 title="Analytics"
                 description="Understand conversations, leads and automation performance."
-                onClick={() => {
-                  if (isMobile) {
-                    showDesktopOnly("Analytics");
-                  } else {
-                    navigate("/analytics");
-                  }
-                }}
+                onClick={openAnalytics}
                 accent="blue"
               />
 
@@ -856,7 +1247,7 @@ export default function WelcomePage() {
                 icon="🔗"
                 title="Connect Channel"
                 description="Connect WhatsApp, Instagram, Facebook and TikTok to your workspace."
-                onClick={() => navigate("/channels")}
+                onClick={() => setShowChannelPicker(true)}
                 accent="purple"
               />
 
@@ -865,7 +1256,7 @@ export default function WelcomePage() {
                 title="Settings"
                 description="Manage your workspace, account preferences and configuration."
                 onClick={() => navigate("/settings")}
-                accent="default"
+                accent="slate"
               />
             </div>
           </section>
@@ -995,13 +1386,13 @@ export default function WelcomePage() {
           <MobileNavButton
             icon="💬"
             label="Inbox"
-            onClick={() => navigate("/inbox")}
+            onClick={openInboxLogin}
           />
 
           <MobileNavButton
             icon="👥"
             label="Leads"
-            onClick={() => navigate("/dashboard")}
+            onClick={openLeads}
           />
 
           <MobileNavButton
@@ -1027,6 +1418,115 @@ export default function WelcomePage() {
           onClose={() => setShowSupport(false)}
           user={user}
         />
+      )}
+
+      {/* =========================================================
+          CHANNEL PICKER
+      ========================================================== */}
+
+      {showChannelPicker && (
+        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
+          <div className="relative w-full max-w-3xl overflow-hidden rounded-[28px] border border-cyan-400/15 bg-[#06100b]/95 p-6 shadow-[0_30px_120px_rgba(0,0,0,0.7)] backdrop-blur-2xl md:p-8">
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[3px] text-green-400">
+                  CONNECT CHANNEL
+                </p>
+
+                <h2 className="mt-2 text-2xl font-black text-white md:text-3xl">
+                  Choose a channel
+                </h2>
+
+                <p className="mt-2 text-sm text-gray-400">
+                  Select the channel you want to connect to your workspace.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowChannelPicker(false)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-xl text-gray-400 transition hover:bg-white/[0.09] hover:text-white"
+                aria-label="Close channel selector"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <ChannelCard
+                brand="whatsapp"
+                name="WhatsApp"
+                description="Connect WhatsApp Business"
+                status={
+                  channelStatusLoading
+                    ? "Checking..."
+                    : channelStatus.whatsapp
+                    ? "Connected"
+                    : "Connect"
+                }
+                connected={channelStatus.whatsapp}
+                onClick={() => {
+                  setShowChannelPicker(false);
+                  startAutomationSetup();
+                }}
+              />
+
+              <ChannelCard
+                brand="instagram"
+                name="Instagram"
+                description="Connect Instagram"
+                status={
+                  channelStatusLoading
+                    ? "Checking..."
+                    : channelStatus.instagram
+                    ? "Connected"
+                    : "Connect"
+                }
+                connected={channelStatus.instagram}
+                onClick={() => {
+                  setShowChannelPicker(false);
+                  router.push("/api/auth/instagram");
+                }}
+              />
+
+              <ChannelCard
+                brand="facebook"
+                name="Facebook"
+                description="Connect Facebook Pages & Messenger"
+                status={
+                  channelStatusLoading
+                    ? "Checking..."
+                    : channelStatus.facebook
+                    ? "Connected"
+                    : "Connect"
+                }
+                connected={channelStatus.facebook}
+                onClick={() => {
+                  setShowChannelPicker(false);
+                  router.push("/channels/facebook");
+                }}
+              />
+
+              <ChannelCard
+                brand="tiktok"
+                name="TikTok"
+                description="Connect TikTok"
+                status={
+                  channelStatusLoading
+                    ? "Checking..."
+                    : channelStatus.tiktok
+                    ? "Connected"
+                    : "Connect"
+                }
+                connected={channelStatus.tiktok}
+                onClick={() => {
+                  setShowChannelPicker(false);
+                  router.push("/channels/tiktok");
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
 
       {/* =========================================================
@@ -1446,6 +1946,7 @@ function StatCard({ icon, value, label, color }) {
   );
 }
 
+
 /* ===============================================================
    CHANNEL CARD
 ================================================================ */
@@ -1458,77 +1959,126 @@ function ChannelCard({
   connected = false,
   onClick,
 }) {
-  const colors = BRAND_COLORS[brand];
+  const colors = BRAND_COLORS[brand] || {
+    soft: "rgba(255,255,255,0.05)",
+    border: "rgba(255,255,255,0.10)",
+    glow: "rgba(255,255,255,0.10)",
+  };
+
   const logo = BRAND_LOGOS[brand];
+
+  const isConnected = Boolean(connected);
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/20 p-4 text-left transition-all duration-300 hover:-translate-y-1 hover:bg-white/[0.05]"
+      className={`group relative w-full overflow-hidden rounded-2xl border p-4 text-left transition-all duration-300 hover:-translate-y-1 ${
+        isConnected
+          ? "border-green-400/30 bg-green-500/[0.07] hover:border-green-400/50 hover:bg-green-500/[0.11]"
+          : "border-white/10 bg-black/20 hover:border-white/20 hover:bg-white/[0.05]"
+      }`}
       style={{
-        boxShadow: `inset 0 1px 0 ${colors.border}`,
+        boxShadow: isConnected
+          ? "0 0 25px rgba(37, 211, 102, 0.08)"
+          : `inset 0 1px 0 ${colors.border}`,
       }}
     >
+      {/* Channel glow */}
       <div
-        className="absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-0 blur-3xl transition-opacity group-hover:opacity-100"
+        className="absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-0 blur-3xl transition-opacity duration-300 group-hover:opacity-100"
         style={{
-          background: colors.glow,
+          background: isConnected ? "#25D366" : colors.glow,
         }}
       />
 
       <div className="relative flex items-center gap-3">
+        {/* Channel logo */}
         <div
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border"
-          style={{
-            background: colors.soft,
-            borderColor: colors.border,
-            boxShadow: `0 0 22px ${colors.glow}`,
-          }}
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border ${
+            isConnected
+              ? "border-green-400/30 bg-green-400/[0.10]"
+              : ""
+          }`}
+          style={
+            isConnected
+              ? {
+                  boxShadow: "0 0 22px rgba(37, 211, 102, 0.20)",
+                }
+              : {
+                  background: colors.soft,
+                  borderColor: colors.border,
+                  boxShadow: `0 0 22px ${colors.glow}`,
+                }
+          }
         >
-          <img
-            src={logo}
-            alt={`${name} logo`}
-            className="h-7 w-7 object-contain"
-          />
+          {logo ? (
+            <img
+              src={logo}
+              alt={`${name} logo`}
+              className="h-7 w-7 object-contain"
+            />
+          ) : (
+            <span className="text-lg">🔗</span>
+          )}
         </div>
 
+        {/* Channel information */}
         <div className="min-w-0 flex-1">
-          <p className="truncate font-bold">{name}</p>
+          <div className="flex items-center gap-2">
+            <p className="truncate font-bold text-white">
+              {name}
+            </p>
+
+            {isConnected && (
+              <span className="rounded-full border border-green-400/20 bg-green-400/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-green-300">
+                LIVE
+              </span>
+            )}
+          </div>
 
           <p className="mt-0.5 truncate text-[11px] text-gray-500">
             {description}
           </p>
 
+          {/* Connection status */}
           <div className="mt-2 flex items-center gap-1.5">
             <span
-              className="h-1.5 w-1.5 rounded-full"
-              style={{
-                background: connected ? "#25D366" : "#6B7280",
-                boxShadow: connected
-                  ? "0 0 8px #25D366"
-                  : "none",
-              }}
+              className={`h-1.5 w-1.5 rounded-full ${
+                isConnected
+                  ? "bg-green-400 shadow-[0_0_8px_rgba(37,211,102,0.9)]"
+                  : "bg-gray-500"
+              }`}
             />
 
             <span
-              className="text-[10px] font-bold"
-              style={{
-                color: connected ? "#25D366" : "#9CA3AF",
-              }}
+              className={`text-[10px] font-bold ${
+                isConnected
+                  ? "text-green-400"
+                  : "text-gray-400"
+              }`}
             >
-              {status}
+              {isConnected ? "Connected" : status || "Connect"}
             </span>
           </div>
         </div>
 
-        <span className="text-gray-600 transition group-hover:text-white">
+        {/* Action arrow */}
+        <span
+          className={`text-gray-600 transition ${
+            isConnected
+              ? "text-green-400/80 group-hover:text-green-300"
+              : "group-hover:text-white"
+          }`}
+        >
           →
         </span>
       </div>
     </button>
   );
 }
+
+
 
 /* ===============================================================
    ACTION CARD
@@ -1544,29 +2094,70 @@ function ActionCard({
 }) {
   const accentStyles = {
     default:
-      "hover:border-white/20 hover:bg-white/[0.06]",
+      "border-slate-400/10 bg-slate-500/[0.045] hover:border-slate-300/25 hover:bg-slate-400/[0.075]",
 
     cyan:
-      "hover:border-cyan-400/30 hover:bg-cyan-400/[0.05]",
+      "border-cyan-400/15 bg-cyan-500/[0.055] hover:border-cyan-400/35 hover:bg-cyan-400/[0.10]",
 
     green:
-      "hover:border-green-400/30 hover:bg-green-400/[0.05]",
+      "border-green-400/15 bg-green-500/[0.055] hover:border-green-400/35 hover:bg-green-400/[0.10]",
 
     purple:
-      "hover:border-purple-400/30 hover:bg-purple-400/[0.05]",
+      "border-purple-400/15 bg-purple-500/[0.055] hover:border-purple-400/35 hover:bg-purple-400/[0.10]",
 
     blue:
-      "hover:border-blue-400/30 hover:bg-blue-400/[0.05]",
+      "border-blue-400/15 bg-blue-500/[0.055] hover:border-blue-400/35 hover:bg-blue-400/[0.10]",
+
+    orange:
+      "border-orange-400/15 bg-orange-500/[0.055] hover:border-orange-400/35 hover:bg-orange-400/[0.10]",
+
+    slate:
+      "border-slate-400/15 bg-slate-500/[0.055] hover:border-slate-300/30 hover:bg-slate-400/[0.09]",
+  };
+
+  const iconStyles = {
+    default:
+      "border-slate-400/15 bg-slate-400/[0.08] group-hover:border-slate-300/30 group-hover:bg-slate-300/[0.12]",
+
+    cyan:
+      "border-cyan-400/20 bg-cyan-400/[0.08] group-hover:border-cyan-400/35 group-hover:bg-cyan-400/[0.14]",
+
+    green:
+      "border-green-400/20 bg-green-400/[0.08] group-hover:border-green-400/35 group-hover:bg-green-400/[0.14]",
+
+    purple:
+      "border-purple-400/20 bg-purple-400/[0.08] group-hover:border-purple-400/35 group-hover:bg-purple-400/[0.14]",
+
+    blue:
+      "border-blue-400/20 bg-blue-400/[0.08] group-hover:border-blue-400/35 group-hover:bg-blue-400/[0.14]",
+
+    orange:
+      "border-orange-400/20 bg-orange-400/[0.08] group-hover:border-orange-400/35 group-hover:bg-orange-400/[0.14]",
+
+    slate:
+      "border-slate-400/20 bg-slate-400/[0.08] group-hover:border-slate-300/30 group-hover:bg-slate-300/[0.14]",
+  };
+
+  const arrowStyles = {
+    default: "group-hover:text-slate-300",
+    cyan: "group-hover:text-cyan-400",
+    green: "group-hover:text-green-400",
+    purple: "group-hover:text-purple-400",
+    blue: "group-hover:text-blue-400",
+    orange: "group-hover:text-orange-400",
+    slate: "group-hover:text-slate-300",
   };
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`group relative min-h-[155px] overflow-hidden rounded-[22px] border border-white/10 bg-[#06100b]/70 p-5 text-left backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl ${accentStyles[accent]}`}
+      className={`group relative min-h-[155px] overflow-hidden rounded-[22px] border p-5 text-left backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl ${accentStyles[accent]}`}
     >
       <div className="mb-5 flex items-center justify-between">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/5 bg-white/[0.06] text-2xl transition group-hover:scale-110">
+        <div
+          className={`flex h-12 w-12 items-center justify-center rounded-2xl border text-2xl transition group-hover:scale-110 ${iconStyles[accent]}`}
+        >
           {icon}
         </div>
 
@@ -1577,7 +2168,9 @@ function ActionCard({
             </span>
           )}
 
-          <span className="text-gray-600 transition group-hover:text-cyan-400">
+          <span
+            className={`text-gray-600 transition ${arrowStyles[accent]}`}
+          >
             →
           </span>
         </div>

@@ -523,7 +523,7 @@ if (data && data.length > 0) {
 </div>
 
       <button
-        onClick={() => router.push("/welcome")}
+        onClick={() => router.push("/channels")}
         className="
           fixed bottom-6 left-6 z-50
           w-14 h-14

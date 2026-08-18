@@ -1,59 +1,338 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
+const INSTAGRAM_API_VERSION =
+  process.env.INSTAGRAM_API_VERSION || "v24.0";
+
+const INSTAGRAM_GRAPH_URL =
+  `https://graph.instagram.com/${INSTAGRAM_API_VERSION}`;
+
+/**
+ * Redirect back to the Channels page with a readable
+ * Instagram connection result.
+ */
+function redirectToChannels(
+  request: NextRequest,
+  parameter: "instagram_error" | "instagram_warning",
+  message: string
+) {
+  const url = new URL("/channels", request.url);
+
+  url.searchParams.set(parameter, message);
+
+  return NextResponse.redirect(url);
+}
+
+/**
+ * Safely read an HTTP response.
+ *
+ * Instagram may sometimes return JSON, plain text, or another
+ * response body. Calling response.json() blindly can produce:
+ *
+ *   Unexpected token 'E' ... is not valid JSON
+ *
+ * This helper prevents that.
+ */
+async function readResponseBody(
+  response: Response
+): Promise<{
+  data: Record<string, unknown>;
+  raw: string;
+}> {
+  const raw = await response.text();
+
+  if (!raw) {
+    return {
+      data: {},
+      raw: "",
+    };
+  }
+
   try {
-    const { searchParams } = new URL(request.url);
+    const parsed: unknown = JSON.parse(raw);
+
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      !Array.isArray(parsed)
+    ) {
+      return {
+        data: parsed as Record<string, unknown>,
+        raw,
+      };
+    }
+
+    return {
+      data: {},
+      raw,
+    };
+  } catch {
+    return {
+      data: {},
+      raw,
+    };
+  }
+}
+
+/**
+ * Extract a useful API error message from either JSON
+ * or plain-text responses.
+ */
+function getApiErrorMessage(
+  data: Record<string, unknown>,
+  raw: string,
+  fallback: string
+): string {
+  const error =
+    data.error &&
+    typeof data.error === "object"
+      ? (data.error as Record<string, unknown>)
+      : null;
+
+  const message =
+    typeof error?.message === "string"
+      ? error.message
+      : typeof data.error_message === "string"
+      ? data.error_message
+      : typeof data.error_description === "string"
+      ? data.error_description
+      : typeof data.message === "string"
+      ? data.message
+      : raw.trim();
+
+  return message || fallback;
+}
+
+/**
+ * Decode URL-safe Base64.
+ */
+function base64UrlDecode(value: string): string {
+  const normalized = value
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
+
+  const padding =
+    "=".repeat((4 - (normalized.length % 4)) % 4);
+
+  return Buffer.from(
+    normalized + padding,
+    "base64"
+  ).toString("utf8");
+}
+
+/**
+ * Verify the signed OAuth state and recover the Sodah user ID.
+ */
+async function verifySignedState(
+  state: string
+): Promise<string | null> {
+  try {
+    const secret =
+      process.env.INSTAGRAM_STATE_SECRET ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!secret) {
+      throw new Error(
+        "Missing INSTAGRAM_STATE_SECRET or SUPABASE_SERVICE_ROLE_KEY."
+      );
+    }
+
+    const parts = state.split(".");
+
+    if (parts.length !== 2) {
+      return null;
+    }
+
+    const [
+      encodedPayload,
+      suppliedSignature,
+    ] = parts;
+
+    const encoder = new TextEncoder();
+
+    const key = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(secret),
+      {
+        name: "HMAC",
+        hash: "SHA-256",
+      },
+      false,
+      ["sign"]
+    );
+
+    const signatureBuffer =
+      await crypto.subtle.sign(
+        "HMAC",
+        key,
+        encoder.encode(encodedPayload)
+      );
+
+    const expectedSignature =
+      Buffer.from(signatureBuffer)
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/g, "");
+
+    if (
+      suppliedSignature.length !==
+      expectedSignature.length
+    ) {
+      return null;
+    }
+
+    let difference = 0;
+
+    for (
+      let i = 0;
+      i < expectedSignature.length;
+      i++
+    ) {
+      difference |=
+        suppliedSignature.charCodeAt(i) ^
+        expectedSignature.charCodeAt(i);
+    }
+
+    if (difference !== 0) {
+      return null;
+    }
+
+    const payloadString =
+      base64UrlDecode(encodedPayload);
+
+    const payload = JSON.parse(payloadString) as {
+      userId?: string;
+      timestamp?: number;
+      nonce?: string;
+    };
+
+    if (
+      !payload.userId ||
+      !payload.timestamp ||
+      !payload.nonce
+    ) {
+      return null;
+    }
+
+    const maxAge = 10 * 60 * 1000;
+
+    const stateAge =
+      Date.now() - payload.timestamp;
+
+    if (
+      stateAge < 0 ||
+      stateAge > maxAge
+    ) {
+      console.error(
+        "Instagram OAuth state expired."
+      );
+
+      return null;
+    }
+
+    return payload.userId;
+  } catch (error) {
+    console.error(
+      "Instagram OAuth state verification failed:",
+      error
+    );
+
+    return null;
+  }
+}
+
+export async function GET(
+  request: NextRequest
+) {
+  try {
+    const { searchParams } =
+      new URL(request.url);
 
     const code = searchParams.get("code");
-    const error = searchParams.get("error");
-    const errorDescription = searchParams.get("error_description");
+    const state = searchParams.get("state");
+
+    const instagramError =
+      searchParams.get("error");
+
+    const errorDescription =
+      searchParams.get("error_description");
 
     /*
      * ---------------------------------------------------------
-     * INSTAGRAM CANCELLED / DENIED
+     * INSTAGRAM DENIED / CANCELLED
      * ---------------------------------------------------------
      */
-    if (error) {
-      const message =
+
+    if (instagramError) {
+      return redirectToChannels(
+        request,
+        "instagram_error",
         errorDescription ||
-        "Instagram authorization was cancelled.";
-
-      return NextResponse.redirect(
-        new URL(
-          `/channels?instagram_error=${encodeURIComponent(message)}`,
-          request.url
-        )
+          "Instagram authorization was cancelled."
       );
     }
 
     /*
      * ---------------------------------------------------------
-     * NO CODE
+     * REQUIRE CODE
      * ---------------------------------------------------------
      */
+
     if (!code) {
-      return NextResponse.redirect(
-        new URL(
-          "/channels?instagram_error=No%20Instagram%20authorization%20code%20was%20received.",
-          request.url
-        )
+      return redirectToChannels(
+        request,
+        "instagram_error",
+        "Instagram did not return an authorization code."
       );
     }
 
     /*
      * ---------------------------------------------------------
-     * ENVIRONMENT VARIABLES
+     * REQUIRE STATE
      * ---------------------------------------------------------
      */
+
+    if (!state) {
+      return redirectToChannels(
+        request,
+        "instagram_error",
+        "Instagram OAuth state was missing. Please start the Instagram connection again."
+      );
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * VERIFY STATE
+     * ---------------------------------------------------------
+     */
+
+    const userId =
+      await verifySignedState(state);
+
+    if (!userId) {
+      return redirectToChannels(
+        request,
+        "instagram_error",
+        "Instagram connection could not be verified. Please start the connection again."
+      );
+    }
+
+    console.log(
+      "[Instagram OAuth] Callback belongs to Sodah user:",
+      userId
+    );
+
+    /*
+     * ---------------------------------------------------------
+     * ENVIRONMENT
+     * ---------------------------------------------------------
+     */
+
     const supabaseUrl =
       process.env.NEXT_PUBLIC_SUPABASE_URL;
-
-    const supabaseAnonKey =
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     const supabaseServiceRoleKey =
       process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -67,113 +346,118 @@ export async function GET(request: NextRequest) {
     const redirectUri =
       process.env.INSTAGRAM_REDIRECT_URI;
 
-    if (
-      !supabaseUrl ||
-      !supabaseAnonKey ||
-      !supabaseServiceRoleKey ||
-      !instagramAppId ||
-      !instagramAppSecret ||
-      !redirectUri
-    ) {
+    const requiredEnv: Record<
+      string,
+      string | undefined
+    > = {
+      NEXT_PUBLIC_SUPABASE_URL:
+        supabaseUrl,
+      SUPABASE_SERVICE_ROLE_KEY:
+        supabaseServiceRoleKey,
+      INSTAGRAM_APP_ID:
+        instagramAppId,
+      INSTAGRAM_APP_SECRET:
+        instagramAppSecret,
+      INSTAGRAM_REDIRECT_URI:
+        redirectUri,
+    };
+
+    const missingEnv =
+      Object.entries(requiredEnv)
+        .filter(([, value]) => !value)
+        .map(([name]) => name);
+
+    if (missingEnv.length > 0) {
       throw new Error(
-        "Instagram or Supabase environment variables are missing."
+        `Missing required environment variables: ${missingEnv.join(
+          ", "
+        )}`
       );
     }
-
-    /*
-     * ---------------------------------------------------------
-     * GET THE LOGGED-IN SODAH USER
-     * ---------------------------------------------------------
-     *
-     * IMPORTANT:
-     * The Instagram callback does not normally contain an
-     * Authorization header.
-     *
-     * Our Supabase SSR client reads the user's Supabase
-     * authentication cookies from the browser.
-     */
-    const supabase = await createClient();
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      console.error(
-        "No authenticated Sodah user:",
-        userError
-      );
-
-      return NextResponse.redirect(
-        new URL(
-          "/channels?instagram_error=Your%20Sodah%20session%20could%20not%20be%20found.%20Please%20log%20in%20again.",
-          request.url
-        )
-      );
-    }
-
-    const userId = user.id;
 
     /*
      * ---------------------------------------------------------
      * SUPABASE ADMIN CLIENT
      * ---------------------------------------------------------
      */
-    const supabaseAdmin = createSupabaseAdmin(
-      supabaseUrl,
-      supabaseServiceRoleKey,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
+
+    const supabaseAdmin =
+      createSupabaseAdmin(
+        supabaseUrl!,
+        supabaseServiceRoleKey!,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+          },
+        }
+      );
 
     /*
      * ---------------------------------------------------------
-     * EXCHANGE INSTAGRAM CODE FOR SHORT-LIVED TOKEN
+     * EXCHANGE AUTHORIZATION CODE
      * ---------------------------------------------------------
      */
-    const tokenResponse = await fetch(
-      "https://api.instagram.com/oauth/access_token",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type":
-            "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          client_id: instagramAppId,
-          client_secret: instagramAppSecret,
-          grant_type: "authorization_code",
-          redirect_uri: redirectUri,
-          code,
-        }).toString(),
-      }
-    );
 
-    const tokenData = await tokenResponse.json();
+    const tokenResponse =
+      await fetch(
+        "https://api.instagram.com/oauth/access_token",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/x-www-form-urlencoded",
+            Accept: "application/json",
+          },
+          body: new URLSearchParams({
+            client_id:
+              instagramAppId!,
+            client_secret:
+              instagramAppSecret!,
+            grant_type:
+              "authorization_code",
+            redirect_uri:
+              redirectUri!,
+            code,
+          }).toString(),
+          cache: "no-store",
+        }
+      );
+
+    const {
+      data: tokenData,
+      raw: tokenRaw,
+    } = await readResponseBody(
+      tokenResponse
+    );
 
     if (
       !tokenResponse.ok ||
-      !tokenData.access_token
+      typeof tokenData.access_token !==
+        "string"
     ) {
+      const message =
+        getApiErrorMessage(
+          tokenData,
+          tokenRaw,
+          "Instagram authorization could not be completed."
+        );
+
       console.error(
-        "Instagram authorization-code exchange failed:",
-        tokenData
+        "[Instagram OAuth] Authorization-code exchange failed:",
+        {
+          status: tokenResponse.status,
+          statusText:
+            tokenResponse.statusText,
+          response: tokenData,
+          raw: tokenRaw,
+        }
       );
 
-      return NextResponse.redirect(
-        new URL(
-          `/channels?instagram_error=${encodeURIComponent(
-            tokenData.error_message ||
-              tokenData.error_description ||
-              "Instagram authorization could not be completed."
-          )}`,
-          request.url
-        )
+      return redirectToChannels(
+        request,
+        "instagram_error",
+        message
       );
     }
 
@@ -182,45 +466,67 @@ export async function GET(request: NextRequest) {
 
     /*
      * ---------------------------------------------------------
-     * EXCHANGE FOR LONG-LIVED TOKEN
+     * LONG-LIVED TOKEN
      * ---------------------------------------------------------
-     *
-     * Instagram long-lived tokens are approximately 60 days.
      */
+
     const longTokenParams =
       new URLSearchParams({
-        grant_type: "ig_exchange_token",
-        client_secret: instagramAppSecret,
-        access_token: shortLivedToken,
+        grant_type:
+          "ig_exchange_token",
+        client_secret:
+          instagramAppSecret!,
+        access_token:
+          shortLivedToken,
       });
 
-    const longTokenResponse = await fetch(
-      `https://graph.instagram.com/access_token?${longTokenParams.toString()}`,
-      {
-        method: "GET",
-        cache: "no-store",
-      }
-    );
+    const longTokenResponse =
+      await fetch(
+        `${INSTAGRAM_GRAPH_URL}/access_token?${longTokenParams.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+          cache: "no-store",
+        }
+      );
 
-    const longTokenData =
-      await longTokenResponse.json();
+    const {
+      data: longTokenData,
+      raw: longTokenRaw,
+    } = await readResponseBody(
+      longTokenResponse
+    );
 
     if (
       !longTokenResponse.ok ||
-      !longTokenData.access_token
+      typeof longTokenData.access_token !==
+        "string"
     ) {
+      const message =
+        getApiErrorMessage(
+          longTokenData,
+          longTokenRaw,
+          "Instagram authorization succeeded, but the long-lived Instagram token could not be created."
+        );
+
       console.error(
-        "Instagram long-lived token exchange failed:",
-        longTokenData
+        "[Instagram OAuth] Long-lived token exchange failed:",
+        {
+          status:
+            longTokenResponse.status,
+          statusText:
+            longTokenResponse.statusText,
+          response: longTokenData,
+          raw: longTokenRaw,
+        }
       );
 
-      return NextResponse.redirect(
-        new URL(
-          `/channels?instagram_error=${encodeURIComponent(
-            "Instagram connected, but the long-lived access token could not be created."
-          )}`,
-          request.url
-        )
+      return redirectToChannels(
+        request,
+        "instagram_error",
+        message
       );
     }
 
@@ -229,136 +535,368 @@ export async function GET(request: NextRequest) {
 
     /*
      * ---------------------------------------------------------
-     * GET INSTAGRAM ACCOUNT
+     * LOAD INSTAGRAM ACCOUNT
      * ---------------------------------------------------------
      */
+
     const instagramUserResponse =
       await fetch(
-        `https://graph.instagram.com/me?fields=id,username,account_type,profile_picture_url&access_token=${encodeURIComponent(
+        `${INSTAGRAM_GRAPH_URL}/me?fields=id,username,account_type,profile_picture_url&access_token=${encodeURIComponent(
           instagramAccessToken
         )}`,
         {
           method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
           cache: "no-store",
         }
       );
 
-    const instagramUser =
-      await instagramUserResponse.json();
+    const {
+      data: instagramUser,
+      raw: instagramUserRaw,
+    } = await readResponseBody(
+      instagramUserResponse
+    );
 
     if (
       !instagramUserResponse.ok ||
-      !instagramUser.id
+      typeof instagramUser.id !== "string"
     ) {
+      const message =
+        getApiErrorMessage(
+          instagramUser,
+          instagramUserRaw,
+          "Instagram authorization succeeded, but the Instagram account could not be loaded."
+        );
+
       console.error(
-        "Could not retrieve Instagram account:",
-        instagramUser
+        "[Instagram OAuth] Instagram account lookup failed:",
+        {
+          status:
+            instagramUserResponse.status,
+          response:
+            instagramUser,
+          raw:
+            instagramUserRaw,
+        }
       );
 
-      return NextResponse.redirect(
-        new URL(
-          "/channels?instagram_error=Instagram%20account%20could%20not%20be%20loaded.",
-          request.url
-        )
+      return redirectToChannels(
+        request,
+        "instagram_error",
+        message
       );
     }
 
+    const instagramUserId =
+      String(instagramUser.id);
+
+    const instagramUsername =
+      typeof instagramUser.username ===
+      "string"
+        ? instagramUser.username
+        : null;
+
+    const profilePictureUrl =
+      typeof instagramUser.profile_picture_url ===
+      "string"
+        ? instagramUser.profile_picture_url
+        : null;
+
     /*
      * ---------------------------------------------------------
-     * SAVE INSTAGRAM CONNECTION
+     * SAVE CONNECTION
      * ---------------------------------------------------------
-     *
-     * MULTI-TENANT:
-     *
-     * The Instagram account is saved against the exact
-     * Sodah user who clicked "Connect Instagram".
      */
-    const { error: upsertError } =
-      await supabaseAdmin
-        .from("instagram_connections")
-        .upsert(
-          {
-            user_id: userId,
 
-            instagram_user_id:
-              String(instagramUser.id),
+    const {
+      data: savedConnection,
+      error: upsertError,
+    } = await supabaseAdmin
+      .from("instagram_connections")
+      .upsert(
+        {
+          user_id: userId,
+          instagram_user_id:
+            instagramUserId,
+          instagram_username:
+            instagramUsername,
+          profile_picture_url:
+            profilePictureUrl,
+          access_token:
+            instagramAccessToken,
+          webhook_subscribed:
+            false,
+          webhook_fields: [],
+          webhook_error: null,
+        },
+        {
+          onConflict:
+            "user_id,instagram_user_id",
+        }
+      )
+      .select()
+      .single();
 
-            instagram_username:
-              instagramUser.username || null,
-
-            profile_picture_url:
-              instagramUser.profile_picture_url ||
-              null,
-
-            access_token:
-              instagramAccessToken,
-          },
-          {
-            onConflict:
-              "user_id,instagram_user_id",
-          }
-        );
-
-    if (upsertError) {
+    if (
+      upsertError ||
+      !savedConnection
+    ) {
       console.error(
-        "Instagram connection save failed:",
+        "[Instagram OAuth] Connection save failed:",
         upsertError
       );
 
-      return NextResponse.redirect(
-        new URL(
-          `/channels?instagram_error=${encodeURIComponent(
-            "Instagram connected, but we could not save the connection."
-          )}`,
-          request.url
-        )
+      return redirectToChannels(
+        request,
+        "instagram_error",
+        "Instagram authorization succeeded, but the Instagram connection could not be saved."
       );
     }
 
     /*
      * ---------------------------------------------------------
-     * SUBSCRIBE THIS INSTAGRAM ACCOUNT TO OUR WEBHOOK
+     * SUBSCRIBE WEBHOOKS
      * ---------------------------------------------------------
-     *
-     * This is per Instagram account.
-     *
-     * Therefore every Sodah customer gets their own
-     * Instagram webhook subscription.
      */
-    const webhookResponse = await fetch(
-      `https://graph.instagram.com/${encodeURIComponent(
-        String(instagramUser.id)
-      )}/subscribed_apps?subscribed_fields=messages&access_token=${encodeURIComponent(
-        instagramAccessToken
-      )}`,
+
+    const webhookParams =
+      new URLSearchParams({
+        subscribed_fields:
+          "messages,messaging_postbacks",
+        access_token:
+          instagramAccessToken,
+      });
+
+    const webhookResponse =
+      await fetch(
+        `${INSTAGRAM_GRAPH_URL}/${encodeURIComponent(
+          instagramUserId
+        )}/subscribed_apps?${webhookParams.toString()}`,
+        {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+          },
+          cache: "no-store",
+        }
+      );
+
+    const {
+      data: webhookData,
+      raw: webhookRaw,
+    } = await readResponseBody(
+      webhookResponse
+    );
+
+    console.log(
+      "[Instagram OAuth] Webhook subscription:",
       {
-        method: "POST",
-        cache: "no-store",
+        status:
+          webhookResponse.status,
+        ok:
+          webhookResponse.ok,
+        sodahUserId:
+          userId,
+        instagramUserId,
+        webhookData,
+        webhookRaw,
       }
     );
 
-    const webhookData =
-      await webhookResponse.json();
+    if (
+      !webhookResponse.ok ||
+      webhookData.success !== true
+    ) {
+      const webhookError =
+        getApiErrorMessage(
+          webhookData,
+          webhookRaw,
+          "Instagram webhook subscription failed."
+        );
 
-    if (!webhookResponse.ok) {
-      console.error(
-        "Instagram webhook subscription failed:",
-        webhookData
+      await supabaseAdmin
+        .from("instagram_connections")
+        .update({
+          webhook_subscribed:
+            false,
+          webhook_fields: [],
+          webhook_error:
+            webhookError,
+        })
+        .eq(
+          "id",
+          savedConnection.id
+        );
+
+      return redirectToChannels(
+        request,
+        "instagram_warning",
+        `Instagram account connected, but messaging webhook subscription failed: ${webhookError}`
+      );
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * VERIFY WEBHOOK
+     * ---------------------------------------------------------
+     */
+
+    const verifyParams =
+      new URLSearchParams({
+        access_token:
+          instagramAccessToken,
+      });
+
+    const verifyResponse =
+      await fetch(
+        `${INSTAGRAM_GRAPH_URL}/${encodeURIComponent(
+          instagramUserId
+        )}/subscribed_apps?${verifyParams.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+          cache: "no-store",
+        }
       );
 
-      /*
-       * The account itself is already saved.
-       *
-       * We tell the user that the connection was created,
-       * but webhook subscription still needs attention.
-       */
-      return NextResponse.redirect(
-        new URL(
-          `/channels?instagram_warning=${encodeURIComponent(
-            "Instagram account connected, but webhook subscription could not be completed."
-          )}`,
-          request.url
+    const {
+      data: verifyData,
+      raw: verifyRaw,
+    } = await readResponseBody(
+      verifyResponse
+    );
+
+    console.log(
+      "[Instagram OAuth] Webhook verification:",
+      {
+        status:
+          verifyResponse.status,
+        ok:
+          verifyResponse.ok,
+        sodahUserId:
+          userId,
+        instagramUserId,
+        verifyData,
+        verifyRaw,
+      }
+    );
+
+    const subscriptions =
+      Array.isArray(
+        verifyData.data
+      )
+        ? verifyData.data
+        : [];
+
+    const subscribedFields =
+      subscriptions.flatMap(
+        (
+          subscription: {
+            subscribed_fields?: unknown;
+          }
+        ) =>
+          Array.isArray(
+            subscription.subscribed_fields
+          )
+            ? subscription.subscribed_fields.filter(
+                (
+                  field
+                ): field is string =>
+                  typeof field ===
+                  "string"
+              )
+            : []
+      );
+
+    const uniqueFields =
+      [...new Set(
+        subscribedFields
+      )];
+
+    const messagesSubscribed =
+      uniqueFields.includes(
+        "messages"
+      );
+
+    if (
+      !verifyResponse.ok ||
+      !messagesSubscribed
+    ) {
+      const verificationError =
+        "Instagram webhook subscription was not confirmed. The messages webhook is not active.";
+
+      console.error(
+        verificationError,
+        {
+          verifyData,
+          verifyRaw,
+        }
+      );
+
+      await supabaseAdmin
+        .from(
+          "instagram_connections"
         )
+        .update({
+          webhook_subscribed:
+            false,
+          webhook_fields:
+            uniqueFields,
+          webhook_error:
+            verificationError,
+        })
+        .eq(
+          "id",
+          savedConnection.id
+        );
+
+      return redirectToChannels(
+        request,
+        "instagram_warning",
+        verificationError
+      );
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * MARK CONNECTION AS FULLY ACTIVE
+     * ---------------------------------------------------------
+     */
+
+    const {
+      error: finalUpdateError,
+    } = await supabaseAdmin
+      .from(
+        "instagram_connections"
+      )
+      .update({
+        webhook_subscribed:
+          true,
+        webhook_fields:
+          uniqueFields,
+        webhook_error:
+          null,
+      })
+      .eq(
+        "id",
+        savedConnection.id
+      );
+
+    if (finalUpdateError) {
+      console.error(
+        "[Instagram OAuth] Final connection update failed:",
+        finalUpdateError
+      );
+
+      return redirectToChannels(
+        request,
+        "instagram_warning",
+        "Instagram connected, but the connection status could not be updated."
       );
     }
 
@@ -367,20 +905,36 @@ export async function GET(request: NextRequest) {
      * SUCCESS
      * ---------------------------------------------------------
      */
-    const successUrl = new URL(
-      "/instagram/success",
-      request.url
-    );
+
+    const successUrl =
+      new URL(
+        "/channels",
+        request.url
+      );
 
     successUrl.searchParams.set(
-      "username",
-      instagramUser.username || ""
+      "instagram_success",
+      "true"
     );
 
-    return NextResponse.redirect(successUrl);
+    if (instagramUsername) {
+      successUrl.searchParams.set(
+        "username",
+        instagramUsername
+      );
+    }
+
+    successUrl.searchParams.set(
+      "webhook",
+      "connected"
+    );
+
+    return NextResponse.redirect(
+      successUrl
+    );
   } catch (error) {
     console.error(
-      "Instagram callback error:",
+      "[Instagram OAuth] Callback error:",
       error
     );
 
@@ -389,11 +943,10 @@ export async function GET(request: NextRequest) {
         ? error.message
         : "Instagram connection failed.";
 
-    return NextResponse.redirect(
-      new URL(
-        `/channels?instagram_error=${encodeURIComponent(message)}`,
-        request.url
-      )
+    return redirectToChannels(
+      request,
+      "instagram_error",
+      message
     );
   }
 }

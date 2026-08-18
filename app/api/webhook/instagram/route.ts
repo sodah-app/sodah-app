@@ -6,10 +6,6 @@ export const dynamic = "force-dynamic";
 const VERIFY_TOKEN =
   process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
 
-/* -------------------------------------------------------------------------- */
-/* SUPABASE ADMIN                                                             */
-/* -------------------------------------------------------------------------- */
-
 function getSupabaseAdmin() {
   const supabaseUrl =
     process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -34,10 +30,6 @@ function getSupabaseAdmin() {
     }
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/* META WEBHOOK VERIFICATION                                                  */
-/* -------------------------------------------------------------------------- */
 
 export async function GET(
   request: NextRequest
@@ -82,10 +74,6 @@ export async function GET(
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* INSTAGRAM WEBHOOK                                                          */
-/* -------------------------------------------------------------------------- */
-
 export async function POST(
   request: NextRequest
 ) {
@@ -100,15 +88,6 @@ export async function POST(
         2
       )
     );
-
-    /*
-     * Instagram sends webhook events inside:
-     *
-     * body.entry[]
-     *
-     * Each entry represents the Instagram professional
-     * account that received the event.
-     */
 
     if (
       body?.object !== "instagram" ||
@@ -128,15 +107,7 @@ export async function POST(
     const supabase =
       getSupabaseAdmin();
 
-    /* ---------------------------------------------------------------------- */
-    /* PROCESS EVERY INSTAGRAM ENTRY                                          */
-    /* ---------------------------------------------------------------------- */
-
     for (const entry of body.entry) {
-      /*
-       * This is the Instagram account ID that owns
-       * the webhook event.
-       */
       const instagramBusinessId =
         entry?.id
           ? String(entry.id)
@@ -150,18 +121,6 @@ export async function POST(
         continue;
       }
 
-      /*
-       * ---------------------------------------------------------------
-       * FIND THE SODAH TENANT
-       * ---------------------------------------------------------------
-       *
-       * The Instagram account is already connected through
-       * instagram_connections.
-       *
-       * We use that connection to determine which Sodah
-       * business owns this Instagram account.
-       */
-
       const {
         data: connection,
         error: connectionError,
@@ -170,14 +129,14 @@ export async function POST(
           "instagram_connections"
         )
         .select(
-          "user_id, instagram_user_id, username"
+          "user_id, instagram_user_id, instagram_username"
         )
         .eq(
           "instagram_user_id",
           instagramBusinessId
         )
         .eq(
-          "connected",
+          "webhook_subscribed",
           true
         )
         .maybeSingle();
@@ -193,18 +152,12 @@ export async function POST(
 
       if (!connection) {
         console.warn(
-          "No Sodah connection found for Instagram account:",
+          "No active Sodah Instagram connection found:",
           instagramBusinessId
         );
 
         continue;
       }
-
-      /*
-       * ---------------------------------------------------------------
-       * FIND BUSINESS / TENANT
-       * ---------------------------------------------------------------
-       */
 
       const {
         data: business,
@@ -239,12 +192,6 @@ export async function POST(
       const businessId =
         business.id;
 
-      /*
-       * ---------------------------------------------------------------
-       * PROCESS MESSAGING EVENTS
-       * ---------------------------------------------------------------
-       */
-
       const messagingEvents =
         Array.isArray(entry?.messaging)
           ? entry.messaging
@@ -253,22 +200,9 @@ export async function POST(
       for (
         const event of messagingEvents
       ) {
-        /*
-         * Ignore events that are not actual messages.
-         *
-         * This prevents delivery/read/etc. events from becoming
-         * fake Inbox messages.
-         */
-
         if (!event?.message) {
           continue;
         }
-
-        /*
-         * -------------------------------------------------------------
-         * SENDER
-         * -------------------------------------------------------------
-         */
 
         const senderId =
           event?.sender?.id
@@ -285,12 +219,6 @@ export async function POST(
           continue;
         }
 
-        /*
-         * -------------------------------------------------------------
-         * MESSAGE ID
-         * -------------------------------------------------------------
-         */
-
         const instagramMessageId =
           event?.message?.mid
             ? String(
@@ -298,39 +226,16 @@ export async function POST(
               )
             : null;
 
-        /*
-         * -------------------------------------------------------------
-         * MESSAGE TEXT
-         * -------------------------------------------------------------
-         */
-
         const messageText =
           typeof event?.message?.text ===
           "string"
             ? event.message.text
             : null;
 
-        /*
-         * -------------------------------------------------------------
-         * MESSAGE TYPE
-         * -------------------------------------------------------------
-         */
-
-        let messageType =
-          "text";
-
-        if (
+        const messageType =
           event?.message?.attachments
-        ) {
-          messageType =
-            "attachment";
-        }
-
-        /*
-         * -------------------------------------------------------------
-         * TIMESTAMP
-         * -------------------------------------------------------------
-         */
+            ? "attachment"
+            : "text";
 
         const messageTimestamp =
           event?.timestamp
@@ -340,17 +245,6 @@ export async function POST(
                 )
               ).toISOString()
             : new Date().toISOString();
-
-        /*
-         * -------------------------------------------------------------
-         * DUPLICATE PROTECTION
-         * -------------------------------------------------------------
-         *
-         * Meta can retry webhook events.
-         *
-         * Check whether this message already exists before
-         * inserting it.
-         */
 
         if (
           instagramMessageId
@@ -389,12 +283,6 @@ export async function POST(
             continue;
           }
         }
-
-        /*
-         * -------------------------------------------------------------
-         * SAVE TO MULTI-TENANT INBOX
-         * -------------------------------------------------------------
-         */
 
         const {
           error: inboxError,
@@ -455,30 +343,8 @@ export async function POST(
             instagramMessageId,
           }
         );
-
-        /*
-         * -------------------------------------------------------------
-         * AI COMES NEXT
-         * -------------------------------------------------------------
-         *
-         * DO NOT call the AI here yet.
-         *
-         * First we confirm that Instagram messages are correctly
-         * reaching the correct tenant's Inbox.
-         *
-         * After this works, this exact message will be passed into
-         * the existing AI workflow.
-         */
       }
     }
-
-    /*
-     * ---------------------------------------------------------------
-     * ALWAYS ACKNOWLEDGE META QUICKLY
-     * ---------------------------------------------------------------
-     *
-     * Meta expects a successful response.
-     */
 
     return NextResponse.json(
       {
@@ -493,12 +359,6 @@ export async function POST(
       "Instagram webhook error:",
       error
     );
-
-    /*
-     * Even if our internal processing fails,
-     * return a response instead of repeatedly crashing
-     * the webhook request.
-     */
 
     return NextResponse.json(
       {

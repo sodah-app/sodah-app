@@ -111,7 +111,7 @@ export default function ConnectWhatsAppClient() {
         );
 
         setTimeout(() => {
-          router.replace("/welcome");
+          router.replace("/channels");
         }, 1000);
 
         return null;
@@ -259,7 +259,7 @@ export default function ConnectWhatsAppClient() {
 
         setTimeout(() => {
           router.replace(
-            "/welcome?connected=true"
+            "/channels?connected=true"
           );
         }, 1800);
 
@@ -402,7 +402,7 @@ export default function ConnectWhatsAppClient() {
 
           setTimeout(() => {
             router.replace(
-              "/welcome?connected=true"
+              "/channels?connected=true"
             );
           }, 1800);
 
@@ -560,7 +560,7 @@ export default function ConnectWhatsAppClient() {
 
             setTimeout(() => {
               router.replace(
-                "/welcome?connected=true"
+                "/channels?connected=true"
               );
             }, 1200);
           }
