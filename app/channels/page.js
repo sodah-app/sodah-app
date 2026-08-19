@@ -155,7 +155,7 @@ export default function WelcomePage() {
     setShowMobileMenu(false);
     setShowUserMenu(false);
 
-    router.push("/login");
+    router.push("/inbox/login");
   }, [isMobile, router, showMobileRestriction]);
 
   const openLeads = useCallback(() => {
@@ -1128,65 +1128,65 @@ export default function WelcomePage() {
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
-              <ChannelCard
-                brand="whatsapp"
-                name="WhatsApp"
-                description="Business messaging"
-                status={
-                  channelStatusLoading
-                    ? "Checking..."
-                    : channelStatus.whatsapp
-                    ? "Connected"
-                    : "Connect"
-                }
-                connected={channelStatus.whatsapp}
-                onClick={startAutomationSetup}
-              />
+             <ChannelCard
+  brand="whatsapp"
+  name="WhatsApp"
+  description="Business messaging"
+  status={
+    channelStatusLoading
+      ? "Checking..."
+      : channelStatus.whatsapp
+      ? "Connected"
+      : "Connect"
+  }
+  connected={Boolean(channelStatus.whatsapp)}
+  onClick={startAutomationSetup}
+/>
 
-              <ChannelCard
-                brand="instagram"
-                name="Instagram"
-                description="Social conversations"
-                status={
-                  channelStatusLoading
-                    ? "Checking..."
-                    : channelStatus.instagram
-                    ? "Connected"
-                    : "Connect"
-                }
-                connected={channelStatus.instagram}
-                onClick={() => navigate("/instagram/login")}
-              />
+             <ChannelCard
+  brand="instagram"
+  name="Instagram"
+  description="Social conversations"
+  status={
+    channelStatusLoading
+      ? "Checking..."
+      : channelStatus.instagram
+      ? "Connected"
+      : "Connect"
+  }
+  connected={Boolean(channelStatus.instagram)}
+  onClick={() => navigate("/instagram/login")}
+/>
 
-              <ChannelCard
-                brand="facebook"
-                name="Facebook"
-                description="Pages & Messenger"
-                status={
-                  channelStatusLoading
-                    ? "Checking..."
-                    : channelStatus.facebook
-                    ? "Connected"
-                    : "Connect"
-                }
-                connected={channelStatus.facebook}
-                onClick={() => navigate("/channels/facebook")}
-              />
+             <ChannelCard
+  brand="facebook"
+  name="Facebook"
+  description="Pages & Messenger"
+  status={
+    channelStatusLoading
+      ? "Checking..."
+      : channelStatus.facebook
+      ? "Connected"
+      : "Connect"
+  }
+  connected={Boolean(channelStatus.facebook)}
+  onClick={() => navigate("/channels/facebook")}
+/>
 
-              <ChannelCard
-                brand="tiktok"
-                name="TikTok"
-                description="Social engagement"
-                status={
-                  channelStatusLoading
-                    ? "Checking..."
-                    : channelStatus.tiktok
-                    ? "Connected"
-                    : "Connect"
-                }
-                connected={channelStatus.tiktok}
-                onClick={() => navigate("/channels/tiktok")}
-              />
+             <ChannelCard
+  brand="tiktok"
+  name="TikTok"
+  description="Social engagement"
+  status={
+    channelStatusLoading
+      ? "Checking..."
+      : channelStatus.tiktok
+      ? "Connected"
+      : "Connect"
+  }
+  connected={Boolean(channelStatus.tiktok)}
+  onClick={() => navigate("/channels/tiktok")}
+/>
             </div>
           </section>
 
@@ -1967,7 +1967,9 @@ function ChannelCard({
 
   const logo = BRAND_LOGOS[brand];
 
-  const isConnected = Boolean(connected);
+  // IMPORTANT:
+  // The visual state is controlled ONLY by the connected boolean.
+  const isConnected = connected === true;
 
   return (
     <button
@@ -1975,35 +1977,53 @@ function ChannelCard({
       onClick={onClick}
       className={`group relative w-full overflow-hidden rounded-2xl border p-4 text-left transition-all duration-300 hover:-translate-y-1 ${
         isConnected
-          ? "border-green-400/30 bg-green-500/[0.07] hover:border-green-400/50 hover:bg-green-500/[0.11]"
+          ? "border-green-400/40 bg-green-500/[0.09] hover:border-green-400/60 hover:bg-green-500/[0.13]"
           : "border-white/10 bg-black/20 hover:border-white/20 hover:bg-white/[0.05]"
       }`}
       style={{
         boxShadow: isConnected
-          ? "0 0 25px rgba(37, 211, 102, 0.08)"
+          ? "0 0 30px rgba(37, 211, 102, 0.12)"
           : `inset 0 1px 0 ${colors.border}`,
       }}
     >
-      {/* Channel glow */}
+      {/* =====================================================
+          CHANNEL GLOW
+      ====================================================== */}
+
       <div
-        className="absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-0 blur-3xl transition-opacity duration-300 group-hover:opacity-100"
+        className={`absolute -right-10 -top-10 h-28 w-28 rounded-full blur-3xl transition-opacity duration-300 ${
+          isConnected
+            ? "opacity-100"
+            : "opacity-0 group-hover:opacity-100"
+        }`}
         style={{
-          background: isConnected ? "#25D366" : colors.glow,
+          background: isConnected
+            ? "#22c55e"
+            : colors.glow,
         }}
       />
 
+      {/* =====================================================
+          CONTENT
+      ====================================================== */}
+
       <div className="relative flex items-center gap-3">
-        {/* Channel logo */}
+
+        {/* ===================================================
+            CHANNEL LOGO
+        ==================================================== */}
+
         <div
           className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border ${
             isConnected
-              ? "border-green-400/30 bg-green-400/[0.10]"
+              ? "border-green-400/40 bg-green-400/[0.12]"
               : ""
           }`}
           style={
             isConnected
               ? {
-                  boxShadow: "0 0 22px rgba(37, 211, 102, 0.20)",
+                  boxShadow:
+                    "0 0 24px rgba(37, 211, 102, 0.25)",
                 }
               : {
                   background: colors.soft,
@@ -2023,60 +2043,82 @@ function ChannelCard({
           )}
         </div>
 
-        {/* Channel information */}
+        {/* ===================================================
+            CHANNEL INFORMATION
+        ==================================================== */}
+
         <div className="min-w-0 flex-1">
+
+          {/* Name + LIVE */}
           <div className="flex items-center gap-2">
+
             <p className="truncate font-bold text-white">
               {name}
             </p>
 
             {isConnected && (
-              <span className="rounded-full border border-green-400/20 bg-green-400/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-green-300">
+              <span className="flex shrink-0 items-center gap-1 rounded-full border border-green-400/25 bg-green-400/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-green-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-400 shadow-[0_0_7px_rgba(37,211,102,0.9)]" />
                 LIVE
               </span>
             )}
+
           </div>
 
+          {/* Description */}
           <p className="mt-0.5 truncate text-[11px] text-gray-500">
             {description}
           </p>
 
-          {/* Connection status */}
+          {/* =================================================
+              CONNECTION STATUS
+          ================================================== */}
+
           <div className="mt-2 flex items-center gap-1.5">
+
+            {/* Status dot */}
             <span
-              className={`h-1.5 w-1.5 rounded-full ${
+              className={`h-2 w-2 rounded-full ${
                 isConnected
-                  ? "bg-green-400 shadow-[0_0_8px_rgba(37,211,102,0.9)]"
+                  ? "bg-green-400 shadow-[0_0_10px_rgba(37,211,102,1)]"
                   : "bg-gray-500"
               }`}
             />
 
-            <span
-              className={`text-[10px] font-bold ${
-                isConnected
-                  ? "text-green-400"
-                  : "text-gray-400"
-              }`}
-            >
-              {isConnected ? "Connected" : status || "Connect"}
-            </span>
+            {/* Status text */}
+            {isConnected ? (
+              <span className="flex items-center gap-1 text-[10px] font-black text-green-400">
+                <span className="text-xs">✓</span>
+                Connected
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold text-gray-400">
+                Connect
+              </span>
+            )}
+
           </div>
         </div>
 
-        {/* Action arrow */}
+        {/* ===================================================
+            ACTION ARROW
+        ==================================================== */}
+
         <span
-          className={`text-gray-600 transition ${
+          className={`text-lg transition ${
             isConnected
-              ? "text-green-400/80 group-hover:text-green-300"
-              : "group-hover:text-white"
+              ? "text-green-400 group-hover:text-green-300"
+              : "text-gray-600 group-hover:text-white"
           }`}
         >
           →
         </span>
+
       </div>
     </button>
   );
 }
+
 
 
 
