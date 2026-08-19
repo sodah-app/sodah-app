@@ -155,7 +155,7 @@ export default function WelcomePage() {
     setShowMobileMenu(false);
     setShowUserMenu(false);
 
-    router.push("/logins");
+    router.push("/login");
   }, [isMobile, router, showMobileRestriction]);
 
   const openLeads = useCallback(() => {
@@ -1155,7 +1155,7 @@ export default function WelcomePage() {
                     : "Connect"
                 }
                 connected={channelStatus.instagram}
-                onClick={() => navigate("/api/auth/instagram")}
+                onClick={() => navigate("/instagram/login")}
               />
 
               <ChannelCard
@@ -1485,7 +1485,7 @@ export default function WelcomePage() {
                 connected={channelStatus.instagram}
                 onClick={() => {
                   setShowChannelPicker(false);
-                  router.push("/api/auth/instagram");
+                  router.push("/instagram/login");
                 }}
               />
 

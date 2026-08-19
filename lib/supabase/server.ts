@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-export async function createClient() {
+export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -15,15 +15,26 @@ export async function createClient() {
 
         setAll(cookiesToSet) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
+            cookiesToSet.forEach(
+              ({ name, value, options }) => {
+                cookieStore.set(
+                  name,
+                  value,
+                  options
+                );
+              }
+            );
           } catch {
-            // Server Components cannot always write cookies.
-            // The proxy handles session refresh.
+            // Cookie writes may not be available
+            // from every Server Component context.
+            // Session refresh should be handled by
+            // the application's middleware/proxy.
           }
         },
       },
     }
   );
 }
+
+export const createClient =
+  createSupabaseServerClient;
