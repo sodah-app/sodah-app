@@ -5,6 +5,10 @@ export async function GET() {
   try {
     const supabase = await createClient();
 
+    /* =========================================================
+       AUTHENTICATED USER
+    ========================================================= */
+
     const {
       data: { user },
       error: authError,
@@ -12,15 +16,34 @@ export async function GET() {
 
     if (authError || !user) {
       return NextResponse.json(
-        { error: "Unauthorized" },
+        {
+          whatsapp: { connected: false },
+          instagram: { connected: false },
+          facebook: { connected: false },
+          tiktok: { connected: false },
+        },
         { status: 401 }
       );
     }
 
-    // Get the authenticated user's business
+    /* =========================================================
+       FIND BUSINESS
+    ========================================================= */
+
     const { data: business, error: businessError } = await supabase
       .from("businesses")
-      .select("*")
+      .select(
+        `
+        id,
+        user_id,
+        whatsapp_connected,
+        whatsapp_status,
+        facebook_connected,
+        facebook_status,
+        tiktok_connected,
+        tiktok_status
+        `
+      )
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -35,53 +58,108 @@ export async function GET() {
       });
     }
 
-    const businessId = business?.id;
+    /* =========================================================
+       BUSINESS ID
+    ========================================================= */
+
+    const businessId = business?.id || null;
+
+    /* =========================================================
+       WHATSAPP
+       ========================================================= */
+
+    const whatsappConnected =
+      business?.whatsapp_connected === true ||
+      business?.whatsapp_status === "connected";
+
+    /* =========================================================
+       FACEBOOK
+       ========================================================= */
+
+    const facebookConnected =
+      business?.facebook_connected === true ||
+      business?.facebook_status === "connected";
+
+    /* =========================================================
+       TIKTOK
+    ========================================================= */
+
+    const tiktokConnected =
+      business?.tiktok_connected === true ||
+      business?.tiktok_status === "connected";
+
+    /* =========================================================
+       INSTAGRAM
+       
+       Instagram uses its own connection table.
+       We only consider it connected when a connection exists
+       for THIS authenticated user's business.
+    ========================================================= */
 
     let instagramConnected = false;
 
-    // Existing Instagram table
     if (businessId) {
-      const { data: instagram } = await supabase
-        .from("instagram_connections")
-        .select("id")
-        .eq("business_id", businessId)
-        .limit(1)
-        .maybeSingle();
+      const { data: instagramConnection, error: instagramError } =
+        await supabase
+          .from("instagram_connections")
+          .select("id")
+          .eq("business_id", businessId)
+          .limit(1)
+          .maybeSingle();
 
-      instagramConnected = !!instagram;
+      if (instagramError) {
+        console.error(
+          "Instagram connection lookup error:",
+          instagramError
+        );
+      } else {
+        instagramConnected = Boolean(instagramConnection);
+      }
     }
+
+    /* =========================================================
+       FINAL CHANNEL STATUS
+       
+       IMPORTANT:
+       Keep this response structure consistent.
+    ========================================================= */
 
     return NextResponse.json({
       whatsapp: {
-        connected: Boolean(
-          business?.whatsapp_connected ??
-          business?.whatsapp_status === "connected"
-        ),
+        connected: whatsappConnected,
       },
+
       instagram: {
         connected: instagramConnected,
       },
+
       facebook: {
-        connected: Boolean(
-          business?.facebook_connected ??
-          business?.facebook_status === "connected"
-        ),
+        connected: facebookConnected,
       },
+
       tiktok: {
-        connected: Boolean(
-          business?.tiktok_connected ??
-          business?.tiktok_status === "connected"
-        ),
+        connected: tiktokConnected,
       },
     });
   } catch (error) {
     console.error("Channel status error:", error);
 
     return NextResponse.json({
-      whatsapp: { connected: false },
-      instagram: { connected: false },
-      facebook: { connected: false },
-      tiktok: { connected: false },
+      whatsapp: {
+        connected: false,
+      },
+
+      instagram: {
+        connected: false,
+      },
+
+      facebook: {
+        connected: false,
+      },
+
+      tiktok: {
+        connected: false,
+      },
     });
   }
 }

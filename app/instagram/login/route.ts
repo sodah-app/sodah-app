@@ -74,9 +74,18 @@ export async function GET(request: NextRequest) {
   }
 
   /*
-   * Create a completely random OAuth state.
+   * =========================================================
+   * CREATE OAUTH STATE
+   * =========================================================
    */
+
   const state = randomBytes(32).toString("hex");
+
+  /*
+   * =========================================================
+   * BUILD INSTAGRAM AUTHORIZATION URL
+   * =========================================================
+   */
 
   const instagramUrl = new URL(
     INSTAGRAM_AUTHORIZE_URL
@@ -110,14 +119,23 @@ export async function GET(request: NextRequest) {
     state
   );
 
+  /*
+   * =========================================================
+   * REDIRECT RESPONSE
+   * =========================================================
+   */
+
   const response =
     NextResponse.redirect(
       instagramUrl
     );
 
   /*
-   * Preserve Supabase cookies.
+   * =========================================================
+   * PRESERVE SUPABASE COOKIES
+   * =========================================================
    */
+
   for (const cookie of cookiesToSet) {
     response.cookies.set(
       cookie.name,
@@ -127,41 +145,71 @@ export async function GET(request: NextRequest) {
   }
 
   /*
-   * Store OAuth state + Sodah user ID.
+   * =========================================================
+   * INSTAGRAM OAUTH COOKIE OPTIONS
+   *
+   * IMPORTANT:
+   * .sodah.io allows both:
+   *
+   *   sodah.io
+   *   www.sodah.io
+   *
+   * to use these cookies.
+   * =========================================================
    */
-  response.cookies.set(
-    "instagram_oauth_state",
-    state,
-    {
-      httpOnly: true,
-      secure:
-        process.env.NODE_ENV ===
-        "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 10 * 60,
-    }
-  );
+
+  const oauthCookieOptions = {
+    httpOnly: true,
+    secure:
+      process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: 10 * 60,
+
+    ...(process.env.NODE_ENV === "production"
+      ? {
+          domain: ".sodah.io",
+        }
+      : {}),
+  };
+
+  /*
+   * =========================================================
+   * STORE OAUTH STATE
+   * =========================================================
+   */
 
   response.cookies.set(
-    "instagram_oauth_user",
-    user.id,
-    {
-      httpOnly: true,
-      secure:
-        process.env.NODE_ENV ===
-        "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 10 * 60,
-    }
+    "instagram_oauth_state_v2",
+    state,
+    oauthCookieOptions
   );
+
+  /*
+   * =========================================================
+   * STORE SODAH USER ID
+   * =========================================================
+   */
+
+  response.cookies.set(
+    "instagram_oauth_user_v2",
+    user.id,
+    oauthCookieOptions
+  );
+
+  /*
+   * =========================================================
+   * LOG
+   * =========================================================
+   */
 
   console.log(
     "[Instagram Login] OAuth started.",
     {
       userId: user.id,
       redirectUri,
+      host:
+        request.headers.get("host"),
     }
   );
 

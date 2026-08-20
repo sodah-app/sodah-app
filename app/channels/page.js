@@ -1098,98 +1098,100 @@ export default function WelcomePage() {
             />
           </section>
 
-          {/* =====================================================
-              CHANNELS
-          ====================================================== */}
+         {/* =====================================================
+    CHANNELS
+====================================================== */}
 
-          <section className="mb-6 rounded-[28px] border border-cyan-400/20 bg-gradient-to-br from-cyan-500/[0.075] via-[#07141a]/[0.82] to-blue-500/[0.055] p-5 shadow-[0_25px_80px_rgba(0,0,0,0.25)] backdrop-blur-xl md:p-6">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[2.5px] text-cyan-400/80">
-                  Omnichannel
-                </p>
+<section className="mb-6 rounded-[28px] border border-cyan-400/20 bg-gradient-to-br from-cyan-500/[0.075] via-[#07141a]/[0.82] to-blue-500/[0.055] p-5 shadow-[0_25px_80px_rgba(0,0,0,0.25)] backdrop-blur-xl md:p-6">
 
-                <h2 className="mt-1 text-xl font-black md:text-2xl">
-                  Connected Channels
-                </h2>
+  <div className="mb-5 flex items-center justify-between gap-4">
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-[2.5px] text-cyan-400/80">
+        Omnichannel
+      </p>
 
-                <p className="mt-1 text-xs text-gray-500 md:text-sm">
-                  Connect and manage every customer channel from one place.
-                </p>
-              </div>
+      <h2 className="mt-1 text-xl font-black md:text-2xl">
+        Connected Channels
+      </h2>
 
-              <button
-                type="button"
-                onClick={openChannels}
-                className="shrink-0 rounded-xl border border-cyan-400/15 bg-cyan-400/[0.05] px-3 py-2 text-sm font-bold text-cyan-400 transition hover:border-cyan-400/30 hover:bg-cyan-400/[0.10] hover:text-cyan-300"
-              >
-                Manage →
-              </button>
-            </div>
+      <p className="mt-1 text-xs text-gray-500 md:text-sm">
+        Connect and manage every customer channel from one place.
+      </p>
+    </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
-             <ChannelCard
+    <button
+      type="button"
+      onClick={openChannels}
+      className="shrink-0 rounded-xl border border-cyan-400/15 bg-cyan-400/[0.05] px-3 py-2 text-sm font-bold text-cyan-400 transition hover:border-cyan-400/30 hover:bg-cyan-400/[0.10] hover:text-cyan-300"
+    >
+      Manage →
+    </button>
+  </div>
+
+  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
+
+    {/* WHATSAPP */}
+   <ChannelCard
   brand="whatsapp"
   name="WhatsApp"
   description="Business messaging"
   status={
     channelStatusLoading
       ? "Checking..."
-      : channelStatus.whatsapp
+      : channelStatus.whatsapp?.connected
       ? "Connected"
       : "Connect"
   }
-  connected={Boolean(channelStatus.whatsapp)}
+  connected={channelStatus.whatsapp?.connected === true}
   onClick={startAutomationSetup}
 />
 
-             <ChannelCard
+<ChannelCard
   brand="instagram"
   name="Instagram"
   description="Social conversations"
   status={
     channelStatusLoading
       ? "Checking..."
-      : channelStatus.instagram
+      : channelStatus.instagram?.connected
       ? "Connected"
       : "Connect"
   }
-  connected={Boolean(channelStatus.instagram)}
+  connected={channelStatus.instagram?.connected === true}
   onClick={() => navigate("/instagram/login")}
 />
 
-             <ChannelCard
+<ChannelCard
   brand="facebook"
   name="Facebook"
   description="Pages & Messenger"
   status={
     channelStatusLoading
       ? "Checking..."
-      : channelStatus.facebook
+      : channelStatus.facebook?.connected
       ? "Connected"
       : "Connect"
   }
-  connected={Boolean(channelStatus.facebook)}
+  connected={channelStatus.facebook?.connected === true}
   onClick={() => navigate("/channels/facebook")}
 />
 
-             <ChannelCard
+<ChannelCard
   brand="tiktok"
   name="TikTok"
   description="Social engagement"
   status={
     channelStatusLoading
       ? "Checking..."
-      : channelStatus.tiktok
+      : channelStatus.tiktok?.connected
       ? "Connected"
       : "Connect"
   }
-  connected={Boolean(channelStatus.tiktok)}
+  connected={channelStatus.tiktok?.connected === true}
   onClick={() => navigate("/channels/tiktok")}
 />
-            </div>
-          </section>
-
+  </div>
+</section>
           {/* =====================================================
               QUICK ACTIONS
           ====================================================== */}
@@ -1967,8 +1969,7 @@ function ChannelCard({
 
   const logo = BRAND_LOGOS[brand];
 
-  // IMPORTANT:
-  // The visual state is controlled ONLY by the connected boolean.
+  // Connection state is controlled only by the connected boolean.
   const isConnected = connected === true;
 
   return (
@@ -1997,9 +1998,7 @@ function ChannelCard({
             : "opacity-0 group-hover:opacity-100"
         }`}
         style={{
-          background: isConnected
-            ? "#22c55e"
-            : colors.glow,
+          background: isConnected ? "#22c55e" : colors.glow,
         }}
       />
 
@@ -2050,8 +2049,8 @@ function ChannelCard({
         <div className="min-w-0 flex-1">
 
           {/* Name + LIVE */}
-          <div className="flex items-center gap-2">
 
+          <div className="flex items-center gap-2">
             <p className="truncate font-bold text-white">
               {name}
             </p>
@@ -2062,10 +2061,10 @@ function ChannelCard({
                 LIVE
               </span>
             )}
-
           </div>
 
           {/* Description */}
+
           <p className="mt-0.5 truncate text-[11px] text-gray-500">
             {description}
           </p>
@@ -2077,6 +2076,7 @@ function ChannelCard({
           <div className="mt-2 flex items-center gap-1.5">
 
             {/* Status dot */}
+
             <span
               className={`h-2 w-2 rounded-full ${
                 isConnected
@@ -2086,6 +2086,7 @@ function ChannelCard({
             />
 
             {/* Status text */}
+
             {isConnected ? (
               <span className="flex items-center gap-1 text-[10px] font-black text-green-400">
                 <span className="text-xs">✓</span>
@@ -2096,7 +2097,6 @@ function ChannelCard({
                 Connect
               </span>
             )}
-
           </div>
         </div>
 
@@ -2105,7 +2105,7 @@ function ChannelCard({
         ==================================================== */}
 
         <span
-          className={`text-lg transition ${
+          className={`shrink-0 text-lg transition ${
             isConnected
               ? "text-green-400 group-hover:text-green-300"
               : "text-gray-600 group-hover:text-white"
@@ -2113,13 +2113,10 @@ function ChannelCard({
         >
           →
         </span>
-
       </div>
     </button>
   );
 }
-
-
 
 
 /* ===============================================================
@@ -2218,7 +2215,9 @@ function ActionCard({
         </div>
       </div>
 
-      <h3 className="text-lg font-bold">{title}</h3>
+      <h3 className="text-lg font-bold">
+        {title}
+      </h3>
 
       <p className="mt-2 text-sm leading-6 text-gray-400">
         {description}
@@ -2226,6 +2225,7 @@ function ActionCard({
     </button>
   );
 }
+
 
 /* ===============================================================
    MOBILE NAV
@@ -2245,12 +2245,17 @@ function MobileNavButton({
         active ? "text-green-400" : "text-gray-500"
       }`}
     >
-      <span className="text-xl">{icon}</span>
+      <span className="text-xl">
+        {icon}
+      </span>
 
-      <span className="text-[9px] font-medium">{label}</span>
+      <span className="text-[9px] font-medium">
+        {label}
+      </span>
     </button>
   );
 }
+
 
 /* ===============================================================
    SUPPORT MODAL
@@ -2260,8 +2265,10 @@ function SupportModal({ onClose, user }) {
   return (
     <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/75 p-0 backdrop-blur-md sm:items-center sm:p-5">
       <div className="relative flex h-[88vh] w-full max-w-[1050px] flex-col overflow-hidden rounded-t-[28px] border border-cyan-400/15 bg-[#020907] shadow-[0_30px_120px_rgba(0,0,0,0.7)] sm:h-[82vh] sm:rounded-[28px]">
+
         <div className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#06110c]/90 px-4 py-3 backdrop-blur-xl sm:px-5">
           <div className="flex items-center gap-3">
+
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-green-400 to-cyan-400 text-lg shadow-[0_0_20px_rgba(37,211,102,0.18)]">
               🤖
             </div>
@@ -2288,6 +2295,7 @@ function SupportModal({ onClose, user }) {
         </div>
 
         <div className="relative flex-1 bg-[#020806]">
+
           <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_50%_0%,rgba(37,211,102,0.06),transparent_30%)]" />
 
           <iframe
@@ -2310,6 +2318,7 @@ function SupportModal({ onClose, user }) {
   );
 }
 
+
 /* ===============================================================
    INFO MODAL
 ================================================================ */
@@ -2323,6 +2332,7 @@ function InfoModal({
   return (
     <div className="fixed inset-0 z-[190] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
       <div className="relative max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-[28px] border border-green-400/10 bg-[#06100b]/95 p-6 shadow-[0_30px_120px_rgba(0,0,0,0.65)] backdrop-blur-2xl md:p-8">
+
         <div className="mb-6 flex items-start justify-between gap-5">
           <div>
             <p className="text-[9px] font-black uppercase tracking-[3px] text-green-400">
@@ -2350,25 +2360,34 @@ function InfoModal({
   );
 }
 
+
 /* ===============================================================
    INFO FEATURE
 ================================================================ */
 
-function InfoFeature({ icon, title, text }) {
+function InfoFeature({
+  icon,
+  title,
+  text,
+}) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 transition hover:border-green-400/15 hover:bg-green-400/[0.025]">
       <div className="flex items-start gap-4">
+
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] text-xl">
           {icon}
         </div>
 
         <div>
-          <h3 className="font-bold text-white">{title}</h3>
+          <h3 className="font-bold text-white">
+            {title}
+          </h3>
 
           <p className="mt-2 text-sm leading-6 text-gray-400">
             {text}
           </p>
         </div>
+
       </div>
     </div>
   );

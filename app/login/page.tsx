@@ -1,1393 +1,661 @@
-"use client";
+import { createClient } from "@/lib/supabase/server";
 
-import {
-  FormEvent,
-  Suspense,
-  useEffect,
-  useState,
-} from "react";
-import {
-  useRouter,
-  useSearchParams,
-} from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
+export const dynamic = "force-dynamic";
 
-type Channel = "whatsapp" | "instagram" | "";
+/*
+ * =============================================================
+ * INSTAGRAM BUSINESS LOGIN
+ * =============================================================
+ *
+ * FLOW:
+ *
+ * Sodah /instagram/login
+ *        ↓
+ * Instagram official login
+ *        ↓
+ * User enters Instagram credentials
+ *        ↓
+ * User authorizes Sodah
+ *        ↓
+ * Instagram redirects to INSTAGRAM_REDIRECT_URI
+ *        ↓
+ * Sodah callback processes the authorization code
+ *
+ * IMPORTANT:
+ *
+ * This page does NOT redirect to Sodah's login page.
+ *
+ * Instagram authentication happens directly on Instagram.
+ *
+ * Sodah never receives the Instagram password.
+ */
 
-function LoginContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+const INSTAGRAM_AUTHORIZE_URL =
+  "https://www.instagram.com/oauth/authorize";
 
-  const [user, setUser] = useState<User | null>(null);
+/*
+ * Instagram Business Login permissions.
+ */
+const INSTAGRAM_SCOPES = [
+  "instagram_business_basic",
+  "instagram_business_manage_messages",
+].join(",");
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+/*
+ * =============================================================
+ * BASE64URL ENCODE
+ * =============================================================
+ */
 
-  const [businessId, setBusinessId] = useState("");
-  const [channel, setChannel] = useState<Channel>("");
+function base64UrlEncode(value: string): string {
+  return Buffer.from(value, "utf8")
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
 
-  const [loading, setLoading] = useState(true);
-  const [loggingIn, setLoggingIn] = useState(false);
+/*
+ * =============================================================
+ * HMAC SIGNATURE
+ * =============================================================
+ */
 
-  const [error, setError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+async function createSignature(
+  value: string,
+  secret: string
+): Promise<string> {
+  const encoder = new TextEncoder();
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    {
+      name: "HMAC",
+      hash: "SHA-256",
+    },
+    false,
+    ["sign"]
+  );
+
+  const signatureBuffer =
+    await crypto.subtle.sign(
+      "HMAC",
+      key,
+      encoder.encode(value)
+    );
+
+  return Buffer.from(signatureBuffer)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+/*
+ * =============================================================
+ * SIGNED OAUTH STATE
+ * =============================================================
+ *
+ * The state protects the OAuth flow against CSRF.
+ *
+ * If a Sodah user session exists, we include the user ID.
+ *
+ * If the session is not available, we DO NOT redirect the user
+ * to Sodah login.
+ *
+ * Instead, the callback can resolve the Sodah session after
+ * Instagram returns the user.
+ */
+
+async function createSignedState(
+  userId: string | null,
+  secret: string
+): Promise<string> {
+  const payload = {
+    /*
+     * null means the callback must resolve the current
+     * authenticated Sodah user from the Supabase session.
+     */
+    userId: userId || null,
+
+    timestamp: Date.now(),
+
+    nonce: crypto.randomUUID(),
+  };
+
+  const encodedPayload =
+    base64UrlEncode(
+      JSON.stringify(payload)
+    );
+
+  const signature =
+    await createSignature(
+      encodedPayload,
+      secret
+    );
+
+  return `${encodedPayload}.${signature}`;
+}
+
+/*
+ * =============================================================
+ * PAGE
+ * =============================================================
+ */
+
+export default async function InstagramLoginPage() {
+  /*
+   * ---------------------------------------------------------
+   * SERVER CONFIGURATION
+   * ---------------------------------------------------------
+   */
+
+  const instagramAppId =
+    process.env.INSTAGRAM_APP_ID?.trim();
+
+  const redirectUri =
+    process.env.INSTAGRAM_REDIRECT_URI?.trim();
+
+  const stateSecret =
+    process.env.INSTAGRAM_STATE_SECRET?.trim() ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   /*
-   * ------------------------------------------------------------
-   * LOAD LOGIN CONTEXT
-   * ------------------------------------------------------------
-   *
-   * Supported URLs:
-   *
-   * /login
-   * /login?email=user@example.com
-   * /login?email=user@example.com&businessId=123
-   * /login?email=user@example.com&businessId=123&channel=whatsapp
-   * /login?email=user@example.com&businessId=123&channel=instagram
-   *
-   * IMPORTANT:
-   *
-   * Instagram is NOT supposed to use this generic login page.
-   *
-   * If channel=instagram, immediately hand control to:
-   *
-   * /instagram/login
-   *
-   * This prevents the Inbox login from being reused for
-   * Instagram authentication.
-   *
-   * Password is NEVER accepted from the URL.
+   * ---------------------------------------------------------
+   * CONFIGURATION CHECK
+   * ---------------------------------------------------------
    */
-  useEffect(() => {
-    const suppliedEmail =
-      searchParams.get("email") || "";
 
-    const suppliedBusinessId =
-      searchParams.get("businessId") || "";
-
-    const suppliedChannel =
-      searchParams.get("channel") || "";
-
-    /*
-     * ----------------------------------------------------------
-     * INSTAGRAM HANDOFF
-     * ----------------------------------------------------------
-     *
-     * This MUST happen before the normal Inbox login context
-     * is established.
-     *
-     * The generic /login page is for Inbox/WhatsApp.
-     *
-     * Instagram has its own authentication page:
-     *
-     * /instagram/login
-     */
-    if (suppliedChannel === "instagram") {
-      const params = new URLSearchParams();
-
-      if (suppliedEmail) {
-        params.set("email", suppliedEmail);
-      }
-
-      if (suppliedBusinessId) {
-        params.set(
-          "businessId",
-          suppliedBusinessId
-        );
-      }
-
-      const query = params.toString();
-
-      router.replace(
-        query
-          ? `/instagram/login?${query}`
-          : "/instagram/login"
-      );
-
-      return;
-    }
-
-    /*
-     * ----------------------------------------------------------
-     * NORMAL LOGIN CONTEXT
-     * ----------------------------------------------------------
-     */
-
-    setEmail(suppliedEmail);
-    setBusinessId(suppliedBusinessId);
-
-    if (suppliedChannel === "whatsapp") {
-      setChannel("whatsapp");
-    } else {
-      setChannel("");
-    }
-
-    /*
-     * We are now dealing with the normal Inbox login.
-     */
-    setLoading(true);
-  }, [searchParams, router]);
-
-  /*
-   * ------------------------------------------------------------
-   * BUILD THE REAL INBOX URL
-   * ------------------------------------------------------------
-   *
-   * Login does NOT render the Inbox.
-   *
-   * It sends the authenticated user to:
-   *
-   * /inbox
-   *
-   * Optional context:
-   *
-   * /inbox?businessId=123&channel=whatsapp
-   */
-  function buildInboxUrl() {
-    const params = new URLSearchParams();
-
-    if (businessId.trim()) {
-      params.set(
-        "businessId",
-        businessId.trim()
-      );
-    }
-
-    if (channel === "whatsapp") {
-      params.set(
-        "channel",
-        "whatsapp"
-      );
-    }
-
-    const query = params.toString();
-
-    return query
-      ? `/inbox?${query}`
-      : "/inbox";
-  }
-
-  /*
-   * ------------------------------------------------------------
-   * CHECK EXISTING SUPABASE SESSION
-   * ------------------------------------------------------------
-   *
-   * IMPORTANT:
-   *
-   * Instagram MUST NEVER reach this logic.
-   *
-   * If the current channel is Instagram, the effect exits
-   * immediately.
-   *
-   * This prevents an existing Inbox/Sodah session from doing:
-   *
-   * /instagram
-   *     ↓
-   * generic /login
-   *     ↓
-   * existing Supabase session
-   *     ↓
-   * /inbox
-   *
-   * Instead:
-   *
-   * /login?channel=instagram
-   *     ↓
-   * /instagram/login
-   *     ↓
-   * Instagram authentication
-   */
-  useEffect(() => {
-    /*
-     * ----------------------------------------------------------
-     * CRITICAL INSTAGRAM PROTECTION
-     * ----------------------------------------------------------
-     *
-     * Do not check the generic Inbox session for Instagram.
-     */
-    if (channel === "instagram") {
-      setLoading(false);
-      return;
-    }
-
-    /*
-     * If the URL is still being processed and we have not yet
-     * established the channel, inspect the URL directly as an
-     * additional safety check.
-     */
-    const urlChannel =
-      searchParams.get("channel");
-
-    if (urlChannel === "instagram") {
-      setLoading(false);
-      return;
-    }
-
-    let mounted = true;
-
-    async function checkAuthentication() {
-      try {
-        const supabase = createClient();
-
-        const {
-          data: { user: currentUser },
-          error: userError,
-        } =
-          await supabase.auth.getUser();
-
-        if (!mounted) {
-          return;
-        }
-
-        if (
-          userError ||
-          !currentUser
-        ) {
-          setUser(null);
-          setLoading(false);
-          return;
-        }
-
-        /*
-         * ------------------------------------------------------
-         * EXISTING NORMAL USER SESSION
-         * ------------------------------------------------------
-         *
-         * This applies only to the normal Inbox login.
-         */
-        setUser(currentUser);
-
-        router.replace(
-          buildInboxUrl()
-        );
-      } catch (authenticationError) {
-        console.error(
-          "Authentication check failed:",
-          authenticationError
-        );
-
-        if (!mounted) {
-          return;
-        }
-
-        setUser(null);
-        setLoading(false);
-      }
-    }
-
-    checkAuthentication();
-
-    return () => {
-      mounted = false;
-    };
-  }, [
-    router,
-    businessId,
-    channel,
-    searchParams,
-  ]);
-
-  /*
-   * ------------------------------------------------------------
-   * LOGIN
-   * ------------------------------------------------------------
-   */
-  async function handleLogin(
-    event: FormEvent<HTMLFormElement>
+  if (
+    !instagramAppId ||
+    !redirectUri ||
+    !stateSecret
   ) {
-    event.preventDefault();
+    console.error(
+      "[Instagram Login] Missing Instagram OAuth configuration.",
+      {
+        hasAppId:
+          Boolean(instagramAppId),
 
-    /*
-     * Instagram should never submit through this generic form.
-     *
-     * This is an additional safety guard in case the component
-     * somehow receives an Instagram channel after rendering.
-     */
-    if (
-      channel === "instagram" ||
-      searchParams.get("channel") ===
-        "instagram"
-    ) {
-      const params = new URLSearchParams();
+        hasRedirectUri:
+          Boolean(redirectUri),
 
-      const suppliedEmail =
-        email.trim();
-
-      if (suppliedEmail) {
-        params.set(
-          "email",
-          suppliedEmail
-        );
+        hasStateSecret:
+          Boolean(stateSecret),
       }
+    );
 
-      if (businessId.trim()) {
-        params.set(
-          "businessId",
-          businessId.trim()
-        );
-      }
-
-      const query = params.toString();
-
-      router.replace(
-        query
-          ? `/instagram/login?${query}`
-          : "/instagram/login"
-      );
-
-      return;
-    }
-
-    setError("");
-
-    const normalizedEmail =
-      email.trim();
-
-    if (!normalizedEmail) {
-      setError(
-        "Please enter your email address."
-      );
-      return;
-    }
-
-    if (!password) {
-      setError(
-        "Please enter your password."
-      );
-      return;
-    }
-
-    setLoggingIn(true);
-
-    try {
-      const supabase = createClient();
-
-      const {
-        data,
-        error: loginError,
-      } =
-        await supabase.auth.signInWithPassword(
-          {
-            email: normalizedEmail,
-            password,
-          }
-        );
-
-      if (loginError) {
-        setError(
-          loginError.message
-        );
-        setLoggingIn(false);
-        return;
-      }
-
-      if (!data.user) {
-        setError(
-          "Login was not completed. Please try again."
-        );
-
-        setLoggingIn(false);
-        return;
-      }
-
-      /*
-       * Authentication succeeded.
-       *
-       * This is the NORMAL Inbox flow only.
-       *
-       * Do not render an Inbox here.
-       * Do not redirect to /app/inbox.
-       */
-      setUser(data.user);
-      setPassword("");
-
-      const inboxUrl =
-        buildInboxUrl();
-
-      router.replace(inboxUrl);
-    } catch (loginError) {
-      console.error(
-        "Login failed:",
-        loginError
-      );
-
-      setError(
-        "Unable to sign in right now. Please try again."
-      );
-
-      setLoggingIn(false);
-    }
-  }
-
-  /*
-   * ------------------------------------------------------------
-   * BACK TO CHANNELS
-   * ------------------------------------------------------------
-   */
-  function handleBackToChannels() {
-    router.push("/channels");
-  }
-
-  /*
-   * ------------------------------------------------------------
-   * LOADING
-   * ------------------------------------------------------------
-   */
-  if (loading) {
     return (
-      <main style={styles.page}>
-        <div style={styles.loadingCard}>
-          <div style={styles.logoCircle}>
-            💬
-          </div>
-
-          <h1 style={styles.loadingTitle}>
-            Opening Inbox
+      <main
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background:
+            "linear-gradient(135deg, #06120f 0%, #0b171d 50%, #111827 100%)",
+          padding: "24px",
+          color: "#ffffff",
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "480px",
+            border:
+              "1px solid rgba(255,255,255,0.10)",
+            borderRadius: "28px",
+            background:
+              "rgba(15, 23, 42, 0.88)",
+            boxShadow:
+              "0 25px 80px rgba(0,0,0,0.40)",
+            padding: "40px",
+          }}
+        >
+          <h1
+            style={{
+              margin: 0,
+              fontSize: "28px",
+              fontWeight: 800,
+            }}
+          >
+            Instagram
           </h1>
 
-          <p style={styles.mutedText}>
-            Checking your account...
+          <p
+            style={{
+              marginTop: "16px",
+              color: "#fca5a5",
+              lineHeight: 1.6,
+            }}
+          >
+            Instagram OAuth is not configured
+            correctly on this server.
           </p>
-
-          <div style={styles.loadingBar}>
-            <div
-              style={
-                styles.loadingBarProgress
-              }
-            />
-          </div>
         </div>
-
-        <style jsx>{`
-          @keyframes inboxLoading {
-            0% {
-              transform: translateX(-100%);
-            }
-
-            100% {
-              transform: translateX(300%);
-            }
-          }
-        `}</style>
       </main>
     );
   }
 
   /*
-   * ------------------------------------------------------------
-   * LOGIN SCREEN
-   * ------------------------------------------------------------
+   * ---------------------------------------------------------
+   * TRY TO READ THE SODAH SESSION
+   * ---------------------------------------------------------
+   *
+   * We DO NOT redirect if the session is missing.
+   *
+   * This is the important change.
+   *
+   * Instagram must be allowed to open directly.
    */
+
+  let sodahUserId: string | null = null;
+
+  try {
+    const supabase =
+      await createClient();
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError) {
+      console.warn(
+        "[Instagram Login] Sodah session unavailable:",
+        authError.message
+      );
+    }
+
+    if (user?.id) {
+      sodahUserId = user.id;
+    }
+  } catch (error) {
+    console.warn(
+      "[Instagram Login] Could not read Sodah session:",
+      error
+    );
+  }
+
+  /*
+   * ---------------------------------------------------------
+   * CREATE SIGNED STATE
+   * ---------------------------------------------------------
+   *
+   * If the Sodah session exists:
+   *
+   * state.userId = actual Sodah user ID
+   *
+   * If it does not:
+   *
+   * state.userId = null
+   *
+   * The callback must then resolve the Sodah user from
+   * the current authenticated session.
+   */
+
+  const state =
+    await createSignedState(
+      sodahUserId,
+      stateSecret
+    );
+
+  /*
+   * ---------------------------------------------------------
+   * BUILD INSTAGRAM AUTHORIZATION URL
+   * ---------------------------------------------------------
+   */
+
+  const instagramUrl =
+    new URL(
+      INSTAGRAM_AUTHORIZE_URL
+    );
+
+  /*
+   * Instagram App ID
+   */
+  instagramUrl.searchParams.set(
+    "client_id",
+    instagramAppId
+  );
+
+  /*
+   * OAuth callback.
+   *
+   * This MUST exactly match the redirect URI configured
+   * in Meta / Instagram.
+   */
+  instagramUrl.searchParams.set(
+    "redirect_uri",
+    redirectUri
+  );
+
+  /*
+   * Authorization-code flow.
+   */
+  instagramUrl.searchParams.set(
+    "response_type",
+    "code"
+  );
+
+  /*
+   * Instagram permissions.
+   */
+  instagramUrl.searchParams.set(
+    "scope",
+    INSTAGRAM_SCOPES
+  );
+
+  /*
+   * Signed state.
+   */
+  instagramUrl.searchParams.set(
+    "state",
+    state
+  );
+
+  /*
+   * Force Instagram to show authentication/authorization
+   * instead of silently reusing the existing Instagram
+   * authorization session.
+   */
+  instagramUrl.searchParams.set(
+    "force_reauth",
+    "true"
+  );
+
+  /*
+   * Keep authentication on Instagram rather than intentionally
+   * falling back to Facebook login.
+   */
+  instagramUrl.searchParams.set(
+    "enable_fb_login",
+    "0"
+  );
+
+  const authorizationUrl =
+    instagramUrl.toString();
+
+  console.log(
+    "[Instagram Login] Authorization URL prepared.",
+    {
+      hasSodahUser:
+        Boolean(sodahUserId),
+
+      redirectUri,
+
+      scopes:
+        INSTAGRAM_SCOPES,
+    }
+  );
+
+  /*
+   * ---------------------------------------------------------
+   * PAGE
+   * ---------------------------------------------------------
+   */
+
   return (
-    <main style={styles.page}>
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background:
+          "linear-gradient(135deg, #06120f 0%, #0b171d 50%, #111827 100%)",
+        padding: "24px",
+        color: "#ffffff",
+      }}
+    >
       <div
-        style={styles.backgroundGlowOne}
-      />
-
-      <div
-        style={styles.backgroundGlowTwo}
-      />
-
-      <section style={styles.loginCard}>
-        {/* BACK TO CHANNELS */}
-
-        <button
-          type="button"
-          onClick={
-            handleBackToChannels
-          }
-          style={styles.backButton}
+        style={{
+          width: "100%",
+          maxWidth: "480px",
+          border:
+            "1px solid rgba(255,255,255,0.10)",
+          borderRadius: "28px",
+          background:
+            "rgba(15, 23, 42, 0.88)",
+          boxShadow:
+            "0 25px 80px rgba(0,0,0,0.40)",
+          padding: "40px",
+          backdropFilter: "blur(20px)",
+        }}
+      >
+        {/* Back */}
+        <a
+          href="/channels"
+          style={{
+            display: "inline-block",
+            textDecoration: "none",
+            color: "#9ca3af",
+            padding: 0,
+            marginBottom: "34px",
+            fontSize: "14px",
+          }}
         >
           ← Back to Channels
-        </button>
+        </a>
 
-        {/* BRAND */}
-
-        <div style={styles.brandArea}>
+        {/* Header */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "16px",
+            marginBottom: "30px",
+          }}
+        >
           <div
-            style={
-              styles.logoCircleLarge
-            }
+            style={{
+              width: "64px",
+              height: "64px",
+              borderRadius: "18px",
+              background:
+                "linear-gradient(135deg, #f58529, #dd2a7b, #8134af, #515bd4)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#ffffff",
+              fontSize: "30px",
+              fontWeight: 800,
+            }}
           >
-            💬
+            ◎
           </div>
 
           <div>
-            <p style={styles.brandName}>
-              Sodah
-              <span
-                style={
-                  styles.brandAccent
-                }
-              >
-                .io
-              </span>
-            </p>
-
-            <p
-              style={
-                styles.brandSubtitle
-              }
-            >
-              AI AUTOMATION PLATFORM
-            </p>
-          </div>
-        </div>
-
-        {/* HEADING */}
-
-        <div
-          style={styles.headingArea}
-        >
-          <p style={styles.eyebrow}>
-            INBOX ACCESS
-          </p>
-
-          <h1 style={styles.heading}>
-            Welcome to your Inbox
-          </h1>
-
-          <p
-            style={styles.description}
-          >
-            Sign in to continue to your
-            customer conversations and
-            connected channels.
-          </p>
-        </div>
-
-        {/* CHANNEL */}
-
-        {channel === "whatsapp" && (
-          <div
-            style={
-              styles.channelBox
-            }
-          >
-            <div
-              style={
-                styles.channelIcon
-              }
-            >
-              ◉
-            </div>
-
-            <div
-              style={
-                styles.channelContent
-              }
-            >
-              <span
-                style={
-                  styles.channelLabel
-                }
-              >
-                CONNECTED CHANNEL
-              </span>
-
-              <span
-                style={
-                  styles.channelValue
-                }
-              >
-                WhatsApp
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* BUSINESS */}
-
-        {businessId && (
-          <div
-            style={
-              styles.workspaceBox
-            }
-          >
-            <div
-              style={
-                styles.workspaceIcon
-              }
-            >
-              🏢
-            </div>
-
-            <div
-              style={
-                styles.workspaceContent
-              }
-            >
-              <span
-                style={
-                  styles.workspaceLabel
-                }
-              >
-                BUSINESS ID
-              </span>
-
-              <span
-                style={
-                  styles.workspaceValue
-                }
-              >
-                {businessId}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* ERROR */}
-
-        {error && (
-          <div
-            role="alert"
-            style={styles.errorBox}
-          >
-            <span
-              style={styles.errorIcon}
-            >
-              !
-            </span>
-
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* LOGIN FORM */}
-
-        <form
-          onSubmit={handleLogin}
-          style={styles.form}
-        >
-          {/* EMAIL */}
-
-          <div style={styles.field}>
-            <label
-              htmlFor="login-email"
-              style={styles.label}
-            >
-              Email address
-            </label>
-
-            <input
-              id="login-email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(event) =>
-                setEmail(
-                  event.target.value
-                )
-              }
-              placeholder="you@example.com"
-              disabled={loggingIn}
-              style={styles.input}
-              required
-            />
-          </div>
-
-          {/* PASSWORD */}
-
-          <div style={styles.field}>
-            <div
-              style={
-                styles.passwordLabelRow
-              }
-            >
-              <label
-                htmlFor="login-password"
-                style={styles.label}
-              >
-                Password
-              </label>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setShowPassword(
-                    (value) =>
-                      !value
-                  )
-                }
-                disabled={loggingIn}
-                style={
-                  styles.showPasswordButton
-                }
-              >
-                {showPassword
-                  ? "Hide"
-                  : "Show"}
-              </button>
-            </div>
-
-            <input
-              id="login-password"
-              name="password"
-              type={
-                showPassword
-                  ? "text"
-                  : "password"
-              }
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) =>
-                setPassword(
-                  event.target.value
-                )
-              }
-              placeholder="Enter your password"
-              disabled={loggingIn}
-              style={styles.input}
-              required
-            />
-          </div>
-
-          {/* LOGIN */}
-
-          <button
-            type="submit"
-            disabled={loggingIn}
-            style={{
-              ...styles.loginButton,
-              ...(loggingIn
-                ? styles.loginButtonDisabled
-                : {}),
-            }}
-          >
-            {loggingIn ? (
-              <>
-                <span
-                  style={
-                    styles.spinner
-                  }
-                />
-
-                Signing in...
-              </>
-            ) : (
-              <>
-                Open Inbox
-
-                <span
-                  style={
-                    styles.buttonArrow
-                  }
-                >
-                  →
-                </span>
-              </>
-            )}
-          </button>
-        </form>
-
-        {/* SECURITY */}
-
-        <div
-          style={
-            styles.securityNotice
-          }
-        >
-          <span
-            style={styles.lockIcon}
-          >
-            🔒
-          </span>
-
-          <span>
-            Your password is entered
-            securely and is never
-            placed in the Inbox URL.
-          </span>
-        </div>
-
-        {/* FOOTER */}
-
-        <div
-          style={styles.footerText}
-        >
-          <span>
-            Need to select another
-            channel?
-          </span>
-
-          <button
-            type="button"
-            onClick={
-              handleBackToChannels
-            }
-            style={styles.footerLink}
-          >
-            Back to Channels
-          </button>
-        </div>
-      </section>
-
-      <style jsx>{`
-        button,
-        input {
-          font-family: inherit;
-        }
-
-        input::placeholder {
-          color: #64748b;
-        }
-
-        input:focus {
-          outline: none;
-          border-color: rgba(
-            37,
-            211,
-            102,
-            0.65
-          );
-
-          box-shadow:
-            0 0 0 3px
-              rgba(
-                37,
-                211,
-                102,
-                0.08
-              ),
-            0 0 30px
-              rgba(
-                37,
-                211,
-                102,
-                0.08
-              );
-        }
-
-        button:not(:disabled):hover {
-          filter: brightness(1.08);
-        }
-
-        @keyframes spin {
-          to {
-            transform: rotate(360deg);
-          }
-        }
-      `}</style>
-    </main>
-  );
-}
-
-/*
- * --------------------------------------------------------------
- * PAGE WRAPPER
- * --------------------------------------------------------------
- */
-export default function LoginPage() {
-  return (
-    <Suspense
-      fallback={
-        <main style={styles.page}>
-          <div style={styles.loadingCard}>
-            <div
-              style={styles.logoCircle}
-            >
-              💬
-            </div>
-
             <h1
-              style={styles.loadingTitle}
+              style={{
+                margin: 0,
+                fontSize: "26px",
+                fontWeight: 800,
+              }}
             >
-              Opening Inbox
+              Instagram
             </h1>
 
             <p
-              style={styles.mutedText}
+              style={{
+                margin: "5px 0 0",
+                color: "#8df7b2",
+                fontSize: "11px",
+                fontWeight: 800,
+                letterSpacing:
+                  "0.20em",
+              }}
             >
-              Loading login...
+              CHANNEL CONNECTION
             </p>
+          </div>
+        </div>
 
-            <div
-              style={styles.loadingBar}
-            >
-              <div
-                style={
-                  styles.loadingBarProgress
-                }
-              />
+        {/* Main heading */}
+        <div
+          style={{
+            marginBottom: "28px",
+          }}
+        >
+          <h2
+            style={{
+              margin: "0 0 12px",
+              fontSize: "36px",
+              lineHeight: 1.1,
+              fontWeight: 800,
+            }}
+          >
+            Connect Instagram
+          </h2>
+
+          <p
+            style={{
+              margin: 0,
+              color: "#aab4c3",
+              fontSize: "15px",
+              lineHeight: 1.6,
+            }}
+          >
+            Sign in to Instagram and authorize
+            Sodah to manage your Instagram
+            conversations.
+          </p>
+        </div>
+
+        {/* What happens */}
+        <div
+          style={{
+            borderRadius: "16px",
+            border:
+              "1px solid rgba(141,247,178,0.14)",
+            background:
+              "rgba(141,247,178,0.05)",
+            padding: "18px",
+            marginBottom: "24px",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              color: "#8df7b2",
+              fontSize: "13px",
+              fontWeight: 800,
+            }}
+          >
+            What happens next
+          </p>
+
+          <div
+            style={{
+              marginTop: "10px",
+              color: "#8b97a8",
+              fontSize: "12px",
+              lineHeight: 1.7,
+            }}
+          >
+            <div>
+              ✓ Instagram opens directly
+            </div>
+
+            <div>
+              ✓ Enter your Instagram credentials
+            </div>
+
+            <div>
+              ✓ Review Sodah's requested permissions
+            </div>
+
+            <div>
+              ✓ Allow Sodah to manage your messages
+            </div>
+
+            <div>
+              ✓ Instagram returns you to Sodah
             </div>
           </div>
+        </div>
 
-          <style jsx>{`
-            @keyframes inboxLoading {
-              0% {
-                transform: translateX(-100%);
-              }
+        {/* Security */}
+        <div
+          style={{
+            borderRadius: "16px",
+            border:
+              "1px solid rgba(255,255,255,0.08)",
+            background:
+              "rgba(255,255,255,0.03)",
+            padding: "18px",
+            marginBottom: "24px",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              color: "#ffffff",
+              fontSize: "13px",
+              fontWeight: 800,
+            }}
+          >
+            🔒 Your Instagram password stays with Instagram
+          </p>
 
-              100% {
-                transform: translateX(300%);
-              }
-            }
-          `}</style>
-        </main>
-      }
-    >
-      <LoginContent />
-    </Suspense>
+          <p
+            style={{
+              margin:
+                "6px 0 0",
+              color: "#8b97a8",
+              fontSize: "12px",
+              lineHeight: 1.5,
+            }}
+          >
+            Sodah does not collect your Instagram
+            password. Instagram handles the login
+            and permission approval directly.
+          </p>
+        </div>
+
+        {/* =====================================================
+            DIRECT INSTAGRAM AUTHORIZATION
+            ===================================================== */}
+
+        <a
+          href={authorizationUrl}
+          rel="noopener noreferrer"
+          style={{
+            display: "block",
+            width: "100%",
+            boxSizing: "border-box",
+            border: 0,
+            borderRadius: "15px",
+            padding: "17px 20px",
+            background:
+              "linear-gradient(135deg, #8df7b2, #61e6d1)",
+            color: "#062017",
+            cursor: "pointer",
+            fontSize: "15px",
+            fontWeight: 800,
+            textAlign: "center",
+            textDecoration: "none",
+            boxShadow:
+              "0 12px 30px rgba(97,230,209,0.18)",
+          }}
+        >
+          Continue with Instagram →
+        </a>
+
+        <p
+          style={{
+            margin: "20px 0 0",
+            textAlign: "center",
+            color: "#7f8a9a",
+            fontSize: "12px",
+            lineHeight: 1.5,
+          }}
+        >
+          You will leave Sodah and authenticate
+          directly with Instagram.
+        </p>
+      </div>
+    </main>
   );
 }
-
-/* ===============================================================
-   STYLES
-================================================================ */
-
-const styles = {
-  page: {
-    position: "relative" as const,
-    minHeight: "100vh",
-    display: "grid",
-    placeItems: "center",
-    padding: "24px",
-    overflow: "hidden",
-    background:
-      "radial-gradient(circle at 15% 15%, rgba(37,211,102,0.10), transparent 30%), radial-gradient(circle at 85% 20%, rgba(0,229,255,0.08), transparent 28%), #020806",
-    color: "white",
-    fontFamily:
-      "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-  },
-
-  backgroundGlowOne: {
-    position: "fixed" as const,
-    width: "420px",
-    height: "420px",
-    borderRadius: "50%",
-    top: "-180px",
-    left: "-140px",
-    background:
-      "rgba(37,211,102,0.08)",
-    filter: "blur(80px)",
-    pointerEvents:
-      "none" as const,
-  },
-
-  backgroundGlowTwo: {
-    position: "fixed" as const,
-    width: "420px",
-    height: "420px",
-    borderRadius: "50%",
-    right: "-160px",
-    bottom: "-160px",
-    background:
-      "rgba(0,229,255,0.07)",
-    filter: "blur(80px)",
-    pointerEvents:
-      "none" as const,
-  },
-
-  loadingCard: {
-    width: "100%",
-    maxWidth: "420px",
-    padding: "42px",
-    borderRadius: "28px",
-    border:
-      "1px solid rgba(37,211,102,0.14)",
-    background:
-      "rgba(6,17,11,0.88)",
-    boxShadow:
-      "0 30px 100px rgba(0,0,0,0.45)",
-    textAlign: "center" as const,
-    backdropFilter: "blur(24px)",
-  },
-
-  loadingTitle: {
-    margin: "20px 0 8px",
-    fontSize: "24px",
-    fontWeight: 900,
-  },
-
-  mutedText: {
-    margin: 0,
-    color: "#94a3b8",
-    fontSize: "14px",
-  },
-
-  loadingBar: {
-    position: "relative" as const,
-    overflow: "hidden",
-    height: "4px",
-    marginTop: "26px",
-    borderRadius: "999px",
-    background: "#16231b",
-  },
-
-  loadingBarProgress: {
-    position: "absolute" as const,
-    top: 0,
-    left: 0,
-    width: "35%",
-    height: "100%",
-    borderRadius: "999px",
-    background:
-      "linear-gradient(90deg, #25D366, #00E5FF)",
-    animation:
-      "inboxLoading 1.4s ease-in-out infinite",
-  },
-
-  logoCircle: {
-    width: "64px",
-    height: "64px",
-    margin: "0 auto",
-    display: "grid",
-    placeItems: "center",
-    borderRadius: "20px",
-    background:
-      "linear-gradient(135deg, #25D366, #00E5FF)",
-    fontSize: "28px",
-    boxShadow:
-      "0 0 35px rgba(37,211,102,0.20)",
-  },
-
-  loginCard: {
-    position: "relative" as const,
-    width: "100%",
-    maxWidth: "500px",
-    padding: "28px",
-    borderRadius: "30px",
-    border:
-      "1px solid rgba(37,211,102,0.13)",
-    background:
-      "rgba(5,15,10,0.92)",
-    boxShadow:
-      "0 35px 120px rgba(0,0,0,0.60)",
-    backdropFilter: "blur(30px)",
-  },
-
-  backButton: {
-    border: 0,
-    background: "transparent",
-    color: "#64748b",
-    fontSize: "12px",
-    fontWeight: 700,
-    cursor: "pointer",
-    padding: "4px 0",
-  },
-
-  brandArea: {
-    display: "flex",
-    alignItems: "center",
-    gap: "14px",
-    marginTop: "24px",
-  },
-
-  logoCircleLarge: {
-    width: "56px",
-    height: "56px",
-    flexShrink: 0,
-    display: "grid",
-    placeItems: "center",
-    borderRadius: "18px",
-    background:
-      "linear-gradient(135deg, #25D366, #00E5FF)",
-    fontSize: "25px",
-    boxShadow:
-      "0 0 30px rgba(37,211,102,0.18)",
-  },
-
-  brandName: {
-    margin: 0,
-    fontSize: "22px",
-    fontWeight: 900,
-    letterSpacing: "-0.5px",
-  },
-
-  brandAccent: {
-    color: "#22d3ee",
-  },
-
-  brandSubtitle: {
-    margin: "5px 0 0",
-    color: "#4ade80",
-    fontSize: "8px",
-    fontWeight: 800,
-    letterSpacing: "2px",
-  },
-
-  headingArea: {
-    marginTop: "32px",
-  },
-
-  eyebrow: {
-    margin: 0,
-    color: "#4ade80",
-    fontSize: "9px",
-    fontWeight: 900,
-    letterSpacing: "3px",
-  },
-
-  heading: {
-    margin: "9px 0 0",
-    fontSize: "32px",
-    lineHeight: 1.1,
-    fontWeight: 900,
-    letterSpacing: "-1px",
-  },
-
-  description: {
-    margin: "12px 0 0",
-    color: "#94a3b8",
-    fontSize: "14px",
-    lineHeight: 1.7,
-  },
-
-  channelBox: {
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-    marginTop: "22px",
-    padding: "13px",
-    borderRadius: "16px",
-    border:
-      "1px solid rgba(0,229,255,0.14)",
-    background:
-      "rgba(0,229,255,0.045)",
-  },
-
-  channelIcon: {
-    width: "38px",
-    height: "38px",
-    display: "grid",
-    placeItems: "center",
-    borderRadius: "12px",
-    background:
-      "rgba(0,229,255,0.08)",
-    color: "#67e8f9",
-    fontSize: "20px",
-    fontWeight: 900,
-  },
-
-  channelContent: {
-    display: "flex",
-    minWidth: 0,
-    flexDirection:
-      "column" as const,
-    gap: "3px",
-  },
-
-  channelLabel: {
-    color: "#67e8f9",
-    fontSize: "8px",
-    fontWeight: 900,
-    letterSpacing: "1.5px",
-  },
-
-  channelValue: {
-    color: "#cffafe",
-    fontSize: "12px",
-    fontWeight: 700,
-  },
-
-  workspaceBox: {
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-    marginTop: "12px",
-    padding: "13px",
-    borderRadius: "16px",
-    border:
-      "1px solid rgba(37,211,102,0.14)",
-    background:
-      "rgba(37,211,102,0.045)",
-  },
-
-  workspaceIcon: {
-    width: "38px",
-    height: "38px",
-    display: "grid",
-    placeItems: "center",
-    borderRadius: "12px",
-    background:
-      "rgba(37,211,102,0.08)",
-  },
-
-  workspaceContent: {
-    display: "flex",
-    minWidth: 0,
-    flexDirection:
-      "column" as const,
-    gap: "3px",
-  },
-
-  workspaceLabel: {
-    color: "#4ade80",
-    fontSize: "8px",
-    fontWeight: 900,
-    letterSpacing: "1.5px",
-  },
-
-  workspaceValue: {
-    overflow: "hidden",
-    color: "#d1fae5",
-    fontSize: "12px",
-    fontWeight: 700,
-    textOverflow: "ellipsis",
-    whiteSpace:
-      "nowrap" as const,
-  },
-
-  errorBox: {
-    display: "flex",
-    alignItems: "flex-start",
-    gap: "10px",
-    marginTop: "18px",
-    padding: "12px 14px",
-    borderRadius: "12px",
-    border:
-      "1px solid rgba(248,113,113,0.18)",
-    background:
-      "rgba(127,29,29,0.18)",
-    color: "#fca5a5",
-    fontSize: "12px",
-    lineHeight: 1.5,
-  },
-
-  errorIcon: {
-    display: "grid",
-    flexShrink: 0,
-    width: "20px",
-    height: "20px",
-    placeItems: "center",
-    borderRadius: "50%",
-    background:
-      "rgba(248,113,113,0.16)",
-    color: "#f87171",
-    fontWeight: 900,
-  },
-
-  form: {
-    display: "flex",
-    flexDirection:
-      "column" as const,
-    gap: "19px",
-    marginTop: "22px",
-  },
-
-  field: {
-    display: "flex",
-    flexDirection:
-      "column" as const,
-    gap: "8px",
-  },
-
-  label: {
-    color: "#cbd5e1",
-    fontSize: "12px",
-    fontWeight: 700,
-  },
-
-  passwordLabelRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent:
-      "space-between",
-  },
-
-  showPasswordButton: {
-    border: 0,
-    background: "transparent",
-    color: "#22d3ee",
-    fontSize: "11px",
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-
-  input: {
-    width: "100%",
-    boxSizing:
-      "border-box" as const,
-    height: "50px",
-    padding: "0 15px",
-    borderRadius: "13px",
-    border:
-      "1px solid rgba(148,163,184,0.14)",
-    outline: "none",
-    background:
-      "rgba(255,255,255,0.035)",
-    color: "white",
-    fontSize: "14px",
-    transition:
-      "border-color 150ms ease, box-shadow 150ms ease",
-  },
-
-  loginButton: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "10px",
-    width: "100%",
-    height: "52px",
-    marginTop: "2px",
-    border: 0,
-    borderRadius: "14px",
-    background:
-      "linear-gradient(135deg, #25D366, #22c55e)",
-    color: "#031109",
-    fontSize: "14px",
-    fontWeight: 900,
-    cursor: "pointer",
-    boxShadow:
-      "0 0 30px rgba(37,211,102,0.20)",
-  },
-
-  loginButtonDisabled: {
-    opacity: 0.65,
-    cursor: "not-allowed",
-  },
-
-  spinner: {
-    width: "16px",
-    height: "16px",
-    border:
-      "2px solid rgba(3,17,9,0.25)",
-    borderTopColor: "#031109",
-    borderRadius: "50%",
-    animation:
-      "spin 700ms linear infinite",
-  },
-
-  buttonArrow: {
-    fontSize: "18px",
-  },
-
-  securityNotice: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "8px",
-    marginTop: "20px",
-    color: "#64748b",
-    fontSize: "10px",
-    lineHeight: 1.5,
-    textAlign: "center" as const,
-  },
-
-  lockIcon: {
-    fontSize: "12px",
-  },
-
-  footerText: {
-    display: "flex",
-    flexWrap: "wrap" as const,
-    justifyContent: "center",
-    gap: "5px",
-    marginTop: "24px",
-    color: "#475569",
-    fontSize: "11px",
-    textAlign: "center" as const,
-  },
-
-  footerLink: {
-    border: 0,
-    padding: 0,
-    background: "transparent",
-    color: "#22d3ee",
-    fontSize: "11px",
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-};
