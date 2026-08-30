@@ -48,14 +48,7 @@ function LoginContent() {
    *
    * IMPORTANT:
    *
-   * Instagram is NOT supposed to use this generic login page.
-   *
-   * If channel=instagram, immediately hand control to:
-   *
-   * /instagram/login
-   *
-   * This prevents the Inbox login from being reused for
-   * Instagram authentication.
+   * Instagram uses its own login page.
    *
    * Password is NEVER accepted from the URL.
    */
@@ -73,15 +66,6 @@ function LoginContent() {
      * ----------------------------------------------------------
      * INSTAGRAM HANDOFF
      * ----------------------------------------------------------
-     *
-     * This MUST happen before the normal Inbox login context
-     * is established.
-     *
-     * The generic /login page is for Inbox/WhatsApp.
-     *
-     * Instagram has its own authentication page:
-     *
-     * /instagram/login
      */
     if (suppliedChannel === "instagram") {
       const params = new URLSearchParams();
@@ -113,7 +97,6 @@ function LoginContent() {
      * NORMAL LOGIN CONTEXT
      * ----------------------------------------------------------
      */
-
     setEmail(suppliedEmail);
     setBusinessId(suppliedBusinessId);
 
@@ -123,26 +106,13 @@ function LoginContent() {
       setChannel("");
     }
 
-    /*
-     * We are now dealing with the normal Inbox login.
-     */
     setLoading(true);
   }, [searchParams, router]);
 
   /*
    * ------------------------------------------------------------
-   * BUILD THE REAL INBOX URL
+   * BUILD REAL INBOX URL
    * ------------------------------------------------------------
-   *
-   * Login does NOT render the Inbox.
-   *
-   * It sends the authenticated user to:
-   *
-   * /inbox
-   *
-   * Optional context:
-   *
-   * /inbox?businessId=123&channel=whatsapp
    */
   function buildInboxUrl() {
     const params = new URLSearchParams();
@@ -173,49 +143,25 @@ function LoginContent() {
    * CHECK EXISTING SUPABASE SESSION
    * ------------------------------------------------------------
    *
-   * IMPORTANT:
+   * This is the important part.
    *
-   * Instagram MUST NEVER reach this logic.
+   * If the user is already authenticated in Sodah,
+   * we DO NOT ask them for email/password again.
    *
-   * If the current channel is Instagram, the effect exits
-   * immediately.
+   * We simply reuse the existing Supabase session
+   * and open the Inbox.
    *
-   * This prevents an existing Inbox/Sodah session from doing:
-   *
-   * /instagram
-   *     ↓
-   * generic /login
-   *     ↓
-   * existing Supabase session
-   *     ↓
-   * /inbox
-   *
-   * Instead:
-   *
-   * /login?channel=instagram
-   *     ↓
-   * /instagram/login
-   *     ↓
-   * Instagram authentication
+   * The businessId is preserved as Inbox context.
    */
   useEffect(() => {
     /*
-     * ----------------------------------------------------------
-     * CRITICAL INSTAGRAM PROTECTION
-     * ----------------------------------------------------------
-     *
-     * Do not check the generic Inbox session for Instagram.
+     * Instagram must never use this authentication flow.
      */
     if (channel === "instagram") {
       setLoading(false);
       return;
     }
 
-    /*
-     * If the URL is still being processed and we have not yet
-     * established the channel, inspect the URL directly as an
-     * additional safety check.
-     */
     const urlChannel =
       searchParams.get("channel");
 
@@ -230,20 +176,26 @@ function LoginContent() {
       try {
         const supabase = createClient();
 
+        /*
+         * First check the existing browser session.
+         *
+         * This does NOT ask the user for credentials.
+         */
         const {
-          data: { user: currentUser },
-          error: userError,
-        } =
-          await supabase.auth.getUser();
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
 
         if (!mounted) {
           return;
         }
 
-        if (
-          userError ||
-          !currentUser
-        ) {
+        if (sessionError) {
+          console.error(
+            "[LOGIN] Session check failed:",
+            sessionError
+          );
+
           setUser(null);
           setLoading(false);
           return;
@@ -251,19 +203,55 @@ function LoginContent() {
 
         /*
          * ------------------------------------------------------
-         * EXISTING NORMAL USER SESSION
+         * EXISTING SESSION FOUND
          * ------------------------------------------------------
          *
-         * This applies only to the normal Inbox login.
+         * Do not show the login form.
+         *
+         * Reuse the authenticated Sodah user.
          */
-        setUser(currentUser);
+        if (session?.user) {
+          setUser(session.user);
 
-        router.replace(
-          buildInboxUrl()
+          console.log(
+            "[LOGIN] Existing Sodah session found:",
+            session.user.id
+          );
+
+          console.log(
+            "[LOGIN] Business context:",
+            businessId || null
+          );
+
+          console.log(
+            "[LOGIN] Opening Inbox..."
+          );
+
+          router.replace(
+            buildInboxUrl()
+          );
+
+          return;
+        }
+
+        /*
+         * ------------------------------------------------------
+         * NO EXISTING SESSION
+         * ------------------------------------------------------
+         *
+         * There is no authenticated user in this browser.
+         *
+         * In this case we must show the normal login form.
+         */
+        console.log(
+          "[LOGIN] No existing Sodah session."
         );
+
+        setUser(null);
+        setLoading(false);
       } catch (authenticationError) {
         console.error(
-          "Authentication check failed:",
+          "[LOGIN] Authentication check failed:",
           authenticationError
         );
 
@@ -292,6 +280,9 @@ function LoginContent() {
    * ------------------------------------------------------------
    * LOGIN
    * ------------------------------------------------------------
+   *
+   * This is only used when there is genuinely no
+   * existing authenticated Supabase session.
    */
   async function handleLogin(
     event: FormEvent<HTMLFormElement>
@@ -299,10 +290,8 @@ function LoginContent() {
     event.preventDefault();
 
     /*
-     * Instagram should never submit through this generic form.
-     *
-     * This is an additional safety guard in case the component
-     * somehow receives an Instagram channel after rendering.
+     * Instagram should never submit through
+     * this generic login form.
      */
     if (
       channel === "instagram" ||
@@ -363,21 +352,29 @@ function LoginContent() {
     try {
       const supabase = createClient();
 
+      /*
+       * Normal Supabase authentication.
+       */
       const {
         data,
         error: loginError,
       } =
-        await supabase.auth.signInWithPassword(
-          {
-            email: normalizedEmail,
-            password,
-          }
-        );
+        await supabase.auth.signInWithPassword({
+          email: normalizedEmail,
+          password,
+        });
 
       if (loginError) {
-        setError(
-          loginError.message
+        console.error(
+          "[LOGIN] Supabase login error:",
+          loginError
         );
+
+        setError(
+          loginError.message ||
+            "Invalid login credentials."
+        );
+
         setLoggingIn(false);
         return;
       }
@@ -394,13 +391,20 @@ function LoginContent() {
       /*
        * Authentication succeeded.
        *
-       * This is the NORMAL Inbox flow only.
-       *
-       * Do not render an Inbox here.
-       * Do not redirect to /app/inbox.
+       * The Supabase session is now established.
        */
       setUser(data.user);
       setPassword("");
+
+      console.log(
+        "[LOGIN] Login successful:",
+        data.user.id
+      );
+
+      console.log(
+        "[LOGIN] Opening Inbox for business:",
+        businessId || null
+      );
 
       const inboxUrl =
         buildInboxUrl();
@@ -408,7 +412,7 @@ function LoginContent() {
       router.replace(inboxUrl);
     } catch (loginError) {
       console.error(
-        "Login failed:",
+        "[LOGIN] Login failed:",
         loginError
       );
 
@@ -478,6 +482,9 @@ function LoginContent() {
    * ------------------------------------------------------------
    * LOGIN SCREEN
    * ------------------------------------------------------------
+   *
+   * This screen is only reached when there is no
+   * existing authenticated session.
    */
   return (
     <main style={styles.page}>
@@ -805,7 +812,9 @@ function LoginContent() {
         {/* FOOTER */}
 
         <div
-          style={styles.footerText}
+          style={
+            styles.footerText
+          }
         >
           <span>
             Need to select another
@@ -935,7 +944,7 @@ export default function LoginPage() {
 
 /* ===============================================================
    STYLES
-================================================================ */
+=============================================================== */
 
 const styles = {
   page: {

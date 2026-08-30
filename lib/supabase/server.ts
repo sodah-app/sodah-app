@@ -1,12 +1,30 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-export async function createSupabaseServerClient() {
+export async function createClient() {
   const cookieStore = await cookies();
 
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+  const supabaseAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL is not configured."
+    );
+  }
+
+  if (!supabaseAnonKey) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY is not configured."
+    );
+  }
+
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
@@ -25,16 +43,14 @@ export async function createSupabaseServerClient() {
               }
             );
           } catch {
-            // Cookie writes may not be available
-            // from every Server Component context.
-            // Session refresh should be handled by
-            // the application's middleware/proxy.
+            /*
+             * Server Components may not always allow
+             * cookies to be written. Middleware handles
+             * session refresh when required.
+             */
           }
         },
       },
     }
   );
 }
-
-export const createClient =
-  createSupabaseServerClient;

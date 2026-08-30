@@ -1,1004 +1,445 @@
 "use client";
 
 import React, {
+  ChangeEvent,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-
 import { supabase } from "@/lib/supabase";
 
 const WEBHOOK_URL =
   "https://solomon-n8n.duckdns.org/webhook/campaign-sender";
 
-const INITIAL_CAMPAIGN = {
+type MessageType = "ai" | "custom";
+type ScheduleMode = "now" | "scheduled" | "daily" | "weekly";
+
+type Campaign = {
+  name: string;
+  instructions: string;
+  template: string;
+  messageType: MessageType;
+  customMessage: string;
+  tone: string;
+  schedule: ScheduleMode;
+  date: string;
+  time: string;
+  weeklyDay: string;
+};
+
+type Contact = {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+};
+
+type AIResponse = {
+  error?: string;
+  message?: string;
+  output?: {
+    message?: string;
+  };
+};
+
+const INITIAL_CAMPAIGN: Campaign = {
   name: "",
   instructions: "",
-  messageType: "ai",
+  template: "",
+  messageType: "custom",
   customMessage: "",
   tone: "Friendly",
-
-  // now | scheduled | daily | weekly
   schedule: "now",
-
   date: "",
   time: "",
-
-  // Used when schedule === "weekly"
   weeklyDay: "monday",
 };
 
 const WEEK_DAYS = [
-  {
-    value: "monday",
-    label: "Monday",
-  },
-  {
-    value: "tuesday",
-    label: "Tuesday",
-  },
-  {
-    value: "wednesday",
-    label: "Wednesday",
-  },
-  {
-    value: "thursday",
-    label: "Thursday",
-  },
-  {
-    value: "friday",
-    label: "Friday",
-  },
-  {
-    value: "saturday",
-    label: "Saturday",
-  },
-  {
-    value: "sunday",
-    label: "Sunday",
-  },
+  { value: "monday", label: "Monday" },
+  { value: "tuesday", label: "Tuesday" },
+  { value: "wednesday", label: "Wednesday" },
+  { value: "thursday", label: "Thursday" },
+  { value: "friday", label: "Friday" },
+  { value: "saturday", label: "Saturday" },
+  { value: "sunday", label: "Sunday" },
 ];
 
-const AI_SUGGESTIONS = [
+const AI_TEMPLATES = [
   {
     title: "Promote an offer",
     instruction:
-      "Promote our current offer. Keep the message friendly, clear, and concise. Explain the value of the offer and invite the customer to reply if they are interested.",
+      "Promote the offer described by the user. Make the value clear, keep it concise, and invite the customer to reply if interested.",
   },
   {
     title: "Follow up with leads",
     instruction:
-      "Follow up with these leads in a friendly and professional way. Ask whether they are still interested and invite them to reply if they have any questions.",
+      "Follow up with the leads described by the user. Be friendly and professional, ask whether they are still interested, and invite a reply.",
   },
   {
     title: "Re-engage customers",
     instruction:
-      "Re-engage previous customers with a warm and friendly message. Remind them that we are available to help and encourage them to get back in touch.",
+      "Re-engage the customers described by the user with a warm message. Encourage them to reconnect with the business.",
   },
   {
     title: "Announce something new",
     instruction:
-      "Announce something new from our business. Make the message exciting but concise, explain what is new, and encourage the customer to reply for more information.",
+      "Announce the new thing described by the user. Keep the message clear and interesting without inventing facts.",
   },
   {
     title: "Invite customers",
     instruction:
-      "Invite customers to connect with our business. Keep the message warm, professional, and easy to respond to.",
+      "Invite the customers described by the user to connect with the business. Keep the message warm, concise, and easy to respond to.",
   },
 ];
 
 export default function WhatsAppCampaignPage() {
-  console.log(
-    "🔥 WhatsAppCampaignPage RENDERED"
-  );
-
-  const fileInput =
-    useRef<HTMLInputElement | null>(null);
+  const fileInput = useRef<HTMLInputElement | null>(null);
+  const errorRef = useRef<HTMLDivElement | null>(null);
 
   const [campaign, setCampaign] =
-    useState(INITIAL_CAMPAIGN);
+    useState<Campaign>(INITIAL_CAMPAIGN);
 
-  const [contacts, setContacts] =
-    useState<any[]>([]);
-
-  const [fileName, setFileName] =
-    useState("");
-
-  const [contactInput, setContactInput] =
-    useState("");
-
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [contactInput, setContactInput] = useState("");
   const [contactMode, setContactMode] =
-    useState("paste");
+    useState<"paste" | "upload">("paste");
+  const [fileName, setFileName] = useState("");
 
-  const [aiMessage, setAiMessage] =
-    useState("");
+  const [aiMessage, setAiMessage] = useState("");
+  const [userBrief, setUserBrief] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
-  const [aiLoading, setAiLoading] =
-    useState(false);
+  const [error, setError] = useState("");
+  const [sending, setSending] = useState(false);
+  const [showReview, setShowReview] = useState(false);
+  const [success, setSuccess] = useState(false);
 
-  const [sending, setSending] =
-    useState(false);
+  const validContacts = useMemo(() => {
+    return contacts.filter((contact) => {
+      const digits = String(contact.phone || "").replace(/\D/g, "");
+      return digits.length >= 8;
+    });
+  }, [contacts]);
 
-  const [showReview, setShowReview] =
-    useState(false);
+  useEffect(() => {
+    if (!error) return;
 
-  const [success, setSuccess] =
-    useState(false);
+    requestAnimationFrame(() => {
+      errorRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+  }, [error]);
 
-  const [error, setError] =
-    useState("");
-
-  /*
-   * ========================================================
-   * CAMPAIGN UPDATE
-   * ========================================================
-   */
-
-  const updateCampaign = (
-    key: string,
-    value: string
+  const updateCampaign = <K extends keyof Campaign>(
+    key: K,
+    value: Campaign[K],
   ) => {
     setCampaign((previous) => ({
       ...previous,
       [key]: value,
     }));
 
-    /*
-     * If the user changes the custom message,
-     * immediately keep the preview in sync.
-     */
-    if (key === "customMessage") {
-      setAiMessage(value);
-    }
+    setError("");
+  };
 
-    /*
-     * If the user changes away from AI mode,
-     * there is no reason to keep showing an old
-     * AI-generated draft.
-     */
-    if (
-      key === "messageType" &&
-      value === "custom"
-    ) {
-      setAiMessage(
-        campaign.customMessage || ""
-      );
-    }
-
-    if (
-      key === "messageType" &&
-      value === "ai"
-    ) {
-      setAiMessage("");
-    }
+  const showError = (message: string) => {
+    setError(message);
   };
 
   /*
-   * ========================================================
-   * VALID CONTACTS
-   * ========================================================
+   * --------------------------------------------------------
+   * CONTACT HELPERS
+   * --------------------------------------------------------
    */
 
-  const validContacts = useMemo(() => {
-    return contacts.filter((contact) => {
-      const phone = String(
-        contact.phone || ""
-      ).replace(/\D/g, "");
+  const normalizePhone = (value: unknown) => {
+    return String(value || "")
+      .trim()
+      .replace(/[^\d+]/g, "");
+  };
 
-      return phone.length >= 8;
+  const isValidPhone = (value: unknown) => {
+    return String(value || "").replace(/\D/g, "").length >= 8;
+  };
+
+  const makeContact = (
+    phone: string,
+    name = "",
+    email = "",
+  ): Contact | null => {
+    const normalizedPhone = normalizePhone(phone);
+
+    if (!isValidPhone(normalizedPhone)) {
+      return null;
+    }
+
+    return {
+      id:
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random()}`,
+      name: name.trim() || `Contact ${contacts.length + 1}`,
+      phone: normalizedPhone,
+      email: email.trim(),
+    };
+  };
+
+  const mergeContacts = (newContacts: Contact[]) => {
+    setContacts((previous) => {
+      const existingPhones = new Set(
+        previous.map((contact) =>
+          String(contact.phone || "").replace(/\D/g, ""),
+        ),
+      );
+
+      const unique: Contact[] = [];
+
+      for (const contact of newContacts) {
+        const digits = String(contact.phone || "").replace(/\D/g, "");
+
+        if (!digits || existingPhones.has(digits)) {
+          continue;
+        }
+
+        existingPhones.add(digits);
+        unique.push(contact);
+      }
+
+      return [...previous, ...unique];
     });
-  }, [contacts]);
-
-  /*
-   * ========================================================
-   * GET AUTHENTICATED USER
-   *
-   * IMPORTANT:
-   *
-   * This function ONLY gets the authenticated user.
-   *
-   * It does NOT run when the page loads.
-   * It is used when the user actually assigns/sends
-   * the campaign.
-   * ========================================================
-   */
-
-  const getAuthenticatedUserId =
-    async (): Promise<string> => {
-      const {
-        data,
-        error: sessionError,
-      } =
-        await supabase.auth.getSession();
-
-      if (sessionError) {
-        console.error(
-          "SODAH CAMPAIGN SESSION ERROR:",
-          sessionError
-        );
-
-        throw new Error(
-          sessionError.message ||
-            "Unable to load your session."
-        );
-      }
-
-      const session = data?.session;
-
-      if (!session?.user?.id) {
-        throw new Error(
-          "Your login session could not be identified. Please sign in again."
-        );
-      }
-
-      return session.user.id;
-    };
-
-  /*
-   * ========================================================
-   * GET CURRENT USER'S BUSINESS
-   *
-   * IMPORTANT:
-   *
-   * This lookup happens ONLY when the campaign is
-   * actually being assigned.
-   *
-   * Expected Supabase structure:
-   *
-   * businesses
-   *   id
-   *   user_id
-   *
-   * The exact business ID is then sent to n8n.
-   * ========================================================
-   */
-
-  const getCurrentBusinessId =
-    async (
-      userId: string
-    ): Promise<string> => {
-      console.log(
-        "SODAH CAMPAIGN: LOOKING UP BUSINESS"
-      );
-
-      console.log(
-        "SODAH CAMPAIGN USER ID:",
-        userId
-      );
-
-      const {
-        data: business,
-        error: businessError,
-      } =
-        await supabase
-          .from("businesses")
-          .select("id")
-          .eq("user_id", userId)
-          .limit(1)
-          .maybeSingle();
-
-      if (businessError) {
-        console.error(
-          "SODAH BUSINESS LOOKUP ERROR:",
-          businessError
-        );
-
-        throw new Error(
-          businessError.message ||
-            "Unable to find your business."
-        );
-      }
-
-      if (!business?.id) {
-        throw new Error(
-          "No business is connected to your account. Please make sure your business profile is configured before running a campaign."
-        );
-      }
-
-      console.log(
-        "SODAH CAMPAIGN BUSINESS ID:",
-        business.id
-      );
-
-      return business.id;
-    };
-
-  /*
-   * ========================================================
-   * AI CAMPAIGN PREPARATION
-   *
-   * The generated message is shown immediately in:
-   *
-   * 1. AI Campaign Draft
-   * 2. AI Preview
-   * 3. Final Review
-   *
-   * There is intentionally NO hardcoded:
-   *
-   * Hi {{name}}
-   *
-   * Users can add {{name}} themselves if they want
-   * personalization.
-   * ========================================================
-   */
-
-  const prepareCampaignWithAI =
-    async (
-      customInstruction?: string
-    ) => {
-      const instruction =
-        (
-          customInstruction ??
-          campaign.instructions
-        ).trim();
-
-      if (!instruction) {
-        setError(
-          "Tell Sodah what you want the campaign to do."
-        );
-
-        return;
-      }
-
-      setError("");
-      setAiLoading(true);
-
-      try {
-        /*
-         * This is the client-side preparation layer.
-         *
-         * It creates the visible campaign draft
-         * before anything is sent.
-         *
-         * The important part is that the generated
-         * message is stored in aiMessage and displayed
-         * to the user before sendCampaign() is called.
-         */
-
-        await new Promise(
-          (resolve) =>
-            setTimeout(resolve, 700)
-        );
-
-        const generatedMessage =
-          `${instruction}
-
-We'd love to hear from you.
-
-Simply reply to this message if you're interested and we'll be happy to help.
-
-Best regards`;
-
-        setCampaign(
-          (previous) => ({
-            ...previous,
-            instructions:
-              instruction,
-          })
-        );
-
-        setAiMessage(
-          generatedMessage
-        );
-      } catch (err) {
-        console.error(
-          "AI PREPARATION ERROR:",
-          err
-        );
-
-        setError(
-          "Something went wrong while preparing the campaign."
-        );
-      } finally {
-        setAiLoading(false);
-      }
-    };
-
-  /*
-   * ========================================================
-   * APPLY AI TEMPLATE
-   *
-   * Clicking a template now:
-   *
-   * 1. Sets the instruction.
-   * 2. Generates the message.
-   * 3. Immediately shows the generated message.
-   *
-   * Nothing is sent at this point.
-   * ========================================================
-   */
-
-  const applyAISuggestion = async (
-    instruction: string
-  ) => {
-    setCampaign(
-      (previous) => ({
-        ...previous,
-        instructions:
-          instruction,
-        messageType: "ai",
-      })
-    );
-
-    await prepareCampaignWithAI(
-      instruction
-    );
   };
 
   /*
-   * ========================================================
-   * CSV PARSER
-   * ========================================================
+   * --------------------------------------------------------
+   * CONTACT TEXT
+   * --------------------------------------------------------
    */
 
-  const parseCSVLine = (
-    line: string
-  ) => {
-    const result: string[] = [];
+  const addContactsFromText = () => {
+    const raw = contactInput.trim();
 
+    if (!raw) {
+      showError("Enter or paste at least one WhatsApp number.");
+      return;
+    }
+
+    const lines = raw
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    const parsed: Contact[] = [];
+
+    for (const line of lines) {
+      const phoneMatches =
+        line.match(/\+?\d[\d\s().-]{7,}\d/g) || [];
+
+      for (const phone of phoneMatches) {
+        const parts = line
+          .split(/[|,;]/)
+          .map((part) => part.trim())
+          .filter(Boolean);
+
+        const name =
+          parts.length > 1 && !/\d/.test(parts[0])
+            ? parts[0]
+            : "";
+
+        const contact = makeContact(phone, name);
+
+        if (contact) {
+          parsed.push(contact);
+        }
+      }
+    }
+
+    if (!parsed.length) {
+      showError(
+        "No valid phone numbers were found. Please check the numbers.",
+      );
+      return;
+    }
+
+    mergeContacts(parsed);
+    setContactInput("");
+    setError("");
+  };
+
+  /*
+   * --------------------------------------------------------
+   * CSV PARSER
+   * --------------------------------------------------------
+   */
+
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
     let current = "";
     let insideQuotes = false;
 
-    for (
-      let i = 0;
-      i < line.length;
-      i++
-    ) {
+    for (let i = 0; i < line.length; i += 1) {
       const character = line[i];
 
       if (character === '"') {
-        if (
-          insideQuotes &&
-          line[i + 1] === '"'
-        ) {
+        if (insideQuotes && line[i + 1] === '"') {
           current += '"';
-          i++;
+          i += 1;
         } else {
-          insideQuotes =
-            !insideQuotes;
+          insideQuotes = !insideQuotes;
         }
-      } else if (
-        character === "," &&
-        !insideQuotes
-      ) {
-        result.push(
-          current.trim()
-        );
-
+      } else if (character === "," && !insideQuotes) {
+        result.push(current.trim());
         current = "";
       } else {
         current += character;
       }
     }
 
-    result.push(
-      current.trim()
-    );
+    result.push(current.trim());
 
     return result;
   };
 
   /*
-   * ========================================================
-   * PHONE HELPERS
-   * ========================================================
-   */
-
-  const normalizePhone = (
-    value: any
-  ) => {
-    return String(value || "")
-      .trim()
-      .replace(/[^\d+]/g, "");
-  };
-
-  const isValidPhone = (
-    value: any
-  ) => {
-    const digits = String(
-      value || ""
-    ).replace(/\D/g, "");
-
-    return digits.length >= 8;
-  };
-
-  const createContact = (
-    phone: string,
-    name = ""
-  ) => {
-    const normalizedPhone =
-      normalizePhone(phone);
-
-    if (
-      !isValidPhone(
-        normalizedPhone
-      )
-    ) {
-      return null;
-    }
-
-    return {
-      id: `${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}`,
-
-      name:
-        name?.trim() ||
-        `Contact ${
-          contacts.length + 1
-        }`,
-
-      phone:
-        normalizedPhone,
-
-      email: "",
-    };
-  };
-
-  /*
-   * ========================================================
-   * MERGE CONTACTS
-   * ========================================================
-   */
-
-  const mergeContacts = (
-    newContacts: any[]
-  ) => {
-    setContacts(
-      (previous) => {
-        const existingPhones =
-          new Set(
-            previous.map(
-              (contact) =>
-                String(
-                  contact.phone ||
-                    ""
-                ).replace(
-                  /\D/g,
-                  ""
-                )
-            )
-          );
-
-        const uniqueNewContacts: any[] =
-          [];
-
-        for (const contact of newContacts) {
-          if (!contact) {
-            continue;
-          }
-
-          const digits = String(
-            contact.phone || ""
-          ).replace(
-            /\D/g,
-            ""
-          );
-
-          if (
-            !digits ||
-            existingPhones.has(
-              digits
-            )
-          ) {
-            continue;
-          }
-
-          existingPhones.add(
-            digits
-          );
-
-          uniqueNewContacts.push(
-            contact
-          );
-        }
-
-        return [
-          ...previous,
-          ...uniqueNewContacts,
-        ];
-      }
-    );
-  };
-
-  /*
-   * ========================================================
-   * ADD MANUAL / PASTED CONTACTS
-   * ========================================================
-   */
-
-  const addContactsFromText =
-    () => {
-      const raw =
-        contactInput.trim();
-
-      if (!raw) {
-        setError(
-          "Enter or paste at least one WhatsApp number."
-        );
-
-        return;
-      }
-
-      setError("");
-
-      const lines = raw
-        .split(/\r?\n/)
-        .map((line) =>
-          line.trim()
-        )
-        .filter(Boolean);
-
-      const parsedContacts: any[] =
-        [];
-
-      lines.forEach(
-        (line) => {
-          const phoneMatches =
-            line.match(
-              /\+?\d[\d\s().-]{7,}\d/g
-            );
-
-          if (!phoneMatches) {
-            return;
-          }
-
-          phoneMatches.forEach(
-            (phone) => {
-              let name = "";
-
-              const parts = line
-                .split(/[|,;]/)
-                .map(
-                  (part) =>
-                    part.trim()
-                )
-                .filter(Boolean);
-
-              if (
-                parts.length > 1 &&
-                !/\d/.test(
-                  parts[0]
-                )
-              ) {
-                name = parts[0];
-              }
-
-              const contact =
-                createContact(
-                  phone,
-                  name
-                );
-
-              if (contact) {
-                parsedContacts.push(
-                  contact
-                );
-              }
-            }
-          );
-        }
-      );
-
-      if (
-        !parsedContacts.length
-      ) {
-        setError(
-          "No valid phone numbers were found. Please check the numbers and try again."
-        );
-
-        return;
-      }
-
-      mergeContacts(
-        parsedContacts
-      );
-
-      setContactInput("");
-    };
-
-  /*
-   * ========================================================
+   * --------------------------------------------------------
    * CONTACT UPLOAD
-   * ========================================================
+   * --------------------------------------------------------
    */
 
   const handleUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: ChangeEvent<HTMLInputElement>,
   ) => {
-    const file =
-      event.target.files?.[0];
+    const file = event.target.files?.[0];
 
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     setError("");
 
+    const extension =
+      file.name.split(".").pop()?.toLowerCase() || "";
+
+    if (extension !== "csv" && extension !== "txt") {
+      showError("Please upload a CSV or TXT contact file.");
+      return;
+    }
+
     try {
-      const extension =
-        file.name
-          .split(".")
-          .pop()
-          ?.toLowerCase();
-
-      if (
-        extension !== "csv" &&
-        extension !== "txt"
-      ) {
-        setError(
-          "Please upload a CSV or TXT contact file."
-        );
-
-        return;
-      }
-
-      const text =
-        await file.text();
+      const text = await file.text();
 
       if (!text.trim()) {
-        setError(
-          "The uploaded file is empty."
-        );
-
+        showError("The uploaded file is empty.");
         return;
       }
 
-      /*
-       * TXT
-       */
+      const parsed: Contact[] = [];
 
-      if (
-        extension === "txt"
-      ) {
+      if (extension === "txt") {
         const lines = text
-          .split(
-            /[\r\n,;]+/
-          )
-          .map((line) =>
-            line.trim()
-          )
+          .split(/[\r\n,;]+/)
+          .map((line) => line.trim())
           .filter(Boolean);
 
-        const parsedContacts: any[] =
-          [];
+        for (const line of lines) {
+          const matches =
+            line.match(/\+?\d[\d\s().-]{7,}\d/g) || [];
 
-        lines.forEach(
-          (line) => {
-            const phoneMatches =
-              line.match(
-                /\+?\d[\d\s().-]{7,}\d/g
-              );
+          for (const phone of matches) {
+            const contact = makeContact(phone);
 
-            if (
-              !phoneMatches
-            ) {
-              return;
+            if (contact) {
+              parsed.push(contact);
             }
-
-            phoneMatches.forEach(
-              (phone) => {
-                const contact =
-                  createContact(
-                    phone
-                  );
-
-                if (contact) {
-                  parsedContacts.push(
-                    contact
-                  );
-                }
-              }
-            );
           }
-        );
+        }
+      } else {
+        const lines = text
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
 
-        if (
-          !parsedContacts.length
-        ) {
-          setError(
-            "No valid phone numbers were found in the TXT file."
-          );
-
+        if (lines.length < 2) {
+          showError("The CSV needs a header and at least one row.");
           return;
         }
 
-        mergeContacts(
-          parsedContacts
+        const headers = parseCSVLine(lines[0]).map((header) =>
+          header
+            .replace(/^"|"$/g, "")
+            .trim()
+            .toLowerCase(),
         );
 
-        setFileName(
-          file.name
-        );
+        for (const line of lines.slice(1)) {
+          const values = parseCSVLine(line);
+          const row: Record<string, string> = {};
 
-        return;
-      }
-
-      /*
-       * CSV
-       */
-
-      const lines = text
-        .split(/\r?\n/)
-        .map((line) =>
-          line.trim()
-        )
-        .filter(Boolean);
-
-      if (!lines.length) {
-        setError(
-          "The uploaded CSV is empty."
-        );
-
-        return;
-      }
-
-      const headers =
-        parseCSVLine(
-          lines[0]
-        ).map(
-          (header) =>
-            header
-              .replace(
-                /^"|"$/g,
-                ""
-              )
-              .trim()
-              .toLowerCase()
-        );
-
-      const rows =
-        lines
-          .slice(1)
-          .map((line) => {
-            const values =
-              parseCSVLine(
-                line
-              );
-
-            const row: Record<
-              string,
-              string
-            > = {};
-
-            headers.forEach(
-              (
-                header,
-                index
-              ) => {
-                row[header] =
-                  values[index] ||
-                  "";
-              }
-            );
-
-            return row;
+          headers.forEach((header, index) => {
+            row[header] = values[index] || "";
           });
 
-      const normalizedContacts =
-        rows
-          .map(
-            (
-              row,
-              index
-            ) => {
-              const firstName =
-                row.first_name ||
-                row.firstname ||
-                "";
+          const firstName =
+            row.first_name || row.firstname || "";
 
-              const lastName =
-                row.last_name ||
-                row.lastname ||
-                "";
+          const lastName =
+            row.last_name || row.lastname || "";
 
-              const name =
-                row.name ||
-                row.full_name ||
-                row.fullname ||
-                `${firstName} ${lastName}`.trim();
+          const name =
+            row.name ||
+            row.full_name ||
+            row.fullname ||
+            `${firstName} ${lastName}`.trim();
 
-              const phone =
-                row.phone ||
-                row.phone_number ||
-                row.mobile ||
-                row.whatsapp ||
-                row.whatsapp_number ||
-                "";
+          const phone =
+            row.phone ||
+            row.phone_number ||
+            row.mobile ||
+            row.whatsapp ||
+            row.whatsapp_number ||
+            "";
 
-              const email =
-                row.email ||
-                row.email_address ||
-                "";
+          const email =
+            row.email ||
+            row.email_address ||
+            "";
 
-              const normalizedPhone =
-                normalizePhone(
-                  phone
-                );
+          const contact = makeContact(
+            phone,
+            name,
+            email,
+          );
 
-              if (
-                !isValidPhone(
-                  normalizedPhone
-                )
-              ) {
-                return null;
-              }
+          if (contact) {
+            parsed.push(contact);
+          }
+        }
+      }
 
-              return {
-                id: `${Date.now()}-${index}-${Math.random()
-                  .toString(36)
-                  .slice(2)}`,
-
-                name:
-                  name ||
-                  `Contact ${
-                    index + 1
-                  }`,
-
-                phone:
-                  normalizedPhone,
-
-                email:
-                  String(
-                    email
-                  ).trim(),
-              };
-            }
-          )
-          .filter(Boolean);
-
-      if (
-        !normalizedContacts.length
-      ) {
-        setError(
-          "No valid contacts were found in the CSV file."
+      if (!parsed.length) {
+        showError(
+          "No valid WhatsApp contacts were found in the file.",
         );
-
         return;
       }
 
-      mergeContacts(
-        normalizedContacts
-      );
-
-      setFileName(
-        file.name
-      );
-    } catch (err) {
-      console.error(
-        "CONTACT FILE ERROR:",
-        err
-      );
-
-      setError(
-        "We couldn't read this contact file. Please check the CSV format."
+      mergeContacts(parsed);
+      setFileName(file.name);
+      setError("");
+    } catch (uploadError) {
+      console.error(uploadError);
+      showError(
+        "We couldn't read this contact file. Please check its format.",
       );
     }
   };
 
-  /*
-   * ========================================================
-   * REMOVE CONTACT
-   * ========================================================
-   */
-
-  const removeContact = (
-    id: string
-  ) => {
-    setContacts(
-      (previous) =>
-        previous.filter(
-          (contact) =>
-            contact.id !== id
-        )
+  const removeContact = (id: string) => {
+    setContacts((previous) =>
+      previous.filter((contact) => contact.id !== id),
     );
   };
-
-  /*
-   * ========================================================
-   * CLEAR CONTACTS
-   * ========================================================
-   */
 
   const clearContacts = () => {
     setContacts([]);
@@ -1006,401 +447,384 @@ Best regards`;
     setContactInput("");
 
     if (fileInput.current) {
-      fileInput.current.value =
-        "";
+      fileInput.current.value = "";
     }
   };
 
   /*
-   * ========================================================
-   * GET FINAL MESSAGE
-   * ========================================================
+   * --------------------------------------------------------
+   * SUPABASE
+   * --------------------------------------------------------
    */
 
-  const getFinalMessage = () => {
-    if (
-      campaign.messageType ===
-      "custom"
-    ) {
-      return campaign.customMessage.trim();
+  const getCurrentUserId = async () => {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError) {
+      console.error(authError);
+      throw new Error("Unable to verify your account.");
     }
 
-    return aiMessage.trim();
-  };
-
-  /*
-   * ========================================================
-   * VALIDATE CAMPAIGN
-   * ========================================================
-   */
-
-  const validateCampaign =
-    () => {
-      if (!campaign.name.trim()) {
-        return "Please give your campaign a name.";
-      }
-
-      if (!validContacts.length) {
-        return "Please add at least one valid contact.";
-      }
-
-      if (
-        campaign.messageType ===
-        "ai"
-      ) {
-        if (
-          !campaign.instructions.trim()
-        ) {
-          return "Tell the AI what you want the campaign to do.";
-        }
-
-        if (!aiMessage.trim()) {
-          return "Please prepare your AI message before continuing.";
-        }
-      }
-
-      if (
-        campaign.messageType ===
-        "custom" &&
-        !campaign.customMessage.trim()
-      ) {
-        return "Please enter your campaign message.";
-      }
-
-      if (
-        campaign.schedule ===
-        "scheduled" &&
-        (!campaign.date ||
-          !campaign.time)
-      ) {
-        return "Please select the campaign date and time.";
-      }
-
-      if (
-        campaign.schedule ===
-        "daily" &&
-        !campaign.time
-      ) {
-        return "Please select the time for your daily campaign.";
-      }
-
-      if (
-        campaign.schedule ===
-        "weekly" &&
-        (!campaign.weeklyDay ||
-          !campaign.time)
-      ) {
-        return "Please select the weekly day and time.";
-      }
-
-      return "";
-    };
-
-  /*
-   * ========================================================
-   * SEND / ASSIGN CAMPAIGN
-   *
-   * BUSINESS ID IS RESOLVED HERE.
-   *
-   * NOT ON PAGE LOAD.
-   * NOT WHEN AI IS GENERATED.
-   * NOT WHEN CONTACTS ARE ADDED.
-   *
-   * Only when the user actually assigns the campaign.
-   * ========================================================
-   */
-
-  const sendCampaign = async () => {
-    setError("");
-
-    const validationError =
-      validateCampaign();
-
-    if (validationError) {
-      setError(
-        validationError
+    if (!user) {
+      throw new Error(
+        "You must be signed in to create a campaign.",
       );
+    }
 
+    return user.id;
+  };
+
+  const getBusinessId = async () => {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError) {
+      console.error(authError);
+      throw new Error("Unable to verify your account.");
+    }
+
+    if (!user) {
+      throw new Error(
+        "You must be signed in to create a campaign.",
+      );
+    }
+
+    const metadataBusinessId =
+      user.user_metadata?.business_id ||
+      user.app_metadata?.business_id ||
+      "";
+
+    if (metadataBusinessId) {
+      return String(metadataBusinessId);
+    }
+
+    const { data: business, error: businessError } =
+      await supabase
+        .from("businesses")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+    if (businessError) {
+      console.error(businessError);
+      throw new Error(
+        "We couldn't find your Sodah business.",
+      );
+    }
+
+    if (!business?.id) {
+      throw new Error(
+        "No business is connected to your Sodah account.",
+      );
+    }
+
+    return String(business.id);
+  };
+
+  /*
+   * --------------------------------------------------------
+   * AI PREPARATION
+   * --------------------------------------------------------
+   */
+
+  const prepareCampaignWithAI = async () => {
+    const instruction = campaign.instructions.trim();
+
+    if (!instruction) {
+      showError(
+        "Tell the AI what you want the campaign to do first.",
+      );
       return;
     }
 
-    setSending(true);
+    setError("");
+    setAiLoading(true);
 
     try {
-      /*
-       * ====================================================
-       * 1. GET CURRENT AUTHENTICATED USER
-       * ====================================================
-       */
+      const businessId = await getBusinessId();
+      const userId = await getCurrentUserId();
 
-      const userId =
-        await getAuthenticatedUserId();
+      const response = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          type: "whatsapp_campaign_preview",
+          mode: "preview",
+          business_id: businessId,
+          user_id: userId,
+          campaign_name: campaign.name.trim(),
+          campaign_template: campaign.template,
+          campaign_instructions: instruction,
+          user_message: userBrief.trim() || instruction,
+          instructions: instruction,
+          tone: campaign.tone,
+          current_message: aiMessage.trim(),
+          improve: Boolean(aiMessage.trim()),
+        }),
+      });
 
-      /*
-       * ====================================================
-       * 2. GET EXACT BUSINESS ID
-       * ====================================================
-       *
-       * This is deliberately done only now.
-       *
-       * user_id
-       *    ↓
-       * businesses
-       *    ↓
-       * business_id
-       *    ↓
-       * n8n
-       */
+      const responseText = await response.text();
 
-      const businessId =
-        await getCurrentBusinessId(
-          userId
-        );
+      let data: AIResponse = {};
 
-      /*
-       * ====================================================
-       * 3. FINAL MESSAGE
-       * ====================================================
-       */
+      try {
+        data = responseText
+          ? (JSON.parse(responseText) as AIResponse)
+          : {};
+      } catch {
+        data = {};
+      }
 
-      const finalMessage =
-        getFinalMessage();
-
-      if (!finalMessage) {
+      if (!response.ok) {
         throw new Error(
-          "There is no campaign message ready to send."
+          data.error ||
+            `AI service returned ${response.status}.`,
         );
       }
 
-      /*
-       * ====================================================
-       * 4. SCHEDULE PAYLOAD
-       * ====================================================
-       */
+      const generatedMessage = String(
+        data.message ||
+          data.output?.message ||
+          "",
+      ).trim();
 
-      const schedulePayload = {
+      if (!generatedMessage) {
+        throw new Error(
+          "The AI did not return a campaign message.",
+        );
+      }
+
+      setAiMessage(generatedMessage);
+    } catch (aiError) {
+      console.error("CAMPAIGN AI ERROR:", aiError);
+
+      showError(
+        aiError instanceof Error
+          ? aiError.message
+          : "Something went wrong while preparing the message.",
+      );
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  /*
+   * --------------------------------------------------------
+   * VALIDATION
+   * --------------------------------------------------------
+   */
+
+  const validateCampaign = () => {
+    if (!campaign.name.trim()) {
+      return "Please give your campaign a name.";
+    }
+
+    if (!validContacts.length) {
+      return "Please add at least one valid WhatsApp contact.";
+    }
+
+    /*
+     * IMPORTANT:
+     *
+     * AI mode requires an AI message.
+     * Custom mode DOES NOT require AI.
+     */
+
+    if (campaign.messageType === "ai") {
+      if (!campaign.instructions.trim()) {
+        return "Tell the AI what you want the campaign to do.";
+      }
+
+      if (!aiMessage.trim()) {
+        return "Prepare the AI message before assigning an AI campaign.";
+      }
+    }
+
+    if (
+      campaign.messageType === "custom" &&
+      !campaign.customMessage.trim()
+    ) {
+      return "Please enter your campaign message.";
+    }
+
+    if (
+      campaign.schedule === "scheduled" &&
+      (!campaign.date || !campaign.time)
+    ) {
+      return "Please select the campaign date and time.";
+    }
+
+    if (
+      campaign.schedule === "daily" &&
+      !campaign.time
+    ) {
+      return "Please select the daily campaign time.";
+    }
+
+    if (
+      campaign.schedule === "weekly" &&
+      (!campaign.weeklyDay || !campaign.time)
+    ) {
+      return "Please select the weekly day and time.";
+    }
+
+    return "";
+  };
+
+  /*
+   * --------------------------------------------------------
+   * REVIEW
+   * --------------------------------------------------------
+   */
+
+  const openReview = () => {
+    const validationError = validateCampaign();
+
+    if (validationError) {
+      showError(validationError);
+      return;
+    }
+
+    setError("");
+    setShowReview(true);
+  };
+
+  /*
+   * --------------------------------------------------------
+   * SEND CAMPAIGN
+   * --------------------------------------------------------
+   */
+
+  const sendCampaign = async () => {
+    const validationError = validateCampaign();
+
+    if (validationError) {
+      setShowReview(false);
+      showError(validationError);
+      return;
+    }
+
+    setError("");
+    setSending(true);
+
+    try {
+      const businessId = await getBusinessId();
+      const userId = await getCurrentUserId();
+
+      const finalMessage =
+        campaign.messageType === "ai"
+          ? aiMessage.trim()
+          : campaign.customMessage.trim();
+
+      const schedule = {
         mode: campaign.schedule,
-
         date:
-          campaign.schedule ===
-          "scheduled"
+          campaign.schedule === "scheduled"
             ? campaign.date
             : "",
-
         time:
-          campaign.schedule ===
-            "scheduled" ||
-          campaign.schedule ===
-            "daily" ||
-          campaign.schedule ===
-            "weekly"
+          ["scheduled", "daily", "weekly"].includes(
+            campaign.schedule,
+          )
             ? campaign.time
             : "",
-
         weekly_day:
-          campaign.schedule ===
-          "weekly"
+          campaign.schedule === "weekly"
             ? campaign.weeklyDay
             : "",
-
         timezone:
-          Intl.DateTimeFormat().resolvedOptions()
-            .timeZone,
+          Intl.DateTimeFormat().resolvedOptions().timeZone,
       };
-
-      /*
-       * ====================================================
-       * 5. FINAL WEBHOOK PAYLOAD
-       * ====================================================
-       */
 
       const payload = {
         type: "whatsapp_campaign",
-
-        /*
-         * Exact authenticated user.
-         */
+        business_id: businessId,
         user_id: userId,
 
-        /*
-         * Exact business belonging to that user.
-         */
-        business_id: businessId,
+        campaign_name: campaign.name.trim(),
 
-        campaign_name:
-          campaign.name.trim(),
+        message_type: campaign.messageType,
 
-        message_type:
-          campaign.messageType,
+        campaign_template:
+          campaign.template || "",
 
         instructions:
-          campaign.messageType ===
-          "ai"
+          campaign.messageType === "ai"
             ? campaign.instructions.trim()
             : "",
 
         /*
-         * THIS IS THE EXACT MESSAGE THE USER
-         * SAW IN THE PREVIEW.
+         * EXACT MESSAGE THE USER APPROVED.
+         *
+         * Custom mode sends the raw custom message.
+         * AI mode sends the AI-generated message.
          */
         message: finalMessage,
-
-        /*
-         * Also expose it under an explicit field
-         * so n8n can clearly distinguish the
-         * reviewed/generated output.
-         */
-        generated_message:
-          finalMessage,
+        generated_message: finalMessage,
 
         tone: campaign.tone,
 
-        contacts:
-          validContacts.map(
-            (contact) => ({
-              name:
-                contact.name || "",
-
-              phone: String(
-                contact.phone || ""
-              ).replace(
-                /[^\d+]/g,
-                ""
-              ),
-
-              email:
-                contact.email || "",
-            })
+        contacts: validContacts.map((contact) => ({
+          name: contact.name || "",
+          phone: String(contact.phone || "").replace(
+            /[^\d+]/g,
+            "",
           ),
+          email: contact.email || "",
+        })),
 
-        schedule:
-          schedulePayload,
+        schedule,
+        schedule_mode: campaign.schedule,
+        schedule_time: schedule.time,
+        schedule_date: schedule.date,
+        weekly_day: schedule.weekly_day,
+        timezone: schedule.timezone,
 
-        /*
-         * Convenience fields for n8n.
-         */
-        schedule_mode:
-          campaign.schedule,
+        total_contacts: validContacts.length,
 
-        schedule_time:
-          schedulePayload.time,
+        media: null,
 
-        schedule_date:
-          schedulePayload.date,
+        source: "sodah_whatsapp_campaign",
 
-        weekly_day:
-          schedulePayload.weekly_day,
-
-        timezone:
-          schedulePayload.timezone,
-
-        total_contacts:
-          validContacts.length,
-
-        source:
-          "sodah_whatsapp_campaign",
-
-        created_at:
-          new Date().toISOString(),
+        created_at: new Date().toISOString(),
       };
 
-      console.log(
-        "===================================="
-      );
+      const response = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-      console.log(
-        "SODAH CAMPAIGN FINAL PAYLOAD"
-      );
-
-      console.log(
-        "USER ID:",
-        userId
-      );
-
-      console.log(
-        "BUSINESS ID:",
-        businessId
-      );
-
-      console.log(
-        "MESSAGE:",
-        finalMessage
-      );
-
-      console.log(
-        "SCHEDULE:",
-        schedulePayload
-      );
-
-      console.log(
-        "===================================="
-      );
-
-      /*
-       * ====================================================
-       * 6. SEND TO N8N
-       * ====================================================
-       */
-
-      const response =
-        await fetch(
-          WEBHOOK_URL,
-          {
-            method: "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-              Accept:
-                "application/json",
-            },
-
-            body:
-              JSON.stringify(
-                payload
-              ),
-          }
-        );
-
-      const responseText =
-        await response.text();
-
-      console.log(
-        "CAMPAIGN WEBHOOK STATUS:",
-        response.status
-      );
-
-      console.log(
-        "CAMPAIGN WEBHOOK RESPONSE:",
-        responseText
-      );
+      const responseText = await response.text();
 
       if (!response.ok) {
         throw new Error(
           `Campaign service returned ${response.status}: ${
-            responseText ||
-            "Unknown error"
-          }`
+            responseText || "Unknown error"
+          }`,
         );
       }
 
-      /*
-       * ====================================================
-       * SUCCESS
-       * ====================================================
-       */
-
       setShowReview(false);
       setSuccess(true);
-    } catch (err: any) {
-      console.error(
-        "CAMPAIGN SEND ERROR:",
-        err
-      );
+    } catch (sendError) {
+      console.error("CAMPAIGN SEND ERROR:", sendError);
 
-      setError(
-        err?.message ||
-          "Sodah couldn't connect to the campaign service."
+      showError(
+        sendError instanceof Error
+          ? sendError.message
+          : "Sodah couldn't connect to the campaign service.",
       );
     } finally {
       setSending(false);
@@ -1408,80 +832,81 @@ Best regards`;
   };
 
   /*
-   * ========================================================
-   * SUCCESS SCREEN
-   * ========================================================
+   * --------------------------------------------------------
+   * RESET
+   * --------------------------------------------------------
+   */
+
+  const resetCampaign = () => {
+    setCampaign(INITIAL_CAMPAIGN);
+    setContacts([]);
+    setContactInput("");
+    setFileName("");
+    setAiMessage("");
+    setUserBrief("");
+    setError("");
+    setSuccess(false);
+    setShowReview(false);
+
+    if (fileInput.current) {
+      fileInput.current.value = "";
+    }
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  /*
+   * --------------------------------------------------------
+   * SUCCESS
+   * --------------------------------------------------------
    */
 
   if (success) {
     return (
       <main className="min-h-screen bg-[#050816] px-5 py-10 text-white md:px-8">
         <div className="mx-auto flex min-h-[80vh] max-w-3xl items-center justify-center">
-          <div className="w-full rounded-[32px] border border-white/10 bg-white/[0.035] p-8 text-center shadow-2xl backdrop-blur-xl md:p-12">
+          <div className="w-full rounded-[32px] border border-white/10 bg-[#0a1020] p-8 text-center shadow-2xl md:p-12">
             <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/15 text-4xl text-emerald-400">
               ✓
             </div>
 
-            <h1 className="mt-7 text-3xl font-semibold">
+            <h1 className="mt-7 text-3xl font-bold">
               Campaign Assigned
             </h1>
 
-            <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-white/45">
-              Your campaign has been
-              successfully assigned to
-              Sodah. The campaign
-              automation can now process
-              the contacts according to
-              your selected schedule.
+            <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-white/50">
+              Your WhatsApp campaign has been successfully
+              submitted to the Sodah automation system.
             </p>
 
             <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              <Stat
+              <Metric
                 label="Campaign"
-                value={
-                  campaign.name
-                }
+                value={campaign.name}
               />
 
-              <Stat
+              <Metric
                 label="Contacts"
-                value={
-                  validContacts.length
-                }
+                value={String(validContacts.length)}
               />
 
-              <Stat
-                label="Schedule"
-                value={getScheduleLabel(
-                  campaign
-                )}
+              <Metric
+                label="Mode"
+                value={
+                  campaign.messageType === "ai"
+                    ? "AI"
+                    : "Custom"
+                }
               />
             </div>
 
             <button
-              onClick={() => {
-                setCampaign({
-                  ...INITIAL_CAMPAIGN,
-                });
-
-                setContacts([]);
-                setFileName("");
-                setContactInput("");
-                setContactMode(
-                  "paste"
-                );
-                setAiMessage("");
-                setSuccess(false);
-                setError("");
-
-                if (
-                  fileInput.current
-                ) {
-                  fileInput.current.value =
-                    "";
-                }
-              }}
-              className="mt-8 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-600 px-7 py-3 font-semibold shadow-lg shadow-blue-500/20 transition hover:scale-[1.02]"
+              type="button"
+              onClick={resetCampaign}
+              className="mt-8 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-600 px-7 py-3 font-bold text-slate-950 shadow-lg transition hover:scale-[1.02]"
             >
               Create Another Campaign
             </button>
@@ -1492,183 +917,166 @@ Best regards`;
   }
 
   /*
-   * ========================================================
+   * --------------------------------------------------------
    * MAIN PAGE
-   * ========================================================
+   * --------------------------------------------------------
    */
 
   const previewMessage =
-    campaign.messageType ===
-    "custom"
-      ? campaign.customMessage
-      : aiMessage;
+    campaign.messageType === "ai"
+      ? aiMessage
+      : campaign.customMessage;
 
   return (
     <main className="min-h-screen bg-[#050816] text-white">
       <div className="mx-auto max-w-[1500px] px-4 py-6 md:px-7 lg:px-10">
-
         {/* HEADER */}
 
-        <header className="mb-7 flex flex-col justify-between gap-5 md:flex-row md:items-center">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 text-xl font-bold shadow-lg shadow-blue-500/20">
-                S
-              </div>
+        <header className="mb-7 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-400 via-cyan-400 to-blue-600 text-2xl font-black text-slate-950 shadow-lg shadow-cyan-500/20">
+              S
+            </div>
 
-              <div>
-                <h1 className="text-2xl font-semibold md:text-3xl">
-                  WhatsApp Campaign
-                </h1>
+            <div>
+              <h1 className="text-2xl font-bold md:text-3xl">
+                WhatsApp Campaign
+              </h1>
 
-                <p className="mt-1 text-sm text-white/40">
-                  Create, review, schedule,
-                  and send AI-powered
-                  messages to multiple
-                  WhatsApp contacts.
-                </p>
-              </div>
+              <p className="mt-1 text-sm text-white/40">
+                Build, review and assign WhatsApp campaigns
+                with complete control over your message.
+              </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-xs text-emerald-300">
+            <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-xs font-semibold text-emerald-300">
               ● WhatsApp Connected
             </div>
 
-            <button
-              type="button"
-              className="rounded-xl border border-white/10 bg-white/[0.035] px-4 py-2.5 text-sm text-white/70 transition hover:bg-white/[0.06]"
-            >
-              Campaign History
-            </button>
+            <div className="rounded-xl border border-white/10 bg-[#0a1020] px-4 py-2 text-xs text-white/50">
+              {validContacts.length} valid contacts
+            </div>
           </div>
         </header>
 
         {/* ERROR */}
 
         {error && (
-          <div className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+          <div
+            ref={errorRef}
+            role="alert"
+            className="mb-6 flex items-start justify-between gap-4 rounded-2xl border border-red-400/20 bg-red-950/60 px-4 py-3 text-sm text-red-200"
+          >
             <span>{error}</span>
 
             <button
               type="button"
-              onClick={() =>
-                setError("")
-              }
-              className="text-white/50 hover:text-white"
+              onClick={() => setError("")}
+              className="text-xl leading-none text-white/40 hover:text-white"
+              aria-label="Dismiss error"
             >
               ×
             </button>
           </div>
         )}
 
-        {/* MAIN GRID */}
+        {/* ==================================================
+            MAIN GRID
+            IMPORTANT:
+            Sidebar is NORMAL FLOW.
+            NO sticky.
+            NO fixed.
+            NO transparent floating layer.
+        ================================================== */}
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
           {/* LEFT COLUMN */}
 
-          <div className="space-y-6">
+          <div className="min-w-0 space-y-6">
+            {/* AI */}
 
-            {/* AI COMMAND CENTER */}
-
-            <section className="overflow-hidden rounded-[26px] border border-violet-400/20 bg-gradient-to-br from-violet-600/[0.12] via-blue-600/[0.06] to-transparent p-6 shadow-2xl shadow-violet-950/10">
-
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-blue-500 text-xl shadow-lg shadow-violet-500/20">
-                  ✦
-                </div>
-
-                <div>
-                  <h2 className="text-lg font-semibold">
-                    Campaign AI
-                  </h2>
-
-                  <p className="mt-1 max-w-xl text-sm leading-6 text-white/45">
-                    Choose a campaign
-                    template or tell Sodah
-                    what you want to
-                    accomplish. The
-                    generated message will
-                    be shown to you before
-                    anything is sent.
-                  </p>
-                </div>
-              </div>
+            <section className="rounded-[26px] border border-violet-400/20 bg-[#0a1020] p-6 shadow-2xl shadow-violet-950/20">
+              <SectionTitle
+                title="Campaign AI"
+                subtitle="Use AI when you want help writing or improving your campaign. It is optional when using a custom message."
+              />
 
               <textarea
-                value={
-                  campaign.instructions
-                }
-                onChange={(event) =>
+                value={campaign.instructions}
+                onChange={(event) => {
+                  const value = event.target.value;
+
+                  setUserBrief(value);
+
                   updateCampaign(
                     "instructions",
-                    event.target.value
-                  )
-                }
+                    value,
+                  );
+                }}
                 rows={5}
-                placeholder="Example: Follow up with these customers about our new promotion. Keep the message friendly and short and invite them to reply if interested."
-                className="mt-6 w-full resize-none rounded-2xl border border-white/10 bg-black/20 p-5 text-sm leading-6 outline-none placeholder:text-white/25 transition focus:border-violet-400/50"
+                placeholder="Example: Promote our new package to existing customers. Keep it friendly, short and encourage customers to reply."
+                className="w-full resize-none rounded-2xl border border-white/10 bg-[#060b18] p-5 text-sm leading-6 outline-none placeholder:text-white/20 transition focus:border-violet-400/50"
               />
 
               <div className="mt-4 flex flex-wrap gap-2">
-                {AI_SUGGESTIONS.map(
-                  (suggestion) => (
-                    <button
-                      type="button"
-                      key={
-                        suggestion.title
-                      }
-                      disabled={aiLoading}
-                      onClick={() =>
-                        applyAISuggestion(
-                          suggestion.instruction
-                        )
-                      }
-                      className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-xs text-white/55 transition hover:border-violet-400/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {suggestion.title}
-                    </button>
-                  )
-                )}
+                {AI_TEMPLATES.map((template) => (
+                  <button
+                    key={template.title}
+                    type="button"
+                    onClick={() => {
+                      const existing = userBrief.trim();
+
+                      const instruction = existing
+                        ? `${template.instruction}\n\nUser-provided campaign details:\n${existing}`
+                        : template.instruction;
+
+                      updateCampaign(
+                        "template",
+                        template.title,
+                      );
+
+                      updateCampaign(
+                        "instructions",
+                        instruction,
+                      );
+
+                      updateCampaign(
+                        "messageType",
+                        "ai",
+                      );
+
+                      setAiMessage("");
+                    }}
+                    className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-xs text-white/55 transition hover:border-violet-400/40 hover:bg-violet-500/10 hover:text-white"
+                  >
+                    {template.title}
+                  </button>
+                ))}
               </div>
 
               <button
                 type="button"
-                onClick={() =>
-                  prepareCampaignWithAI()
-                }
+                onClick={prepareCampaignWithAI}
                 disabled={aiLoading}
-                className="mt-5 rounded-xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-2.5 text-sm font-semibold shadow-lg shadow-violet-500/20 transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-5 rounded-xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-2.5 text-sm font-bold shadow-lg shadow-violet-500/20 transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {aiLoading
-                  ? "Preparing message..."
-                  : "✦ Prepare with AI"}
+                  ? "Preparing..."
+                  : aiMessage
+                    ? "✦ Improve with AI"
+                    : "✦ Prepare with AI"}
               </button>
 
-              {/* IMMEDIATE AI RESULT */}
-
               {aiMessage && (
-                <div className="mt-5 overflow-hidden rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.05]">
-                  <div className="flex items-center justify-between border-b border-emerald-400/10 px-5 py-3">
-                    <div className="text-xs font-medium uppercase tracking-wider text-emerald-300">
-                      Message You Will Send
-                    </div>
-
-                    <div className="rounded-full bg-emerald-400/10 px-2.5 py-1 text-[10px] uppercase tracking-wider text-emerald-300">
-                      Preview
-                    </div>
+                <div className="mt-5 rounded-2xl border border-emerald-400/20 bg-emerald-950/20 p-5">
+                  <div className="mb-3 text-xs font-bold uppercase tracking-wider text-emerald-300">
+                    AI Campaign Draft
                   </div>
 
-                  <div className="whitespace-pre-line p-5 text-sm leading-6 text-white/80">
+                  <div className="whitespace-pre-line text-sm leading-6 text-white/80">
                     {aiMessage}
-                  </div>
-
-                  <div className="border-t border-white/5 px-5 py-3 text-xs text-white/30">
-                    This is the message currently
-                    prepared for your campaign.
-                    Nothing has been sent yet.
                   </div>
                 </div>
               )}
@@ -1676,10 +1084,10 @@ Best regards`;
 
             {/* CAMPAIGN DETAILS */}
 
-            <section className="rounded-[26px] border border-white/10 bg-white/[0.025] p-6">
+            <section className="rounded-[26px] border border-white/10 bg-[#0a1020] p-6">
               <SectionTitle
                 title="Campaign Details"
-                subtitle="Configure how Sodah should communicate."
+                subtitle="Choose exactly how the campaign should be sent."
               />
 
               <label className="mb-2 block text-sm text-white/60">
@@ -1687,86 +1095,104 @@ Best regards`;
               </label>
 
               <input
-                value={
-                  campaign.name
-                }
+                value={campaign.name}
                 onChange={(event) =>
                   updateCampaign(
                     "name",
-                    event.target.value
+                    event.target.value,
                   )
                 }
                 placeholder="e.g. July Customer Promotion"
-                className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none transition focus:border-blue-400/50"
+                className="w-full rounded-xl border border-white/10 bg-[#060b18] px-4 py-3.5 text-sm outline-none transition focus:border-blue-400/50"
               />
 
-              {/* MESSAGE TYPE */}
+              {/* MESSAGE MODE */}
 
               <div className="mt-6">
-                <label className="mb-3 block text-sm text-white/60">
-                  Message Type
+                <label className="mb-3 block text-sm font-medium text-white/60">
+                  Message Mode
                 </label>
 
                 <div className="grid gap-3 md:grid-cols-2">
                   <Choice
                     active={
-                      campaign.messageType ===
-                      "ai"
+                      campaign.messageType === "custom"
                     }
-                    icon="✦"
-                    title="AI Generated"
-                    description="Prepare and review the AI message before sending."
-                    onClick={() =>
+                    icon="✉"
+                    title="Custom Message"
+                    description="Send exactly the message you write. AI is completely optional."
+                    onClick={() => {
                       updateCampaign(
                         "messageType",
-                        "ai"
-                      )
-                    }
+                        "custom",
+                      );
+                    }}
                   />
 
                   <Choice
                     active={
-                      campaign.messageType ===
-                      "custom"
+                      campaign.messageType === "ai"
                     }
-                    icon="✉"
-                    title="Custom Message"
-                    description="Send the same message to everyone."
-                    onClick={() =>
+                    icon="✦"
+                    title="AI Generated"
+                    description="Let Sodah prepare and improve the campaign message."
+                    onClick={() => {
                       updateCampaign(
                         "messageType",
-                        "custom"
-                      )
-                    }
+                        "ai",
+                      );
+                    }}
                   />
                 </div>
               </div>
 
               {/* CUSTOM MESSAGE */}
 
-              {campaign.messageType ===
-                "custom" && (
-                <div className="mt-5">
+              {campaign.messageType === "custom" && (
+                <div className="mt-5 rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.03] p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-semibold text-white">
+                        Your message
+                      </div>
+
+                      <div className="mt-1 text-xs text-white/35">
+                        This exact text will be sent. No AI approval is required.
+                      </div>
+                    </div>
+
+                    <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+                      Direct Send
+                    </span>
+                  </div>
+
                   <textarea
-                    value={
-                      campaign.customMessage
-                    }
+                    value={campaign.customMessage}
                     onChange={(event) =>
                       updateCampaign(
                         "customMessage",
-                        event.target.value
+                        event.target.value,
                       )
                     }
-                    rows={5}
-                    placeholder="Write the WhatsApp message..."
-                    className="w-full resize-none rounded-xl border border-white/10 bg-black/20 p-4 text-sm leading-6 outline-none transition focus:border-blue-400/50"
+                    rows={7}
+                    placeholder="Write your WhatsApp campaign message here..."
+                    className="w-full resize-none rounded-xl border border-white/10 bg-[#060b18] p-4 text-sm leading-6 outline-none transition focus:border-cyan-400/50"
                   />
+                </div>
+              )}
 
-                  <div className="mt-3 rounded-xl border border-blue-400/10 bg-blue-400/[0.04] px-4 py-3 text-xs text-blue-200/60">
-                    Your custom message is
-                    previewed automatically before
-                    you assign the campaign.
+              {/* AI MODE */}
+
+              {campaign.messageType === "ai" && (
+                <div className="mt-5 rounded-2xl border border-violet-400/15 bg-violet-400/[0.03] p-4">
+                  <div className="text-sm font-semibold text-white">
+                    AI message mode
                   </div>
+
+                  <p className="mt-1 text-xs leading-5 text-white/40">
+                    Prepare the message above, review the generated
+                    version, then assign the campaign.
+                  </p>
                 </div>
               )}
 
@@ -1778,377 +1204,188 @@ Best regards`;
                 </label>
 
                 <select
-                  value={
-                    campaign.tone
-                  }
+                  value={campaign.tone}
                   onChange={(event) =>
                     updateCampaign(
                       "tone",
-                      event.target.value
+                      event.target.value,
                     )
                   }
-                  className="w-full rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3.5 text-sm outline-none"
+                  className="w-full rounded-xl border border-white/10 bg-[#060b18] px-4 py-3.5 text-sm outline-none"
                 >
-                  <option>
-                    Friendly
-                  </option>
-
-                  <option>
-                    Professional
-                  </option>
-
-                  <option>
-                    Casual
-                  </option>
-
-                  <option>
-                    Warm
-                  </option>
-
-                  <option>
-                    Persuasive
-                  </option>
-
-                  <option>
-                    Concise
-                  </option>
+                  <option>Friendly</option>
+                  <option>Professional</option>
+                  <option>Casual</option>
+                  <option>Warm</option>
+                  <option>Persuasive</option>
+                  <option>Concise</option>
                 </select>
               </div>
             </section>
 
             {/* CONTACTS */}
 
-            <section className="rounded-[26px] border border-white/10 bg-white/[0.025] p-6">
+            <section className="rounded-[26px] border border-white/10 bg-[#0a1020] p-6">
               <SectionTitle
                 title="Add Contacts"
-                subtitle="Choose how you want Sodah to reach your customers."
+                subtitle="Enter WhatsApp numbers manually, paste a list, or upload a CSV/TXT file."
               />
 
               <input
                 ref={fileInput}
                 type="file"
                 accept=".csv,.txt"
-                onChange={
-                  handleUpload
-                }
+                onChange={handleUpload}
                 className="hidden"
               />
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"
-                  onClick={() =>
-                    setContactMode(
-                      "paste"
-                    )
-                  }
+                  onClick={() => setContactMode("paste")}
                   className={`rounded-2xl border p-4 text-left transition ${
-                    contactMode ===
-                    "paste"
-                      ? "border-violet-400/50 bg-violet-500/10 shadow-lg shadow-violet-500/5"
+                    contactMode === "paste"
+                      ? "border-violet-400/50 bg-violet-500/10"
                       : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05]"
                   }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-lg">
-                      ✎
-                    </div>
+                  <div className="text-sm font-semibold">
+                    ✎ Type or Paste
+                  </div>
 
-                    <div>
-                      <div className="text-sm font-medium">
-                        Type or Paste
-                      </div>
-
-                      <div className="mt-1 text-xs leading-5 text-white/35">
-                        Enter one number or
-                        paste many contacts at
-                        once.
-                      </div>
-                    </div>
+                  <div className="mt-1 text-xs leading-5 text-white/35">
+                    Enter one number per line or paste many.
                   </div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() =>
-                    setContactMode(
-                      "upload"
-                    )
-                  }
+                  onClick={() => setContactMode("upload")}
                   className={`rounded-2xl border p-4 text-left transition ${
-                    contactMode ===
-                    "upload"
-                      ? "border-blue-400/50 bg-blue-500/10 shadow-lg shadow-blue-500/5"
+                    contactMode === "upload"
+                      ? "border-cyan-400/50 bg-cyan-500/10"
                       : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05]"
                   }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/15 text-lg">
-                      ↑
-                    </div>
+                  <div className="text-sm font-semibold">
+                    ↑ Upload File
+                  </div>
 
-                    <div>
-                      <div className="text-sm font-medium">
-                        Upload File
-                      </div>
-
-                      <div className="mt-1 text-xs leading-5 text-white/35">
-                        Upload a CSV or TXT
-                        contact list.
-                      </div>
-                    </div>
+                  <div className="mt-1 text-xs leading-5 text-white/35">
+                    CSV or TXT contacts.
                   </div>
                 </button>
               </div>
 
-              {/* TYPE / PASTE */}
-
-              {contactMode ===
-                "paste" && (
+              {contactMode === "paste" && (
                 <div className="mt-5">
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4 transition focus-within:border-violet-400/40">
-                    <textarea
-                      value={
-                        contactInput
-                      }
-                      onChange={(event) =>
-                        setContactInput(
-                          event.target.value
-                        )
-                      }
-                      onKeyDown={(event) => {
-                        if (
-                          event.key ===
-                            "Enter" &&
-                          !event.shiftKey
-                        ) {
-                          event.preventDefault();
-                          addContactsFromText();
-                        }
-                      }}
-                      rows={5}
-                      placeholder={`Paste or type WhatsApp numbers...
+                  <textarea
+                    value={contactInput}
+                    onChange={(event) =>
+                      setContactInput(event.target.value)
+                    }
+                    rows={6}
+                    placeholder={
+                      "John, +971501234567\nMary, +971501234568\n+971501234569"
+                    }
+                    className="w-full resize-none rounded-xl border border-white/10 bg-[#060b18] p-4 text-sm leading-6 outline-none placeholder:text-white/20 focus:border-violet-400/50"
+                  />
 
-Example:
-+971501234567
-+971559876543
-+971523456789
-
-You can also paste many numbers at once.`}
-                      className="w-full resize-none bg-transparent text-sm leading-6 outline-none placeholder:text-white/20"
-                    />
-
-                    <div className="mt-3 flex flex-col gap-3 border-t border-white/5 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="text-xs text-white/30">
-                        Press Enter to add •
-                        Shift + Enter for a
-                        new line
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={
-                          addContactsFromText
-                        }
-                        className="rounded-xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-2.5 text-sm font-semibold shadow-lg shadow-violet-500/15 transition hover:scale-[1.01]"
-                      >
-                        + Add Contacts
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-white/30">
-                    <span>
-                      ✓ International
-                      numbers supported
-                    </span>
-
-                    <span>•</span>
-
-                    <span>
-                      ✓ Duplicate numbers
-                      removed
-                    </span>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={addContactsFromText}
+                    className="mt-3 rounded-xl bg-violet-500 px-5 py-2.5 text-sm font-bold transition hover:bg-violet-400"
+                  >
+                    Add Contacts
+                  </button>
                 </div>
               )}
 
-              {/* UPLOAD */}
+              {contactMode === "upload" && (
+                <div className="mt-5 rounded-2xl border border-dashed border-white/15 bg-black/10 p-8 text-center">
+                  <div className="text-3xl">📄</div>
 
-              {contactMode ===
-                "upload" && (
-                <div className="mt-5">
+                  <div className="mt-3 text-sm font-semibold">
+                    Upload contacts
+                  </div>
+
+                  <p className="mt-1 text-xs text-white/35">
+                    CSV and TXT files are supported.
+                  </p>
+
                   <button
                     type="button"
                     onClick={() =>
                       fileInput.current?.click()
                     }
-                    className="group w-full rounded-2xl border border-dashed border-blue-400/30 bg-blue-500/[0.04] p-9 text-center transition hover:border-blue-400/60 hover:bg-blue-500/[0.08]"
+                    className="mt-4 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-5 py-2.5 text-sm font-semibold text-cyan-300 transition hover:bg-cyan-400/20"
                   >
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/15 text-2xl transition group-hover:scale-105">
-                      ↑
-                    </div>
-
-                    <div className="mt-4 font-medium">
-                      Upload contacts
-                    </div>
-
-                    <div className="mt-1 text-xs text-white/35">
-                      CSV or TXT • Click to
-                      browse
-                    </div>
+                    Choose File
                   </button>
 
                   {fileName && (
-                    <div className="mt-4 flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-medium">
-                          {fileName}
-                        </div>
-
-                        <div className="mt-1 text-xs text-white/40">
-                          {
-                            validContacts.length
-                          }{" "}
-                          valid contacts
-                          added
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFileName("");
-
-                          if (
-                            fileInput.current
-                          ) {
-                            fileInput.current.value =
-                              "";
-                          }
-                        }}
-                        className="ml-4 text-white/40 transition hover:text-white"
-                      >
-                        ×
-                      </button>
+                    <div className="mt-3 text-xs text-emerald-300">
+                      {fileName}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* CONTACT SUMMARY */}
-
-              {contacts.length >
-                0 && (
+              {contacts.length > 0 && (
                 <div className="mt-6">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-medium">
-                        Contacts Ready
-                      </div>
-
-                      <div className="mt-1 text-xs text-white/35">
-                        {
-                          validContacts.length
-                        }{" "}
-                        valid recipients
-                      </div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold">
+                      Contacts
                     </div>
 
                     <button
                       type="button"
-                      onClick={
-                        clearContacts
-                      }
-                      className="text-xs text-white/35 transition hover:text-red-300"
+                      onClick={clearContacts}
+                      className="text-xs text-red-300 hover:text-red-200"
                     >
                       Clear all
                     </button>
                   </div>
 
-                  <div className="overflow-hidden rounded-2xl border border-white/10">
-                    {contacts
-                      .slice(0, 8)
-                      .map(
-                        (
-                          contact
-                        ) => (
-                          <div
-                            key={
-                              contact.id
-                            }
-                            className="flex items-center justify-between gap-4 border-b border-white/5 px-4 py-3 last:border-0"
-                          >
-                            <div className="flex min-w-0 items-center gap-3">
-                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-sm text-emerald-300">
-                                ✓
-                              </div>
-
-                              <div className="min-w-0">
-                                <div className="truncate text-sm">
-                                  {
-                                    contact.name
-                                  }
-                                </div>
-
-                                <div className="mt-1 truncate text-xs text-white/40">
-                                  {
-                                    contact.phone
-                                  }
-                                </div>
-                              </div>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                removeContact(
-                                  contact.id
-                                )
-                              }
-                              className="shrink-0 text-xs text-white/25 transition hover:text-red-300"
-                            >
-                              Remove
-                            </button>
+                  <div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">
+                    {contacts.map((contact) => (
+                      <div
+                        key={contact.id}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#060b18] px-4 py-3"
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium">
+                            {contact.name}
                           </div>
-                        )
-                      )}
 
-                    {contacts.length >
-                      8 && (
-                      <div className="border-t border-white/5 px-4 py-3 text-center text-xs text-white/30">
-                        +
-                        {contacts.length -
-                          8}{" "}
-                        more contacts
+                          <div className="mt-0.5 text-xs text-white/35">
+                            {contact.phone}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeContact(contact.id)
+                          }
+                          className="shrink-0 rounded-lg px-2 py-1 text-xs text-red-300 hover:bg-red-400/10"
+                        >
+                          Remove
+                        </button>
                       </div>
-                    )}
+                    ))}
                   </div>
 
                   <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/[0.04] p-3">
-                      <div className="text-lg font-semibold text-emerald-400">
-                        {
-                          validContacts.length
-                        }
-                      </div>
+                    <Metric
+                      label="Valid Contacts"
+                      value={String(validContacts.length)}
+                    />
 
-                      <div className="mt-1 text-xs text-white/35">
-                        Valid contacts
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
-                      <div className="text-lg font-semibold">
-                        {
-                          contacts.length
-                        }
-                      </div>
-
-                      <div className="mt-1 text-xs text-white/35">
-                        Total added
-                      </div>
-                    </div>
+                    <Metric
+                      label="Total Added"
+                      value={String(contacts.length)}
+                    />
                   </div>
                 </div>
               )}
@@ -2160,231 +1397,216 @@ You can also paste many numbers at once.`}
                   </div>
 
                   <div className="mt-1 text-xs text-white/20">
-                    Add a few numbers manually,
-                    paste a list, or upload your
-                    contact file.
+                    Add contacts to continue.
                   </div>
                 </div>
               )}
             </section>
           </div>
 
-          {/* RIGHT COLUMN */}
+          {/* ==================================================
+              RIGHT COLUMN
+              NORMAL DOCUMENT FLOW — NOT STICKY.
+          ================================================== */}
 
-          <aside className="space-y-6">
+          <aside className="min-w-0 space-y-6 self-start">
+            {/* CAMPAIGN SUMMARY */}
 
-            {/* SUMMARY */}
+            <section className="rounded-[26px] border border-white/10 bg-[#0a1020] p-6 shadow-xl">
+              <div className="flex items-center justify-between">
+                <h2 className="font-bold">
+                  Campaign Summary
+                </h2>
 
-            <section className="rounded-[26px] border border-white/10 bg-white/[0.025] p-6">
-              <h2 className="font-semibold">
-                Campaign Summary
-              </h2>
+                <span className="rounded-full bg-blue-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-300">
+                  Draft
+                </span>
+              </div>
 
               <div className="mt-6 space-y-4">
                 <Summary
                   label="Campaign"
                   value={
-                    campaign.name ||
-                    "Not configured"
+                    campaign.name || "Not configured"
                   }
                 />
 
                 <Summary
-                  label="Message Type"
+                  label="Message"
                   value={
-                    campaign.messageType ===
-                    "ai"
+                    campaign.messageType === "ai"
                       ? "AI Generated"
                       : "Custom"
                   }
                 />
 
                 <Summary
-                  label="Total Contacts"
-                  value={
-                    validContacts.length
-                  }
+                  label="Contacts"
+                  value={String(validContacts.length)}
                   green
                 />
 
                 <Summary
-                  label="AI Tone"
+                  label="Mode"
                   value={
-                    campaign.tone
+                    campaign.messageType === "ai"
+                      ? "AI"
+                      : "Direct"
                   }
                 />
 
                 <Summary
+                  label="Tone"
+                  value={campaign.tone}
+                />
+
+                <Summary
+                  label="Status"
+                  value="Ready for review"
+                  green
+                />
+
+                <Summary
                   label="Schedule"
-                  value={getScheduleLabel(
-                    campaign
-                  )}
+                  value={getScheduleLabel(campaign)}
                 />
               </div>
             </section>
 
             {/* MESSAGE PREVIEW */}
 
-            <section className="rounded-[26px] border border-emerald-400/15 bg-white/[0.025] p-6">
+            <section className="rounded-[26px] border border-white/10 bg-[#0a1020] p-6">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-emerald-300">
-                    ✓
+                  <span className="text-violet-300">
+                    {campaign.messageType === "ai"
+                      ? "✦"
+                      : "✉"}
                   </span>
 
-                  <h2 className="font-semibold">
+                  <h2 className="font-bold">
                     Message Preview
                   </h2>
                 </div>
 
-                {previewMessage && (
-                  <span className="rounded-full bg-emerald-400/10 px-2.5 py-1 text-[10px] uppercase tracking-wider text-emerald-300">
-                    Ready
-                  </span>
-                )}
+                <span className="text-[10px] uppercase tracking-wider text-white/25">
+                  {campaign.messageType === "ai"
+                    ? "AI"
+                    : "Custom"}
+                </span>
               </div>
 
-              <div className="mt-4 rounded-2xl border border-white/10 bg-[#101827] p-4">
+              <div className="mt-4 min-h-[130px] rounded-2xl border border-white/10 bg-[#060b18] p-4">
                 {previewMessage ? (
                   <div className="whitespace-pre-line text-sm leading-6 text-white/80">
                     {previewMessage}
                   </div>
                 ) : (
-                  <div className="text-sm leading-6 text-white/30">
-                    Your campaign message will
-                    appear here before it is
-                    sent.
+                  <div className="text-sm leading-6 text-white/25">
+                    Your message preview will appear here.
                   </div>
                 )}
               </div>
 
-              <div className="mt-3 rounded-xl border border-blue-400/10 bg-blue-400/[0.035] px-3 py-2.5 text-xs leading-5 text-blue-200/50">
-                You will always see the exact
-                prepared message before the
-                campaign is assigned.
-              </div>
+              <p className="mt-3 text-xs leading-5 text-white/30">
+                {campaign.messageType === "custom"
+                  ? "Your exact custom message will be submitted without AI modification."
+                  : "This is the AI message that will be submitted after review."}
+              </p>
             </section>
 
             {/* SCHEDULE */}
 
-            <section className="rounded-[26px] border border-white/10 bg-white/[0.025] p-6">
-              <h2 className="font-semibold">
+            <section className="rounded-[26px] border border-white/10 bg-[#0a1020] p-6">
+              <h2 className="font-bold">
                 Schedule Campaign
               </h2>
 
-              <p className="mt-1 text-xs leading-5 text-white/35">
-                Choose when Sodah should run
-                this campaign.
-              </p>
-
               <div className="mt-5 space-y-3">
-
                 <Schedule
-                  active={
-                    campaign.schedule ===
-                    "now"
-                  }
+                  active={campaign.schedule === "now"}
                   title="Send Now"
                   description="Start the campaign immediately."
                   onClick={() =>
                     updateCampaign(
                       "schedule",
-                      "now"
+                      "now",
                     )
                   }
                 />
 
                 <Schedule
                   active={
-                    campaign.schedule ===
-                    "scheduled"
+                    campaign.schedule === "scheduled"
                   }
                   title="Schedule Once"
-                  description="Run the campaign on a specific date and time."
+                  description="Run on a specific date and time."
                   onClick={() =>
                     updateCampaign(
                       "schedule",
-                      "scheduled"
+                      "scheduled",
                     )
                   }
                 />
 
                 <Schedule
                   active={
-                    campaign.schedule ===
-                    "daily"
+                    campaign.schedule === "daily"
                   }
                   title="Every Day"
-                  description="Run this campaign automatically every day."
+                  description="Automatically run every day."
                   onClick={() =>
                     updateCampaign(
                       "schedule",
-                      "daily"
+                      "daily",
                     )
                   }
                 />
 
                 <Schedule
                   active={
-                    campaign.schedule ===
-                    "weekly"
+                    campaign.schedule === "weekly"
                   }
                   title="Every Week"
-                  description="Run this campaign automatically once every week."
+                  description="Automatically run once every week."
                   onClick={() =>
                     updateCampaign(
                       "schedule",
-                      "weekly"
+                      "weekly",
                     )
                   }
                 />
               </div>
 
-              {/* ONCE */}
+              {campaign.schedule === "scheduled" && (
+                <div className="mt-4 grid gap-3">
+                  <input
+                    type="date"
+                    value={campaign.date}
+                    onChange={(event) =>
+                      updateCampaign(
+                        "date",
+                        event.target.value,
+                      )
+                    }
+                    className="rounded-xl border border-white/10 bg-[#060b18] px-4 py-3 text-sm outline-none"
+                  />
 
-              {campaign.schedule ===
-                "scheduled" && (
-                <div className="mt-4">
-                  <div className="mb-2 text-xs text-white/40">
-                    Campaign date and time
-                  </div>
-
-                  <div className="grid gap-3">
-                    <input
-                      type="date"
-                      value={
-                        campaign.date
-                      }
-                      onChange={(event) =>
-                        updateCampaign(
-                          "date",
-                          event.target.value
-                        )
-                      }
-                      className="rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm outline-none"
-                    />
-
-                    <input
-                      type="time"
-                      value={
-                        campaign.time
-                      }
-                      onChange={(event) =>
-                        updateCampaign(
-                          "time",
-                          event.target.value
-                        )
-                      }
-                      className="rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm outline-none"
-                    />
-                  </div>
+                  <input
+                    type="time"
+                    value={campaign.time}
+                    onChange={(event) =>
+                      updateCampaign(
+                        "time",
+                        event.target.value,
+                      )
+                    }
+                    className="rounded-xl border border-white/10 bg-[#060b18] px-4 py-3 text-sm outline-none"
+                  />
                 </div>
               )}
 
-              {/* DAILY */}
-
-              {campaign.schedule ===
-                "daily" && (
+              {campaign.schedule === "daily" && (
                 <div className="mt-4">
                   <label className="mb-2 block text-xs text-white/40">
                     Daily campaign time
@@ -2392,134 +1614,75 @@ You can also paste many numbers at once.`}
 
                   <input
                     type="time"
-                    value={
-                      campaign.time
-                    }
+                    value={campaign.time}
                     onChange={(event) =>
                       updateCampaign(
                         "time",
-                        event.target.value
+                        event.target.value,
                       )
                     }
-                    className="w-full rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm outline-none"
+                    className="w-full rounded-xl border border-white/10 bg-[#060b18] px-4 py-3 text-sm outline-none"
                   />
-
-                  <div className="mt-3 rounded-xl border border-violet-400/10 bg-violet-400/[0.04] px-4 py-3 text-xs leading-5 text-violet-200/50">
-                    This campaign will be
-                    configured to run every day
-                    at the selected time.
-                  </div>
                 </div>
               )}
 
-              {/* WEEKLY */}
+              {campaign.schedule === "weekly" && (
+                <div className="mt-4 grid gap-3">
+                  <select
+                    value={campaign.weeklyDay}
+                    onChange={(event) =>
+                      updateCampaign(
+                        "weeklyDay",
+                        event.target.value,
+                      )
+                    }
+                    className="rounded-xl border border-white/10 bg-[#060b18] px-4 py-3 text-sm outline-none"
+                  >
+                    {WEEK_DAYS.map((day) => (
+                      <option
+                        key={day.value}
+                        value={day.value}
+                      >
+                        {day.label}
+                      </option>
+                    ))}
+                  </select>
 
-              {campaign.schedule ===
-                "weekly" && (
-                <div className="mt-4 space-y-3">
-                  <div>
-                    <label className="mb-2 block text-xs text-white/40">
-                      Weekly day
-                    </label>
-
-                    <select
-                      value={
-                        campaign.weeklyDay
-                      }
-                      onChange={(event) =>
-                        updateCampaign(
-                          "weeklyDay",
-                          event.target.value
-                        )
-                      }
-                      className="w-full rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm outline-none"
-                    >
-                      {WEEK_DAYS.map(
-                        (day) => (
-                          <option
-                            key={
-                              day.value
-                            }
-                            value={
-                              day.value
-                            }
-                          >
-                            {day.label}
-                          </option>
-                        )
-                      )}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-xs text-white/40">
-                      Weekly time
-                    </label>
-
-                    <input
-                      type="time"
-                      value={
-                        campaign.time
-                      }
-                      onChange={(event) =>
-                        updateCampaign(
-                          "time",
-                          event.target.value
-                        )
-                      }
-                      className="w-full rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm outline-none"
-                    />
-                  </div>
-
-                  <div className="rounded-xl border border-violet-400/10 bg-violet-400/[0.04] px-4 py-3 text-xs leading-5 text-violet-200/50">
-                    This campaign will be
-                    configured to run every{" "}
-                    {getWeeklyDayLabel(
-                      campaign.weeklyDay
-                    )}{" "}
-                    at the selected time.
-                  </div>
+                  <input
+                    type="time"
+                    value={campaign.time}
+                    onChange={(event) =>
+                      updateCampaign(
+                        "time",
+                        event.target.value,
+                      )
+                    }
+                    className="rounded-xl border border-white/10 bg-[#060b18] px-4 py-3 text-sm outline-none"
+                  />
                 </div>
               )}
             </section>
 
-            {/* REVIEW BUTTON */}
+            {/* FINAL ACTION */}
 
-            <button
-              type="button"
-              onClick={() => {
-                const validationError =
-                  validateCampaign();
-
-                if (
-                  validationError
-                ) {
-                  setError(
-                    validationError
-                  );
-
-                  return;
-                }
-
-                setError("");
-                setShowReview(true);
-              }}
-              className="w-full rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-600 px-5 py-4 font-semibold shadow-xl shadow-blue-500/20 transition hover:scale-[1.01]"
-            >
-              🚀 Review Campaign Before Sending
-            </button>
-
-            <div className="rounded-2xl border border-white/5 bg-white/[0.015] p-4 text-center">
-              <div className="text-xs font-medium text-white/50">
-                Nothing is sent yet
+            <section className="rounded-[26px] border border-cyan-400/15 bg-gradient-to-br from-cyan-400/[0.08] via-blue-500/[0.06] to-violet-500/[0.08] p-6 shadow-xl">
+              <div className="text-sm font-bold">
+                Ready to continue?
               </div>
 
-              <div className="mt-1 text-[11px] leading-5 text-white/25">
-                Your message will be displayed
-                again in the final review before
-                Sodah receives the campaign.
-              </div>
-            </div>
+              <p className="mt-2 text-xs leading-5 text-white/40">
+                Review your contacts, message and schedule
+                before assigning the campaign.
+              </p>
+
+              <button
+                type="button"
+                onClick={openReview}
+                className="mt-5 w-full rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-600 px-5 py-3.5 text-sm font-black text-slate-950 shadow-lg shadow-blue-500/20 transition hover:scale-[1.01]"
+              >
+                🚀 Review & Assign Campaign
+              </button>
+            </section>
           </aside>
         </div>
 
@@ -2528,158 +1691,149 @@ You can also paste many numbers at once.`}
         <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
           <Metric
             label="Total Contacts"
-            value={
-              validContacts.length
-            }
+            value={String(validContacts.length)}
           />
 
           <Metric
             label="Messages"
-            value={
-              validContacts.length
-            }
+            value={String(validContacts.length)}
           />
 
           <Metric
-            label="AI"
+            label="Message Mode"
             value={
-              aiMessage
-                ? "Ready"
-                : "Draft"
+              campaign.messageType === "ai"
+                ? "AI"
+                : "Direct"
             }
           />
 
           <Metric
             label="Campaign"
-            value="Draft"
+            value={
+              campaign.name
+                ? "Configured"
+                : "Draft"
+            }
           />
         </div>
       </div>
 
-      {/* ====================================================
+      {/* ==================================================
           REVIEW MODAL
-          ==================================================== */}
+      ================================================== */}
 
       {showReview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-md">
-          <div className="my-8 w-full max-w-2xl rounded-[30px] border border-white/10 bg-[#0a0f1f] p-7 shadow-2xl">
-            <div className="flex items-start justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80 p-4 backdrop-blur-md">
+          <div className="my-8 w-full max-w-2xl rounded-[30px] border border-white/10 bg-[#080d1b] p-7 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-sm text-blue-300">
+                <div className="text-sm font-semibold text-cyan-300">
                   Final Review
                 </div>
 
-                <h2 className="mt-1 text-2xl font-semibold">
-                  Review Your Message
+                <h2 className="mt-1 text-2xl font-bold">
+                  Ready to assign?
                 </h2>
 
                 <p className="mt-2 text-sm leading-6 text-white/40">
-                  This is exactly what Sodah
-                  will receive for the campaign.
-                  Nothing is assigned until you
-                  confirm below.
+                  Check the campaign details before sending
+                  them to the connected automation.
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={() =>
-                  setShowReview(false)
+                  !sending && setShowReview(false)
                 }
-                disabled={sending}
-                className="text-2xl text-white/40 transition hover:text-white disabled:opacity-40"
+                className="text-2xl text-white/40 transition hover:text-white"
+                aria-label="Close review"
               >
                 ×
               </button>
             </div>
 
+            {error && (
+              <div className="mt-5 rounded-xl border border-red-400/20 bg-red-950/50 px-4 py-3 text-sm text-red-200">
+                {error}
+              </div>
+            )}
+
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <Review
                 label="Campaign"
                 value={
-                  campaign.name ||
-                  "Unnamed campaign"
+                  campaign.name || "Unnamed campaign"
                 }
               />
 
               <Review
                 label="Contacts"
-                value={
-                  validContacts.length
-                }
+                value={String(validContacts.length)}
               />
 
               <Review
                 label="Message"
                 value={
-                  campaign.messageType ===
-                  "ai"
+                  campaign.messageType === "ai"
                     ? "AI Generated"
-                    : "Custom"
+                    : "Custom / Direct"
                 }
               />
 
               <Review
                 label="Schedule"
-                value={getScheduleLabel(
-                  campaign
-                )}
+                value={getScheduleLabel(campaign)}
               />
             </div>
 
-            {/* FINAL MESSAGE */}
-
-            <div className="mt-5 overflow-hidden rounded-2xl border border-emerald-400/20 bg-[#101827]">
-              <div className="flex items-center justify-between border-b border-emerald-400/10 px-5 py-3">
-                <div className="text-xs font-medium uppercase tracking-wider text-emerald-300">
-                  Message That Will Be Sent
-                </div>
-
-                <span className="rounded-full bg-emerald-400/10 px-2.5 py-1 text-[10px] uppercase tracking-wider text-emerald-300">
-                  Final Preview
-                </span>
+            <div className="mt-5 rounded-2xl border border-white/10 bg-[#101827] p-5">
+              <div className="mb-2 text-xs font-bold uppercase tracking-wider text-white/30">
+                Exact Campaign Message
               </div>
 
-              <div className="whitespace-pre-line p-5 text-sm leading-6 text-white/80">
-                {getFinalMessage() ||
+              <div className="whitespace-pre-line text-sm leading-6 text-white/80">
+                {previewMessage ||
                   "No message prepared yet."}
               </div>
             </div>
 
-            <div className="mt-4 rounded-xl border border-blue-400/10 bg-blue-400/[0.035] px-4 py-3 text-xs leading-5 text-blue-200/50">
-              You can go back and edit the
-              campaign if anything needs to
-              change. The business ID will be
-              resolved only when you click
-              <strong className="mx-1 text-blue-200/70">
-                Assign Campaign
-              </strong>
-              below.
+            <div className="mt-6 rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.03] p-4">
+              <div className="text-xs font-bold text-emerald-300">
+                {campaign.messageType === "custom"
+                  ? "Direct custom message"
+                  : "AI-generated message"}
+              </div>
+
+              <div className="mt-1 text-xs leading-5 text-white/35">
+                {campaign.messageType === "custom"
+                  ? "The message above will be sent exactly as written. It will not be rewritten by AI."
+                  : "The AI-generated message above will be sent after this review."}
+              </div>
             </div>
 
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={() =>
-                  setShowReview(false)
+                  !sending && setShowReview(false)
                 }
                 disabled={sending}
                 className="rounded-xl border border-white/10 px-5 py-3 text-sm transition hover:bg-white/[0.05] disabled:opacity-50"
               >
-                Go Back & Edit
+                Go Back
               </button>
 
               <button
                 type="button"
-                onClick={
-                  sendCampaign
-                }
+                onClick={sendCampaign}
                 disabled={sending}
-                className="rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 px-6 py-3 text-sm font-semibold shadow-lg transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-600 px-6 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {sending
-                  ? "Assigning Campaign..."
-                  : "🚀 Confirm & Assign Campaign"}
+                  ? "Assigning..."
+                  : "🚀 Assign Campaign"}
               </button>
             </div>
           </div>
@@ -2695,54 +1849,36 @@ You can also paste many numbers at once.`}
  * ========================================================
  */
 
-function getWeeklyDayLabel(
-  value: string
-) {
+function getWeeklyDayLabel(value: string) {
   return (
-    WEEK_DAYS.find(
-      (day) =>
-        day.value === value
-    )?.label ||
+    WEEK_DAYS.find((day) => day.value === value)?.label ||
     "Monday"
   );
 }
 
-function getScheduleLabel(
-  campaign: typeof INITIAL_CAMPAIGN
-) {
-  switch (
-    campaign.schedule
-  ) {
+function getScheduleLabel(campaign: Campaign) {
+  switch (campaign.schedule) {
     case "now":
       return "Send Now";
 
     case "scheduled":
-      if (
-        campaign.date &&
-        campaign.time
-      ) {
-        return `${campaign.date} at ${campaign.time}`;
-      }
-
-      return "Scheduled Once";
+      return campaign.date && campaign.time
+        ? `${campaign.date} at ${campaign.time}`
+        : "Scheduled Once";
 
     case "daily":
-      if (campaign.time) {
-        return `Every Day at ${campaign.time}`;
-      }
-
-      return "Every Day";
+      return campaign.time
+        ? `Every Day at ${campaign.time}`
+        : "Every Day";
 
     case "weekly":
-      if (campaign.time) {
-        return `Every ${getWeeklyDayLabel(
-          campaign.weeklyDay
-        )} at ${campaign.time}`;
-      }
-
-      return `Every ${getWeeklyDayLabel(
-        campaign.weeklyDay
-      )}`;
+      return campaign.time
+        ? `Every ${getWeeklyDayLabel(
+            campaign.weeklyDay,
+          )} at ${campaign.time}`
+        : `Every ${getWeeklyDayLabel(
+            campaign.weeklyDay,
+          )}`;
 
     default:
       return "Not configured";
@@ -2764,11 +1900,11 @@ function SectionTitle({
 }) {
   return (
     <div className="mb-5">
-      <h2 className="font-semibold">
+      <h2 className="font-bold">
         {title}
       </h2>
 
-      <p className="mt-1 text-sm text-white/40">
+      <p className="mt-1 max-w-2xl text-sm leading-6 text-white/40">
         {subtitle}
       </p>
     </div>
@@ -2794,7 +1930,7 @@ function Choice({
       onClick={onClick}
       className={`rounded-2xl border p-4 text-left transition ${
         active
-          ? "border-violet-400/50 bg-violet-500/10"
+          ? "border-violet-400/50 bg-violet-500/10 shadow-lg shadow-violet-500/5"
           : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05]"
       }`}
     >
@@ -2804,7 +1940,7 @@ function Choice({
         </div>
 
         <div>
-          <div className="text-sm font-medium">
+          <div className="text-sm font-semibold">
             {title}
           </div>
 
@@ -2823,7 +1959,7 @@ function Summary({
   green = false,
 }: {
   label: string;
-  value: string | number;
+  value: string;
   green?: boolean;
 }) {
   return (
@@ -2835,8 +1971,8 @@ function Summary({
       <span
         className={
           green
-            ? "font-medium text-emerald-400"
-            : "max-w-[180px] truncate text-right text-white/80"
+            ? "max-w-[210px] truncate text-right font-semibold text-emerald-400"
+            : "max-w-[210px] truncate text-right text-white/80"
         }
       >
         {value}
@@ -2862,25 +1998,25 @@ function Schedule({
       onClick={onClick}
       className={`flex w-full items-center justify-between rounded-xl border p-4 text-left transition ${
         active
-          ? "border-violet-400/40 bg-violet-500/[0.08]"
-          : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05]"
+          ? "border-cyan-400/40 bg-cyan-400/[0.08]"
+          : "border-white/10 bg-[#060b18] hover:bg-white/[0.04]"
       }`}
     >
       <div>
-        <div className="text-sm font-medium">
+        <div className="text-sm font-semibold">
           {title}
         </div>
 
-        <div className="mt-1 text-xs text-white/35">
+        <div className="mt-1 text-xs leading-5 text-white/35">
           {description}
         </div>
       </div>
 
       <div
-        className={`h-4 w-4 rounded-full border ${
+        className={`h-3 w-3 rounded-full ${
           active
-            ? "border-violet-400 bg-violet-500 shadow-lg shadow-violet-500/30"
-            : "border-white/30"
+            ? "bg-cyan-300 shadow-[0_0_14px_rgba(103,232,249,.7)]"
+            : "bg-white/15"
         }`}
       />
     </button>
@@ -2892,11 +2028,11 @@ function Metric({
   value,
 }: {
   label: string;
-  value: string | number;
+  value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-      <div className="text-xl font-semibold">
+    <div className="rounded-2xl border border-white/10 bg-[#0a1020] p-4">
+      <div className="text-lg font-bold text-white">
         {value}
       </div>
 
@@ -2907,40 +2043,20 @@ function Metric({
   );
 }
 
-function Stat({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number;
-}) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4">
-      <div className="text-xs text-white/35">
-        {label}
-      </div>
-
-      <div className="mt-2 truncate text-sm font-medium">
-        {value}
-      </div>
-    </div>
-  );
-}
-
 function Review({
   label,
   value,
 }: {
   label: string;
-  value: string | number;
+  value: string;
 }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4">
-      <div className="text-xs text-white/35">
+      <div className="text-xs text-white/30">
         {label}
       </div>
 
-      <div className="mt-1 truncate text-sm font-medium">
+      <div className="mt-1 truncate text-sm font-semibold text-white/80">
         {value}
       </div>
     </div>

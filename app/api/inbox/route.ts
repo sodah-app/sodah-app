@@ -5,170 +5,103 @@ export async function GET(request: Request) {
   try {
     const supabase = await createClient();
 
-    /*
-     * Authenticate the request on the server.
-     */
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
 
-    console.log(
-      "[INBOX] USER:",
-      user?.id ?? null
-    );
-
-    if (authError) {
-      console.error(
-        "[INBOX] AUTH ERROR:",
-        authError
-      );
-
+    if (authError || !user) {
       return NextResponse.json(
-        {
-          error: "Authentication error.",
-        },
-        {
-          status: 401,
-          headers: {
-            "Cache-Control": "no-store",
-          },
-        }
+        { error: "Authentication required." },
+        { status: 401 }
       );
     }
 
-    if (!user) {
-      console.error(
-        "[INBOX] No authenticated user."
-      );
-
-      return NextResponse.json(
-        {
-          error: "Auth session missing.",
-        },
-        {
-          status: 401,
-          headers: {
-            "Cache-Control": "no-store",
-          },
-        }
-      );
-    }
-
-    /*
-     * Read search parameter.
-     */
-    const requestUrl = new URL(request.url);
-
-    const search =
-      requestUrl.searchParams.get("search")?.trim() ||
-      "";
-
-    /*
-     * Find the business belonging to the
-     * authenticated Supabase user.
-     */
-    const {
-      data: business,
-      error: businessError,
-    } = await supabase
-      .from("businesses")
-      .select("business_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const { data: business, error: businessError } =
+      await supabase
+        .from("businesses")
+        .select("business_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
     if (businessError) {
-      console.error(
-        "[INBOX] Business lookup error:",
-        businessError
-      );
+      console.error("[INBOX] Business lookup error:", businessError);
 
       return NextResponse.json(
-        {
-          error:
-            "Could not determine your business.",
-        },
-        {
-          status: 500,
-          headers: {
-            "Cache-Control": "no-store",
-          },
-        }
+        { error: "Could not determine your business." },
+        { status: 500 }
       );
     }
 
     if (!business?.business_id) {
-      console.log(
-        "[INBOX] No business found for user:",
-        user.id
-      );
-
-      return NextResponse.json(
-        {
-          conversations: [],
-        },
-        {
-          status: 200,
-          headers: {
-            "Cache-Control": "no-store",
-          },
-        }
-      );
+      return NextResponse.json({
+        conversations: [],
+      });
     }
 
-    /*
-     * Only retrieve conversations belonging
-     * to this user's business.
-     */
+    const requestUrl = new URL(request.url);
+    const search =
+      requestUrl.searchParams.get("search")?.trim() || "";
+
     let query = supabase
-      .from("conversations")
+      .from("inbox")
       .select("*")
-      .eq(
-        "business_id",
-        business.business_id
-      )
-      .order("updated_at", {
+      .eq("business_id", business.business_id)
+      .order("created_at", {
         ascending: false,
       });
 
-    /*
-     * Optional search.
-     */
     if (search) {
       query = query.or(
-        `customer_name.ilike.%${search}%,customer_phone.ilike.%${search}%,last_message.ilike.%${search}%`
+        `contact_name.ilike.%${search}%,contact_username.ilike.%${search}%,contact_id.ilike.%${search}%,message_text.ilike.%${search}%`
       );
     }
 
     const {
-      data: conversations,
-      error: conversationError,
+      data: messages,
+      error: inboxError,
     } = await query;
 
-    if (conversationError) {
-      console.error(
-        "[INBOX] Conversation database error:",
-        conversationError
-      );
+    if (inboxError) {
+      console.error("[INBOX] Database error:", inboxError);
 
       return NextResponse.json(
-        {
-          error:
-            "Could not load conversations.",
-        },
-        {
-          status: 500,
-          headers: {
-            "Cache-Control": "no-store",
-          },
-        }
+        { error: "Could not load inbox." },
+        { status: 500 }
       );
+    }
+
+    const grouped = new Map<string, any>();
+
+    for (const message of messages ?? []) {
+      const conversationKey =
+        `${message.channel || "unknown"}:${message.contact_id || ""}`;
+
+      if (!grouped.has(conversationKey)) {
+        grouped.set(conversationKey, {
+          id: conversationKey,
+          business_id: message.business_id,
+          customer_name:
+            message.contact_name ||
+            message.contact_username ||
+            message.contact_id ||
+            "Customer",
+          customer_phone:
+            message.channel === "whatsapp"
+              ? message.contact_id
+              : null,
+          last_message: message.message_text || "",
+          last_message_at: message.created_at,
+          unread_count: 0,
+          channel: message.channel,
+          updated_at: message.created_at,
+        });
+      }
     }
 
     return NextResponse.json(
       {
-        conversations:
-          conversations ?? [],
+        conversations: Array.from(grouped.values()),
       },
       {
         status: 200,
@@ -178,10 +111,7 @@ export async function GET(request: Request) {
       }
     );
   } catch (error) {
-    console.error(
-      "[INBOX] Unexpected error:",
-      error
-    );
+    console.error("[INBOX] Unexpected error:", error);
 
     return NextResponse.json(
       {
