@@ -1,159 +1,110 @@
 import { NextResponse } from "next/server";
 
+const PROVIDER_URL =
+  process.env.WHATSAPP_QR_PROVIDER_URL ||
+  "http://localhost:3002";
+
+const PROVIDER_API_KEY =
+  process.env.WHATSAPP_QR_PROVIDER_API_KEY ||
+  "sodah-local-test-key-2026";
+
 export async function GET(request) {
   try {
-    const {
-      searchParams,
-    } = new URL(
-      request.url
-    );
-
-    const businessId =
-      searchParams
-        .get("businessId")
-        ?.trim();
+    const { searchParams } = new URL(request.url);
+    const businessId = searchParams.get("businessId");
 
     if (!businessId) {
       return NextResponse.json(
         {
-          connected: false,
-
-          error:
-            "businessId is required.",
+          success: false,
+          error: "Business ID is required.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    const apiUrl =
-      process.env.EVOLUTION_API_URL;
-
-    const apiKey =
-      process.env.EVOLUTION_API_KEY;
-
-    if (!apiUrl) {
-      return NextResponse.json(
-        {
-          connected: false,
-
-          error:
-            "EVOLUTION_API_URL is not configured.",
+    /*
+     * Ask the provider for the current QR/session state.
+     */
+    const response = await fetch(
+      `${PROVIDER_URL}/session/${encodeURIComponent(
+        businessId
+      )}/qr`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${PROVIDER_API_KEY}`,
+          Accept: "application/json",
         },
-        {
-          status: 500,
-        }
-      );
-    }
+        cache: "no-store",
+      }
+    );
 
-    if (!apiKey) {
-      return NextResponse.json(
-        {
-          connected: false,
+    const text = await response.text();
 
-          error:
-            "EVOLUTION_API_KEY is not configured.",
-        },
-        {
-          status: 500,
-        }
-      );
-    }
+    console.log(
+      "[connect-whatsapp/status] Provider status:",
+      response.status
+    );
 
-    const response =
-      await fetch(
-        `${apiUrl}/instance/connectionState/${encodeURIComponent(
-          businessId
-        )}`,
-        {
-          method: "GET",
-
-          headers: {
-            apikey:
-              apiKey,
-          },
-
-          cache:
-            "no-store",
-        }
-      );
-
-    const text =
-      await response.text();
-
-    let data = {};
+    let data;
 
     try {
-      data = text
-        ? JSON.parse(text)
-        : {};
+      data = JSON.parse(text);
     } catch {
-      data = {};
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "WhatsApp provider returned an invalid response.",
+        },
+        { status: 502 }
+      );
     }
 
     if (!response.ok) {
-      console.error(
-        "[WHATSAPP][STATUS] Evolution API error:",
-        data
-      );
-
       return NextResponse.json(
         {
-          connected: false,
-
-          state:
-            "unknown",
-
+          success: false,
           error:
-            data?.message ??
-            `Evolution API returned ${response.status}`,
+            data.error ||
+            data.message ||
+            "Unable to retrieve WhatsApp status.",
+          providerStatus: response.status,
         },
-        {
-          status: 502,
-        }
+        { status: 502 }
       );
     }
 
-    const state =
-      data?.instance?.state ??
-      data?.state ??
-      "unknown";
-
-    const connected =
-      state === "open";
-
+    /*
+     * Pass provider response directly to the frontend.
+     */
     return NextResponse.json({
-      connected,
-
-      state,
-
+      success: true,
+      sessionId:
+        data.sessionId || businessId,
       businessId,
-
-      instance:
-        businessId,
+      status: data.status || "qr_pending",
+      connected: data.connected === true,
+      phoneNumber: data.phoneNumber || "",
+      qrCode: data.qrCode || "",
+      lastError: data.lastError || "",
+      updatedAt: data.updatedAt || null,
     });
   } catch (error) {
     console.error(
-      "[WHATSAPP][STATUS] Failed:",
+      "[connect-whatsapp/status] ERROR:",
       error
     );
 
     return NextResponse.json(
       {
-        connected: false,
-
-        state:
-          "unknown",
-
+        success: false,
         error:
-          error instanceof Error
-            ? error.message
-            : "Unable to check WhatsApp status.",
+          error?.message ||
+          "Unable to connect to WhatsApp QR provider.",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }

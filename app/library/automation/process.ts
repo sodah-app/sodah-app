@@ -96,6 +96,12 @@ type AIConfigRow = {
   updated_at?: string | null;
 };
 
+type ConversationHistoryItem = {
+  customer_message?: string | null;
+  ai_response?: string | null;
+  created_at?: string | null;
+};
+
 function clean(value?: string | null) {
   const result = value?.trim();
   return result ? result : null;
@@ -523,7 +529,7 @@ async function loadRecentHistory(
   supabase: ReturnType<typeof createServiceClient>,
   businessId: string,
   conversationId: string
-) {
+): Promise<ConversationHistoryItem[]> {
   const {
     data,
     error,
@@ -562,7 +568,9 @@ async function loadRecentHistory(
   }
 
   return Array.isArray(data)
-    ? [...data].reverse()
+    ? (
+        data as unknown as ConversationHistoryItem[]
+      ).reverse()
     : [];
 }
 
@@ -770,11 +778,7 @@ async function updateConversationOutgoing(
 function buildBusinessContext(
   business: BusinessRow,
   customer: CustomerRow,
-  history: Array<{
-    customer_message?: string | null;
-    ai_response?: string | null;
-    created_at?: string | null;
-  }>
+  history: ConversationHistoryItem[]
 ) {
   const historyText =
     history.length > 0
@@ -914,6 +918,7 @@ export async function processIncomingMessage(
    * 1. RESOLVE TENANT
    * ============================================================
    */
+
   const business =
     await loadBusiness(
       supabase,
@@ -985,6 +990,7 @@ export async function processIncomingMessage(
    * 2. CUSTOMER
    * ============================================================
    */
+
   const customer =
     await findOrCreateCustomer(
       supabase,
@@ -996,6 +1002,7 @@ export async function processIncomingMessage(
    * 3. CONVERSATION
    * ============================================================
    */
+
   const conversation =
     await findOrCreateConversation(
       supabase,
@@ -1018,6 +1025,7 @@ export async function processIncomingMessage(
    * 4. IDEMPOTENCY
    * ============================================================
    */
+
   const isNewMessage =
     await saveIncomingMessage(
       supabase,
@@ -1049,6 +1057,7 @@ export async function processIncomingMessage(
    * 5. INBOX
    * ============================================================
    */
+
   await saveInboxMessage(
     supabase,
     business,
@@ -1063,6 +1072,7 @@ export async function processIncomingMessage(
    * 6. AI CONFIGURATION
    * ============================================================
    */
+
   const aiConfig =
     await loadAIConfiguration(
       supabase,
@@ -1074,6 +1084,7 @@ export async function processIncomingMessage(
    * 7. CONVERSATION HISTORY
    * ============================================================
    */
+
   const history =
     await loadRecentHistory(
       supabase,
@@ -1086,6 +1097,7 @@ export async function processIncomingMessage(
    * 8. AI RESPONSE
    * ============================================================
    */
+
   const businessContext =
     buildBusinessContext(
       business,
@@ -1132,6 +1144,7 @@ export async function processIncomingMessage(
    * 9. SEND THROUGH CHANNEL ADAPTER
    * ============================================================
    */
+
   console.log(
     "[AUTOMATION] Sending Instagram reply:"
   );
@@ -1156,6 +1169,7 @@ export async function processIncomingMessage(
    * 10. SAVE OUTGOING MESSAGE
    * ============================================================
    */
+
   await saveOutgoingMessage(
     supabase,
     message,
@@ -1169,6 +1183,7 @@ export async function processIncomingMessage(
    * 11. OUTBOX / INBOX
    * ============================================================
    */
+
   await saveInboxMessage(
     supabase,
     business,
@@ -1194,6 +1209,7 @@ export async function processIncomingMessage(
    * 12. DONE
    * ============================================================
    */
+
   console.log(
     "[AUTOMATION] Completed successfully:",
     {

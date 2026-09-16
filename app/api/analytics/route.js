@@ -1,5 +1,5 @@
 import { connectDB } from "../../../lib/mongodb";
-import Booking from "../../../models/Booking";
+import Booking from "../../models/Booking";
 
 export async function GET() {
   try {

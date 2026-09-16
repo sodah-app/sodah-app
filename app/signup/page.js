@@ -271,6 +271,69 @@ export default function AuthPage() {
 
   /*
    * ============================================================
+   * RECORD ONBOARDING LOGIN
+   * ============================================================
+   *
+   * Tracking is non-blocking. A tracking failure must never
+   * prevent the user from logging in or continuing.
+   */
+
+  const trackOnboardingLogin = async (session, user) => {
+    if (!session?.access_token || !user?.id) {
+      console.warn(
+        "[Auth] Cannot track onboarding: missing session or user."
+      );
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        "/api/onboarding/track",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            event: "login",
+            user_id: user.id,
+            email: user.email || "",
+            full_name:
+              user.user_metadata?.full_name ||
+              "",
+          }),
+        }
+      );
+
+      const result = await response
+        .json()
+        .catch(() => ({}));
+
+      if (!response.ok) {
+        console.warn(
+          "[Auth] Onboarding tracking failed:",
+          response.status,
+          result
+        );
+        return;
+      }
+
+      console.log(
+        "[Auth] Onboarding tracking successful:",
+        result
+      );
+    } catch (trackingError) {
+      console.warn(
+        "[Auth] Onboarding tracking request failed:",
+        trackingError
+      );
+    }
+  };
+
+  /*
+   * ============================================================
    * ROUTE AFTER LOGIN
    * ============================================================
    */
@@ -566,6 +629,17 @@ export default function AuthPage() {
 
         /*
          * ------------------------------------------------------
+         * RECORD ONBOARDING LOGIN
+         * ------------------------------------------------------
+         */
+
+        await trackOnboardingLogin(
+          verifiedSession,
+          user
+        );
+
+        /*
+         * ------------------------------------------------------
          * LOCAL USER DATA
          * ------------------------------------------------------
          */
@@ -693,6 +767,16 @@ export default function AuthPage() {
 
         return;
       }
+
+      /*
+       * Record onboarding immediately for newly authenticated
+       * users who have not created their business yet.
+       */
+
+      await trackOnboardingLogin(
+        verifiedSession,
+        user
+      );
 
       /*
        * Store local information.

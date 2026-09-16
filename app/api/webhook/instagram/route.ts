@@ -164,43 +164,13 @@ async function sendInstagramMessage(
     );
   }
 
- const graphVersion =
-  process.env.META_GRAPH_VERSION ||
-  "v25.0";
+  const graphVersion =
+    process.env.META_GRAPH_VERSION ||
+    "v25.0";
 
-const url =
-  `https://graph.instagram.com/${graphVersion}/` +
-  `${instagramUserId}/messages`;
-
-const response =
-  await fetch(
-    url,
-    {
-      method: "POST",
-
-      headers: {
-        Authorization:
-          `Bearer ${accessToken}`,
-
-        "Content-Type":
-          "application/json",
-      },
-
-      body: JSON.stringify({
-        recipient: {
-          id:
-            input.recipient_id,
-        },
-
-        message: {
-          text:
-            input.text,
-        },
-      }),
-
-      cache: "no-store",
-    }
-  );
+  const url =
+    `https://graph.instagram.com/${graphVersion}/` +
+    `${instagramUserId}/messages`;
 
   console.log(
     "[Instagram] Sending message:",
@@ -240,6 +210,8 @@ const response =
       access_token:
         accessToken,
     }),
+
+    cache: "no-store",
   });
 
   const responseText =

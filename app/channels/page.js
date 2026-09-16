@@ -1,4 +1,4 @@
-"use client";
+              "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -18,9 +18,7 @@ const BACKGROUNDS = [
 
 const BRAND_LOGOS = {
   whatsapp: "https://cdn.simpleicons.org/whatsapp/25D366",
-  instagram: "https://cdn.simpleicons.org/instagram/E4405F",
-  facebook: "https://cdn.simpleicons.org/facebook/1877F2",
-  tiktok: "https://cdn.simpleicons.org/tiktok/FFFFFF",
+  gmail: "https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_48dp.png",
 };
 
 const BRAND_COLORS = {
@@ -30,31 +28,15 @@ const BRAND_COLORS = {
     border: "rgba(37,211,102,0.30)",
     glow: "rgba(37,211,102,0.25)",
   },
-
-  instagram: {
-    primary: "#E4405F",
-    soft: "rgba(228,64,95,0.11)",
-    border: "rgba(228,64,95,0.30)",
-    glow: "rgba(228,64,95,0.25)",
-  },
-
-  facebook: {
-    primary: "#1877F2",
-    soft: "rgba(24,119,242,0.11)",
-    border: "rgba(24,119,242,0.30)",
-    glow: "rgba(24,119,242,0.25)",
-  },
-
-  tiktok: {
-    primary: "#FFFFFF",
-    soft: "rgba(255,255,255,0.08)",
-    border: "rgba(255,255,255,0.20)",
-    glow: "rgba(0,242,234,0.24)",
+  gmail: {
+    primary: "#EA4335",
+    soft: "rgba(234,67,53,0.11)",
+    border: "rgba(234,67,53,0.30)",
+    glow: "rgba(234,67,53,0.25)",
   },
 };
 
-const SUPPORT_URL =
-  "https://solomon-n8n.duckdns.org/webhook/a7935547-15a5-4742-8ac0-b8fab937d44c/chat";
+const SUPPORT_URL = "/system-support";
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -65,16 +47,18 @@ export default function WelcomePage() {
   const [showAbout, setShowAbout] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [showChannelPicker, setShowChannelPicker] = useState(false);
 
-  const [channelStatus, setChannelStatus] = useState({
-    whatsapp: false,
-    instagram: false,
-    facebook: false,
-    tiktok: false,
-  });
+  const [whatsappConnected, setWhatsappConnected] = useState(false);
+  const [gmailConnected, setGmailConnected] = useState(false);
+  const [gmailAccountEmail, setGmailAccountEmail] = useState("");
 
-  const [channelStatusLoading, setChannelStatusLoading] = useState(true);
+  const [whatsappStatusLoading, setWhatsappStatusLoading] = useState(true);
+  const [gmailStatusLoading, setGmailStatusLoading] = useState(true);
+
+  // Protected sending features require an active Premier subscription.
+  // The cards remain visible; access is checked when the feature is opened.
+  const [isPremier, setIsPremier] = useState(false);
+  const [subscriptionStatusLoading, setSubscriptionStatusLoading] = useState(true);
 
   const [isMobile, setIsMobile] = useState(false);
   const [bgIndex, setBgIndex] = useState(0);
@@ -90,6 +74,41 @@ export default function WelcomePage() {
     businessId: "",
     businessName: "",
   });
+
+  /* =========================================================
+     ADMIN NOTIFICATIONS
+
+     Only notifications created by the Sodah admin dashboard are
+     displayed here. There is no message-entry area for businesses.
+
+     Types:
+       - maintenance: controlled by admin, cannot be closed by user
+       - general: controlled by admin, cannot be closed by user
+       - personal: business-specific and user-dismissible
+
+     Maintenance/general disappear when the admin removes/expires
+     them. Personal can also be closed locally by the user.
+  ========================================================== */
+  const [adminNotifications, setAdminNotifications] = useState([]);
+  const [adminNotificationsLoading, setAdminNotificationsLoading] = useState(true);
+  const [dismissedPersonalNotifications, setDismissedPersonalNotifications] = useState(() => new Set());
+
+  /*
+   * GLOBAL ADMIN SETTINGS
+   *
+   * Maintenance mode and the notification switch are controlled from
+   * the Admin Settings page and stored in the settings table.
+   */
+  const [adminSettings, setAdminSettings] = useState({
+    maintenance_mode: false,
+    notifications: false,
+    maintenance_message:
+      "We are currently performing scheduled maintenance. Some services may be temporarily unavailable. Please check back shortly.",
+    notification_message:
+      "We have an important update for you. Please check this message for the latest information.",
+  });
+  const [adminSettingsLoading, setAdminSettingsLoading] = useState(true);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
     const checkScreen = () => {
@@ -164,31 +183,119 @@ export default function WelcomePage() {
   };
 
   /* =========================================================
-     REFRESH ALL CHANNEL CONNECTION STATUS
+     REFRESH SUBSCRIPTION / PREMIER ACCESS
 
-     The active business ID is resolved exactly as before.
-     Each channel is checked automatically without hardcoded
-     Connected/Connect values. WhatsApp uses the business row
-     connection flag, while Instagram, Facebook and TikTok use
-     their status endpoints with the same businessId.
-  ========================================================== */
-
-  const loadChannelStatuses = useCallback(async () => {
+     Gmail and WhatsApp Campaign stay visible on the Welcome page.
+     Premier is the access gate for using those sending features.
+     ========================================================== */
+  const loadSubscriptionStatus = useCallback(async () => {
     try {
       const auth = await getCurrentUser();
 
       if (!auth?.authenticated || !auth?.business?.business_id) {
-        throw new Error(
-          "Unable to determine the active Sodah business."
-        );
+        setIsPremier(false);
+        return;
       }
 
-      const businessId = auth.business.business_id;
+      const businessId = String(activeBusinessId).trim();
+
+      const { data: business, error } = await supabase
+        .from("businesses")
+        .select("business_id, plan, subscription, plan_expiry")
+        .eq("business_id", businessId)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      const plan = String(
+        business?.plan || business?.subscription || ""
+      ).trim().toLowerCase();
+
+      const expiryRaw = business?.plan_expiry;
+      const expiryTime = expiryRaw
+        ? new Date(expiryRaw).getTime()
+        : NaN;
+
+      const activeSubscription =
+        !Number.isFinite(expiryTime) ||
+        expiryTime >= Date.now();
+
+      const premier =
+        activeSubscription &&
+        (plan === "premier" ||
+          plan === "premium" ||
+          plan.includes("premier") ||
+          plan.includes("premium"));
+
+      console.log("[Subscription Status] Active business:", businessId);
+      console.log("[Subscription Status] Plan:", plan);
+      console.log("[Subscription Status] Premier access:", premier);
+
+      setIsPremier(premier);
+    } catch (error) {
+      console.error(
+        "[Subscription Status] Failed to load subscription status:",
+        error
+      );
+      setIsPremier(false);
+    } finally {
+      setSubscriptionStatusLoading(false);
+    }
+  }, []);
+
+  /* =========================================================
+     FEATURE NAVIGATION
+
+     The Welcome page is a discovery page. Users can open Gmail and
+     WhatsApp Campaign freely so they can see the complete features.
+     Subscription / sending eligibility is enforced inside the actual
+     sending workflows, not on this page.
+  ========================================================== */
+
+  const openWhatsAppCampaign = () => {
+    navigateWithBusinessId("/whatsapp-campaign");
+  };
+
+  const openEmailSender = () => {
+    navigateWithBusinessId("/email-ai");
+  };
+
+  /* =========================================================
+     REFRESH WHATSAPP CONNECTION STATUS
+
+     WhatsApp is the primary and only customer channel currently
+     managed from this workspace. The active business ID is used
+     to resolve the connection state from the businesses table.
+  ========================================================== */
+
+  const loadWhatsAppStatus = useCallback(async () => {
+    try {
+      const auth = await getCurrentUser();
+
+      if (!auth?.authenticated) {
+  return;
+}
+
+const activeBusinessId =
+  auth?.business?.business_id ||
+  auth?.business?.id ||
+  businessId ||
+  new URLSearchParams(window.location.search).get("businessId") ||
+  localStorage.getItem("businessId");
+
+if (!activeBusinessId) {
+  console.warn("No active Sodah business found yet. Skipping WhatsApp status check.");
+  return;
+}
+
+      const businessId = activeBusinessId;
 
       const { data: business, error: businessError } =
         await supabase
           .from("businesses")
-          .select("*")
+          .select("business_id, whatsapp_connected, whatsappConnected")
           .eq("business_id", businessId)
           .maybeSingle();
 
@@ -205,119 +312,143 @@ export default function WelcomePage() {
         );
       }
 
-      const whatsappConnected =
+      const connected =
         business?.whatsapp_connected === true ||
         business?.whatsappConnected === true;
 
-      const readStatus = async (basePath) => {
-        try {
-          const response = await fetch(
-            `${basePath}?businessId=${encodeURIComponent(
-              businessId
-            )}`,
-            {
-              method: "GET",
-              credentials: "include",
-              cache: "no-store",
-            }
-          );
+      console.log("[WhatsApp Status] Active business:", businessId);
+      console.log("[WhatsApp Status] Connected:", connected);
 
-          if (!response.ok) {
-            console.warn(
-              `[Channel Status] ${basePath} returned ${response.status}`
-            );
-
-            return null;
-          }
-
-          const data = await response.json();
-
-          const value =
-            data?.connected ??
-            data?.isConnected ??
-            data?.alreadyConnected ??
-            data?.instagramConnected ??
-            data?.facebookConnected ??
-            data?.tiktokConnected;
-
-          return typeof value === "boolean"
-            ? value
-            : null;
-        } catch (error) {
-          console.warn(
-            `[Channel Status] ${basePath} failed:`,
-            error
-          );
-
-          return null;
-        }
-      };
-
-      const [
-        instagramApi,
-        facebookApi,
-        tiktokApi,
-      ] = await Promise.all([
-        readStatus("/api/auth/instagram/status"),
-        readStatus("/api/auth/facebook/status"),
-        readStatus("/api/auth/tiktok/status"),
-      ]);
-
-      const businessFlag = (names) =>
-        names.some(
-          (name) => business?.[name] === true
-        );
-
-      const nextStatus = {
-        whatsapp: whatsappConnected,
-
-        instagram:
-          instagramApi ??
-          businessFlag([
-            "instagram_connected",
-            "instagramConnected",
-          ]),
-
-        facebook:
-          facebookApi ??
-          businessFlag([
-            "facebook_connected",
-            "facebookConnected",
-          ]),
-
-        tiktok:
-          tiktokApi ??
-          businessFlag([
-            "tiktok_connected",
-            "tiktokConnected",
-          ]),
-      };
-
-      console.log(
-        "[Channel Status] Active business:",
-        businessId
-      );
-
-      console.log(
-        "[Channel Status] Result:",
-        nextStatus
-      );
-
-      setChannelStatus(nextStatus);
+      setWhatsappConnected(connected);
     } catch (error) {
       console.error(
-        "[Channel Status] Failed to load channel status:",
+        "[WhatsApp Status] Failed to load WhatsApp status:",
+        error
+      );
+      setWhatsappConnected(false);
+    } finally {
+      setWhatsappStatusLoading(false);
+    }
+  }, []);
+
+  /* =========================================================
+     REFRESH GMAIL CONNECTION STATUS
+
+     Gmail uses the same connected account already used by Email AI.
+     We only expose the Gmail primary-channel card as active after the
+     account endpoint confirms that a Gmail account exists.
+  ========================================================== */
+
+  const loadGmailStatus = useCallback(async () => {
+    try {
+      setGmailStatusLoading(true);
+
+      /*
+       * Gmail connection status is resolved server-side from the SAME
+       * account source used by Email AI and Inbox.
+       *
+       * Do not query the Gmail tables directly from the browser.
+       * Do not rely on the browser's business_id to decide whether Gmail
+       * is connected. The authenticated server session is the source of truth.
+       */
+      const {
+        data: sessionData,
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        throw new Error(
+          sessionError.message ||
+            "Unable to verify the Gmail connection."
+        );
+      }
+
+      const accessToken =
+        sessionData?.session?.access_token ||
+        "";
+
+      if (!accessToken) {
+        throw new Error(
+          "Your session has expired. Please sign in again."
+        );
+      }
+
+      const response = await fetch(
+        "/api/inbox-email-ai/connection-status",
+        {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      const data =
+        await response.json().catch(() => null);
+
+      if (!response.ok || data?.success !== true) {
+        console.error(
+          "[Gmail Status] Connection-status endpoint failed:",
+          {
+            status: response.status,
+            data,
+          }
+        );
+
+        setGmailConnected(false);
+        setGmailAccountEmail("");
+        return;
+      }
+
+      const account =
+        data?.account || null;
+
+      const connectedEmail = String(
+        account?.gmail_email ||
+          account?.email ||
+          account?.google_email ||
+          account?.googleEmail ||
+          account?.account_email ||
+          account?.accountEmail ||
+          data?.gmail ||
+          ""
+      ).trim();
+
+      const connected =
+        data?.connected === true ||
+        Boolean(account);
+
+      console.log(
+        "[Gmail Status] Active business:",
+        data?.business_id ||
+          getActiveBusinessId() ||
+          null
+      );
+      console.log(
+        "[Gmail Status] Connected:",
+        connected
+      );
+      console.log(
+        "[Gmail Status] Connected account:",
+        connectedEmail || "Unavailable"
+      );
+
+      setGmailConnected(connected);
+      setGmailAccountEmail(
+        connected ? connectedEmail : ""
+      );
+    } catch (error) {
+      console.error(
+        "[Gmail Status] Failed to load Gmail status:",
         error
       );
 
-      setChannelStatus({
-        whatsapp: false,
-        instagram: false,
-        facebook: false,
-        tiktok: false,
-      });
+      setGmailConnected(false);
+      setGmailAccountEmail("");
     } finally {
-      setChannelStatusLoading(false);
+      setGmailStatusLoading(false);
     }
   }, []);
 
@@ -326,7 +457,11 @@ export default function WelcomePage() {
 
     const initializeChannelStatuses = async () => {
       if (!cancelled) {
-        await loadChannelStatuses();
+        await Promise.all([
+          loadWhatsAppStatus(),
+          loadGmailStatus(),
+          loadSubscriptionStatus(),
+        ]);
       }
     };
 
@@ -340,7 +475,9 @@ export default function WelcomePage() {
       setShowSuccess(true);
 
       const timer = window.setTimeout(() => {
-        loadChannelStatuses();
+        loadWhatsAppStatus();
+        loadGmailStatus();
+        loadSubscriptionStatus();
       }, 700);
 
       return () => {
@@ -352,7 +489,7 @@ export default function WelcomePage() {
     return () => {
       cancelled = true;
     };
-  }, [loadChannelStatuses]);
+  }, [loadWhatsAppStatus, loadGmailStatus, loadSubscriptionStatus]);
 
   useEffect(() => {
     const updateClock = () => {
@@ -427,6 +564,8 @@ export default function WelcomePage() {
           return;
         }
 
+        setIsSuperAdmin(Boolean(auth.isSuperAdmin));
+
         setUser({
           fullName:
             auth.profile?.fullName ||
@@ -453,7 +592,364 @@ export default function WelcomePage() {
       mounted = false;
     };
   }, [router]);
+  const loadAdminNotifications = useCallback(async () => {
+    try {
+      setAdminNotificationsLoading(true);
+      setAdminSettingsLoading(true);
 
+      const auth = await getCurrentUser();
+
+      if (!auth?.authenticated) {
+        setAdminNotifications([]);
+        return;
+      }
+
+      /*
+       * =========================================================
+       * GLOBAL PLATFORM SETTINGS
+       *
+       * These settings are controlled by the SODAH ADMIN PLATFORM.
+       *
+       * The USER PLATFORM only reads them.
+       *
+       * Admin Platform
+       *       ↓
+       * Supabase settings table
+       *       ↓
+       * /api/platform-settings
+       *       ↓
+       * User Platform
+       *
+       * Maintenance mode is therefore completely independent
+       * from business-specific personal notifications.
+       * =========================================================
+       */
+
+      try {
+        const {
+          data: {
+            session,
+          },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          console.error(
+            "[Platform Settings] Failed to get user session:",
+            sessionError
+          );
+        }
+
+        const headers = {};
+
+        /*
+         * Send the authenticated Supabase access token.
+         *
+         * This allows the server-side platform-settings route
+         * to verify the currently logged-in business user.
+         */
+        if (session?.access_token) {
+          headers.Authorization =
+            `Bearer ${session.access_token}`;
+        }
+
+        const response = await fetch(
+          "/api/platform-settings",
+          {
+            method: "GET",
+            credentials: "include",
+            headers,
+            cache: "no-store",
+          }
+        );
+
+        const result =
+          await response.json().catch(
+            () => null
+          );
+
+        console.log(
+          "[Platform Settings] Response:",
+          result
+        );
+
+        if (!response.ok) {
+          console.error(
+            "[Platform Settings] Failed to load:",
+            result
+          );
+        } else if (
+          result?.success &&
+          result?.settings
+        ) {
+          setAdminSettings({
+            maintenance_mode: Boolean(
+              result.settings.maintenance_mode
+            ),
+
+            notifications: Boolean(
+              result.settings.notifications
+            ),
+
+            maintenance_message:
+              result.settings.maintenance_message ||
+              "We are currently performing scheduled maintenance. Some services may be temporarily unavailable. Please check back shortly.",
+
+            notification_message:
+              result.settings.notification_message ||
+              "We have an important update for you. Please check this message for the latest information.",
+          });
+        }
+      } catch (platformSettingsError) {
+        console.error(
+          "[Platform Settings] Request failed:",
+          platformSettingsError
+        );
+      }
+
+      /*
+       * =========================================================
+       * BUSINESS-SPECIFIC PERSONAL MESSAGES
+       *
+       * These are separate from global maintenance mode.
+       * =========================================================
+       */
+
+      const businessId =
+        auth?.business?.business_id;
+
+      if (!businessId) {
+        setAdminNotifications([]);
+        return;
+      }
+
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("business_notifications")
+        .select(
+          "id, business_id, title, message, type, is_read, created_at, expires_at"
+        )
+        .eq("business_id", businessId)
+        .eq("type", "personal")
+        .order("created_at", {
+          ascending: false,
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      const now = Date.now();
+
+      const active = (data || []).filter(
+        (notification) => {
+          if (
+            !notification?.id ||
+            notification?.type !== "personal"
+          ) {
+            return false;
+          }
+
+          if (notification.expires_at) {
+            const expiresAt =
+              new Date(
+                notification.expires_at
+              ).getTime();
+
+            if (
+              Number.isFinite(expiresAt) &&
+              expiresAt <= now
+            ) {
+              return false;
+            }
+          }
+
+          return true;
+        }
+      );
+
+      setAdminNotifications(active);
+    } catch (error) {
+      console.error(
+        "[Admin Notifications] Failed to load:",
+        error
+      );
+
+      /*
+       * Do NOT reset adminSettings here.
+       *
+       * A personal-notification failure must never
+       * disable global maintenance mode.
+       */
+      setAdminNotifications([]);
+    } finally {
+      setAdminNotificationsLoading(false);
+      setAdminSettingsLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    let mounted = true;
+    let settingsChannel = null;
+    let notificationsChannel = null;
+
+    const setupAdminRealtime = async () => {
+      const auth = await getCurrentUser();
+      const businessId = auth?.business?.business_id;
+
+      if (!mounted || !auth?.authenticated) {
+        if (mounted) {
+          setAdminSettingsLoading(false);
+          setAdminNotificationsLoading(false);
+        }
+        return;
+      }
+
+      await loadAdminNotifications();
+
+      if (!mounted) return;
+
+      /*
+       * GLOBAL SETTINGS REALTIME
+       *
+       * Admin changes on the Settings page are pushed to the app
+       * immediately. No browser refresh is required.
+       */
+      settingsChannel = supabase
+        .channel("sodah-platform-settings-live")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "settings",
+          },
+          (payload) => {
+            const settings = payload?.new;
+            if (!settings) return;
+
+            setAdminSettings({
+              maintenance_mode: Boolean(
+                settings.maintenance_mode
+              ),
+              notifications: Boolean(
+                settings.notifications
+              ),
+              maintenance_message:
+                settings.maintenance_message ||
+                "We are currently performing scheduled maintenance. Some services may be temporarily unavailable. Please check back shortly.",
+              notification_message:
+                settings.notification_message ||
+                "We have an important update for you. Please check this message for the latest information.",
+            });
+          }
+        )
+        .subscribe();
+
+      /* PERSONAL MESSAGE REALTIME */
+      if (businessId) {
+        notificationsChannel = supabase
+          .channel(
+            `business-personal-notifications-${businessId}`
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "business_notifications",
+              filter: `business_id=eq.${businessId}`,
+            },
+            (payload) => {
+              const type =
+                payload?.new?.type ||
+                payload?.old?.type;
+
+              if (type !== "personal") return;
+
+              if (payload.eventType === "DELETE") {
+                setAdminNotifications((current) =>
+                  current.filter(
+                    (item) =>
+                      item.id !== payload.old?.id
+                  )
+                );
+
+                setDismissedPersonalNotifications(
+                  (current) => {
+                    const next = new Set(current);
+                    next.delete(payload.old?.id);
+                    return next;
+                  }
+                );
+
+                return;
+              }
+
+              const notification = payload.new;
+              if (!notification?.id) return;
+
+              if (notification.expires_at) {
+                const expiresAt = new Date(
+                  notification.expires_at
+                ).getTime();
+
+                if (
+                  Number.isFinite(expiresAt) &&
+                  expiresAt <= Date.now()
+                ) {
+                  setAdminNotifications((current) =>
+                    current.filter(
+                      (item) =>
+                        item.id !== notification.id
+                    )
+                  );
+                  return;
+                }
+              }
+
+              setAdminNotifications((current) => {
+                const withoutCurrent = current.filter(
+                  (item) =>
+                    item.id !== notification.id
+                );
+
+                return [
+                  notification,
+                  ...withoutCurrent,
+                ].sort(
+                  (a, b) =>
+                    new Date(
+                      b.created_at || 0
+                    ).getTime() -
+                    new Date(
+                      a.created_at || 0
+                    ).getTime()
+                );
+              });
+            }
+          )
+          .subscribe();
+      }
+    };
+
+    setupAdminRealtime();
+
+    return () => {
+      mounted = false;
+
+      if (settingsChannel) {
+        supabase.removeChannel(settingsChannel);
+      }
+
+      if (notificationsChannel) {
+        supabase.removeChannel(
+          notificationsChannel
+        );
+      }
+    };
+  }, [loadAdminNotifications]);
   /*
    * Open the AI support assistant.
    */
@@ -461,79 +957,6 @@ export default function WelcomePage() {
     setShowSupport(true);
     setShowMobileMenu(false);
     setShowUserMenu(false);
-  };
-
-  /*
-   * Inbox authentication entry point.
-   *
-   * The login page at "/" is responsible for establishing the
-   * authenticated user/business context before Inbox is accessed.
-   */
- const openInboxLogin = () => {
-  setShowMobileMenu(false);
-  setShowUserMenu(false);
-
-  const businessId = getActiveBusinessId();
-
-  if (!businessId) {
-    console.error(
-      "[Inbox] Missing businessId. Cannot open Inbox."
-    );
-    return;
-  }
-
-  try {
-    localStorage.setItem("business_id", businessId);
-  } catch (error) {
-    console.error(
-      "[Business Context] Failed to persist business_id:",
-      error
-    );
-  }
-
-  router.push(
-    `/inbox/login?businessId=${encodeURIComponent(
-      businessId
-    )}`
-  );
-};
-
-  /*
-   * Open the channel management area.
-   *
-   * This gives the user access to WhatsApp, Instagram, Facebook
-   * and TikTok channel management.
-   */
-  const openChannels = () => {
-    setShowMobileMenu(false);
-    setShowUserMenu(false);
-
-    const businessId = getActiveBusinessId();
-
-    if (!businessId) {
-      console.error(
-        "[Channels] Missing businessId. Cannot open Channels."
-      );
-      return;
-    }
-
-    try {
-      localStorage.setItem(
-        "business_id",
-        businessId
-      );
-    } catch (error) {
-      console.error(
-        "[Business Context] Failed to persist business_id:",
-        error
-      );
-    }
-
-    router.push(
-      `/channels?businessId=${encodeURIComponent(
-        businessId
-      )}`
-    );
   };
 
   const startAutomationSetup = () => {
@@ -566,30 +989,14 @@ export default function WelcomePage() {
   const navigateWithBusinessId = (path) => {
     setShowMobileMenu(false);
     setShowUserMenu(false);
-
     const businessId = getActiveBusinessId();
-
     if (!businessId) {
-      console.error(
-        "[Business Context] Missing businessId. Cannot navigate to:",
-        path
-      );
+      console.error("[Business Context] Missing businessId. Cannot navigate to:", path);
       return;
     }
-
-    const url = new URL(
-      path,
-      window.location.origin
-    );
-
-    url.searchParams.set(
-      "businessId",
-      businessId
-    );
-
-    router.push(
-      `${url.pathname}${url.search}${url.hash}`
-    );
+    const url = new URL(path, window.location.origin);
+    url.searchParams.set("businessId", businessId);
+    router.push(`${url.pathname}${url.search}${url.hash}`);
   };
 
   const handleLogout = () => {
@@ -639,7 +1046,7 @@ export default function WelcomePage() {
           </p>
 
           <p className="mt-2 text-sm text-gray-500">
-            WhatsApp • Instagram • Facebook • TikTok
+            WhatsApp
           </p>
         </div>
 
@@ -703,7 +1110,7 @@ export default function WelcomePage() {
 
           <button
             type="button"
-            onClick={() => navigate("/welcome")}
+            onClick={() => navigateWithBusinessId("/welcome")}
             className="group flex shrink-0 items-center gap-2.5 rounded-2xl px-2 py-1.5 transition hover:bg-white/[0.05]"
           >
             <SodahMark className="h-9 w-9 transition group-hover:scale-105" />
@@ -719,19 +1126,42 @@ export default function WelcomePage() {
             </div>
           </button>
 
+          {/* CONNECTED CHANNELS / WEBSITE */}
+          <div className="hidden items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.025] px-2.5 py-1.5 lg:flex">
+            <div
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#25D366]/20 bg-[#25D366]/[0.06]"
+              title="WhatsApp"
+            >
+              <img
+                src={BRAND_LOGOS.whatsapp}
+                alt="WhatsApp"
+                className="h-4 w-4 object-contain"
+              />
+            </div>
+
+            <div
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-red-400/20 bg-red-500/[0.05]"
+              title={gmailAccountEmail || "Gmail"}
+            >
+              <img
+                src={BRAND_LOGOS.gmail}
+                alt="Gmail"
+                className="h-4 w-4 object-contain"
+              />
+            </div>
+
+            <span className="ml-1 text-[10px] font-black tracking-[1.5px] text-gray-500">
+              SODAH.IO
+            </span>
+          </div>
+
           {/* DESKTOP NAVIGATION */}
 
           <nav className="ml-2 hidden min-w-0 flex-1 items-center gap-1 lg:flex">
             <TopBarButton
               icon="💬"
-              label="Inbox"
-              onClick={openInboxLogin}
-            />
-
-            <TopBarButton
-              icon="🔗"
-              label="Connect Channel"
-              onClick={openChannels}
+              label="Connect WhatsApp"
+              onClick={startAutomationSetup}
             />
 
             <TopBarButton
@@ -758,10 +1188,10 @@ export default function WelcomePage() {
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <button
               type="button"
-              onClick={() => navigate("/subscription")}
+              onClick={() => navigateWithBusinessId("/subscription")}
               className="hidden items-center gap-2 rounded-xl border border-purple-400/20 bg-purple-500/[0.08] px-3 py-2 text-xs font-bold text-purple-200 transition hover:border-purple-400/40 hover:bg-purple-500/[0.15] md:flex"
             >
-              <span>◆</span>
+              <span>💎</span>
               <span>Subscription</span>
 
               <span className="rounded-full border border-purple-400/20 bg-purple-400/10 px-1.5 py-0.5 text-[8px] text-purple-300">
@@ -771,11 +1201,11 @@ export default function WelcomePage() {
 
             <button
               type="button"
-              onClick={() => navigate("/settings")}
+              onClick={openEmailSender}
               className="hidden h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-gray-400 transition hover:bg-white/[0.09] hover:text-white sm:flex"
-              title="Settings"
+              title="Email sender"
             >
-              ⚙
+              📨
             </button>
 
             {/* USER */}
@@ -830,7 +1260,7 @@ export default function WelcomePage() {
 
                   <button
                     type="button"
-                    onClick={() => navigate("/settings")}
+                    onClick={() => navigateWithBusinessId("/settings")}
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-gray-300 transition hover:bg-white/[0.06] hover:text-white"
                   >
                     <span>⚙</span>
@@ -839,10 +1269,10 @@ export default function WelcomePage() {
 
                   <button
                     type="button"
-                    onClick={() => navigate("/subscription")}
+                    onClick={() => navigateWithBusinessId("/subscription")}
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-purple-300 transition hover:bg-purple-500/10"
                   >
-                    <span>◆</span>
+                    <span>💎</span>
                     <span>Subscription</span>
 
                     <span className="ml-auto text-[8px] font-bold">
@@ -882,14 +1312,8 @@ export default function WelcomePage() {
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               <MobileTopButton
                 icon="💬"
-                label="Inbox"
-                onClick={openInboxLogin}
-              />
-
-              <MobileTopButton
-                icon="🔗"
-                label="Connect Channel"
-                onClick={openChannels}
+                label="Connect WhatsApp"
+                onClick={startAutomationSetup}
               />
 
               <MobileTopButton
@@ -917,15 +1341,15 @@ export default function WelcomePage() {
               />
 
               <MobileTopButton
-                icon="◆"
+                icon="💎"
                 label="Subscription"
-                onClick={() => navigate("/subscription")}
+                onClick={() => navigateWithBusinessId("/subscription")}
               />
 
               <MobileTopButton
-                icon="⚙"
-                label="Settings"
-                onClick={() => navigate("/settings")}
+                icon="📨"
+                label="Email Sender"
+                onClick={openEmailSender}
               />
 
               <MobileTopButton
@@ -945,29 +1369,6 @@ export default function WelcomePage() {
 
       <main className="relative min-h-screen px-4 pb-28 pt-[94px] sm:px-6 lg:px-8 xl:px-10">
         <div className="mx-auto max-w-[1800px]">
-
-          {/* =====================================================
-              SYSTEM MAINTENANCE NOTIFICATION
-              Only added notification — no existing functionality changed.
-          ====================================================== */}
-          <div className="mb-6 rounded-2xl border border-amber-400/25 bg-amber-400/[0.08] px-4 py-4 shadow-[0_15px_50px_rgba(0,0,0,0.20)] backdrop-blur-xl md:px-5">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-400/[0.10] text-lg">
-                🛠️
-              </div>
-
-              <div className="min-w-0">
-                <p className="text-sm font-black text-amber-200 md:text-base">
-                  System Under Maintenance
-                </p>
-
-                <p className="mt-1 text-xs leading-5 text-amber-100/70 md:text-sm">
-                  We are currently updating Sodah.io to improve your automation experience.
-                  Some features may be temporarily unavailable. Please try again shortly.
-                </p>
-              </div>
-            </div>
-          </div>
 
           {/* HEADER */}
 
@@ -1057,9 +1458,28 @@ export default function WelcomePage() {
 
                   <button
                     type="button"
-                    onClick={() => navigate("/whatsapp-campaign")}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-green-400/15 bg-white/[0.045] px-5 py-3 font-semibold text-white backdrop-blur-xl transition hover:border-green-400/30 hover:bg-green-400/[0.08]"
+                    onClick={openEmailSender}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-red-400/20 bg-red-500/[0.05] px-5 py-3 font-semibold text-white backdrop-blur-xl transition hover:border-red-400/35 hover:bg-red-400/[0.09]"
                   >
+                    <img
+                      src={BRAND_LOGOS.gmail}
+                      alt="Gmail"
+                      className="h-5 w-5 object-contain"
+                    />
+                    <span>Connect Gmail</span>
+                    <span>→</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={openWhatsAppCampaign}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-[#25D366]/20 bg-[#25D366]/[0.06] px-5 py-3 font-semibold text-white backdrop-blur-xl transition hover:border-[#25D366]/40 hover:bg-[#25D366]/[0.12]"
+                  >
+                    <img
+                      src={BRAND_LOGOS.whatsapp}
+                      alt="WhatsApp"
+                      className="h-5 w-5 object-contain"
+                    />
                     <span>Launch Campaign</span>
                     <span>→</span>
                   </button>
@@ -1111,132 +1531,97 @@ export default function WelcomePage() {
           ====================================================== */}
 
           <section className="mb-6 rounded-[28px] border border-cyan-400/20 bg-gradient-to-br from-cyan-500/[0.075] via-[#07141a]/[0.82] to-blue-500/[0.055] p-5 shadow-[0_25px_80px_rgba(0,0,0,0.25)] backdrop-blur-xl md:p-6">
-            <div className="mb-5 flex items-center justify-between gap-4">
+            <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[2.5px] text-cyan-400/80">
-                  Omnichannel
+                  Primary Channels
                 </p>
 
                 <h2 className="mt-1 text-xl font-black md:text-2xl">
-                  Connected Channels
+                  Connect your channels
                 </h2>
 
-                <p className="mt-1 text-xs text-gray-500 md:text-sm">
-                  Connect and manage every customer channel from one place.
+                <p className="mt-1 max-w-2xl text-xs text-gray-500 md:text-sm">
+                  WhatsApp powers customer conversations and automation. Gmail powers Email AI and unlimited email sending.
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={openChannels}
-                className="shrink-0 rounded-xl border border-cyan-400/15 bg-cyan-400/[0.05] px-3 py-2 text-sm font-bold text-cyan-400 transition hover:border-cyan-400/30 hover:bg-cyan-400/[0.10] hover:text-cyan-300"
-              >
-                Manage →
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <ConnectionPill
+                  logo={BRAND_LOGOS.whatsapp}
+                  label={
+                    whatsappStatusLoading
+                      ? "Checking WhatsApp"
+                      : whatsappConnected
+                        ? "WhatsApp Connected"
+                        : "WhatsApp Not Connected"
+                  }
+                  connected={whatsappConnected}
+                  brand="whatsapp"
+                />
+
+                <ConnectionPill
+                  logo={BRAND_LOGOS.gmail}
+                  label={
+                    gmailStatusLoading
+                      ? "Checking Gmail"
+                      : gmailConnected
+                        ? gmailAccountEmail || "Gmail Connected"
+                        : "Gmail Not Connected"
+                  }
+                  connected={gmailConnected}
+                  brand="gmail"
+                />
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
               <ChannelCard
-                brand="whatsapp"
                 name="WhatsApp"
-                description="Business messaging"
+                description="Business messaging • AI automation • customer conversations"
                 status={
-                  channelStatusLoading
-                    ? "Checking..."
-                    : channelStatus.whatsapp
-                      ? "Connected"
-                      : "Connect"
+                  whatsappStatusLoading
+                    ? "Checking connection..."
+                    : whatsappConnected
+                      ? "Connected • Active"
+                      : "Connect WhatsApp"
                 }
-                connected={channelStatus.whatsapp}
+                connected={whatsappConnected}
+                locked={false}
+                logo={BRAND_LOGOS.whatsapp}
+                brand="whatsapp"
                 onClick={startAutomationSetup}
               />
 
               <ChannelCard
-                brand="instagram"
-                name="Instagram"
-                description="Social conversations"
-                status={
-                  channelStatusLoading
-                    ? "Checking..."
-                    : channelStatus.instagram
-                      ? "Connected"
-                      : "Connect"
+                name="Gmail"
+                description={
+                  gmailConnected && gmailAccountEmail
+                    ? `Email AI • Inbox • ${gmailAccountEmail}`
+                    : "Email AI • Inbox • professional email automation"
                 }
-                connected={channelStatus.instagram}
-                onClick={() => {
-                  const businessId = getActiveBusinessId();
-
-                  if (!businessId) {
-                    console.error(
-                      "[Instagram] Missing businessId. Cannot start OAuth."
-                    );
-                    return;
-                  }
-
-                  try {
-                    localStorage.setItem(
-                      "business_id",
-                      businessId
-                    );
-                  } catch (error) {
-                    console.error(
-                      "[Business Context] Failed to persist business_id:",
-                      error
-                    );
-                  }
-
-                  if (channelStatus.instagram) {
-                    navigateWithBusinessId(
-                      "/channels/instagram"
-                    );
-                    return;
-                  }
-
-                  const instagramLoginUrl =
-                    `/instagram?businessId=${encodeURIComponent(
-                      businessId
-                    )}`;
-
-                  console.log(
-                    "[Instagram] Opening OAuth:",
-                    instagramLoginUrl
-                  );
-
-                  window.location.assign(
-                    instagramLoginUrl
-                  );
-                }}
+                status={
+                  gmailStatusLoading
+                    ? "Checking connection..."
+                    : gmailConnected
+                      ? "Connected • Active"
+                      : "Connect Gmail"
+                }
+                connected={gmailConnected}
+                locked={false}
+                logo={BRAND_LOGOS.gmail}
+                brand="gmail"
+                onClick={openEmailSender}
               />
 
-              <ChannelCard
-                brand="facebook"
-                name="Facebook"
-                description="Pages & Messenger"
-                status={
-                  channelStatusLoading
-                    ? "Checking..."
-                    : channelStatus.facebook
-                      ? "Connected"
-                      : "Connect"
-                }
-                connected={channelStatus.facebook}
-                onClick={() => navigateWithBusinessId("/channels/facebook")}
-              />
-
-              <ChannelCard
-                brand="tiktok"
-                name="TikTok"
-                description="Social engagement"
-                status={
-                  channelStatusLoading
-                    ? "Checking..."
-                    : channelStatus.tiktok
-                      ? "Connected"
-                      : "Connect"
-                }
-                connected={channelStatus.tiktok}
-                onClick={() => navigateWithBusinessId("/channels/tiktok")}
-              />
+            <ActionCard
+  icon="💰"
+  title="Cashflow"
+  description="Track invoices, monitor overdue payments and manage your business cashflow."
+  onClick={() => navigateWithBusinessId("/cashflow")}
+  accent="green"
+  badge="NEW"
+/>
             </div>
           </section>
 
@@ -1259,30 +1644,21 @@ export default function WelcomePage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:gap-4">
+              {/* EXISTING QUICK ACTIONS — PRESERVED */}
               <ActionCard
                 icon="👥"
                 title="Leads"
-                description="View your leads, customer activity, conversations and business pipeline."
-                onClick={() => navigate("/dashboard")}
+                description="View leads, customer activity, conversations and your business pipeline."
+                onClick={() => {
+                  if (isMobile) {
+                    showDesktopOnly("Leads");
+                  } else {
+                    navigateWithBusinessId("/dashboard");
+                  }
+                }}
                 accent="green"
                 badge="DASHBOARD"
-              />
-
-              <ActionCard
-                icon="💬"
-                title="Inbox"
-                description="Manage conversations from your connected customer channels."
-                onClick={openInboxLogin}
-                accent="cyan"
-              />
-
-              <ActionCard
-                icon="📢"
-                title="WhatsApp-Campaigns"
-                description="Send Unlimited messages schedule and manage AI-powered outreach and automated follow-ups."
-                onClick={() => navigate("/whatsapp-campaign")}
-                accent="orange"
               />
 
               <ActionCard
@@ -1299,20 +1675,120 @@ export default function WelcomePage() {
                 accent="blue"
               />
 
-             <ActionCard
-  icon="🔗"
-  title="Connect Channel"
-  description="Connect WhatsApp, Instagram, Facebook and TikTok to your workspace."
-  onClick={() => setShowChannelPicker(true)}
-  accent="purple"
-/>
+              <ActionCard
+                icon={
+                  <img
+                    src={BRAND_LOGOS.whatsapp}
+                    alt="WhatsApp"
+                    className="h-6 w-6 object-contain"
+                  />
+                }
+                title="WhatsApp Campaign"
+                description="Send campaigns, schedule outreach and manage AI follow-ups."
+                onClick={openWhatsAppCampaign}
+                accent="green"
+                badge="UNLIMITED"
+              />
 
               <ActionCard
-                icon="🤖"
-                title="Business-Update-AI"
-                description="Manage your Business Details, update promotions and packages."
-                onClick={() => navigate("/dashboard/business-ai")}
+                icon="🧰"
+                title="Business Update AI"
+                description="Manage business details, promotions and packages."
+                onClick={() => navigateWithBusinessId("/dashboard/business-ai")}
                 accent="slate"
+              />
+
+              <ActionCard
+                icon="💎"
+                title="Subscription"
+                description="View your plan, subscription status and billing options."
+                onClick={() => navigateWithBusinessId("/subscription")}
+                accent="purple"
+                badge="PRO"
+              />
+
+              <ActionCard
+                icon={
+                  <img
+                    src={BRAND_LOGOS.gmail}
+                    alt="Gmail"
+                    className="h-6 w-6 object-contain"
+                  />
+                }
+                title="Connect Emails"
+                description="Connect All Your Busiess Email And manage all mails in one space."
+                onClick={openEmailSender}
+                accent="red"
+                badge="GMAIL"
+              />
+
+              {/* NEW QUICK ACTIONS */}
+              <ActionCard
+                icon={
+                  <img
+                    src={BRAND_LOGOS.whatsapp}
+                    alt="WhatsApp"
+                    className="h-6 w-6 object-contain"
+                  />
+                }
+                title="History"
+                description="Review your previous WhatsApp conversations and activity."
+                onClick={() => navigateWithBusinessId("/whatsapp-campaign/history")}
+                accent="green"
+              />
+
+              <ActionCard
+                icon={
+                  <img
+                    src={BRAND_LOGOS.gmail}
+                    alt="Gmail"
+                    className="h-6 w-6 object-contain"
+                  />
+                }
+                title="Inbox"
+                description="Read and manage received emails from your connected Gmail."
+                onClick={() => navigateWithBusinessId("/inbox")}
+                accent="red"
+              />
+
+              <ActionCard
+                icon={
+                  <img
+                    src={BRAND_LOGOS.gmail}
+                    alt="Gmail"
+                    className="h-6 w-6 object-contain"
+                  />
+                }
+                title="Send Instant Email"
+                description="Send email to 1000+ customers instatly and Generate replies with AI."
+                onClick={() => navigateWithBusinessId("/email-ai/new-campaign")}
+                accent="red"
+              />
+
+              <ActionCard
+                icon="⚙️"
+                title="Settings"
+                description="Manage your workspace, account preferences and configuration."
+                onClick={() => navigateWithBusinessId("/settings")}
+                accent="slate"
+              />
+
+           <ActionCard
+  icon="💰"
+  title="Cashflow"
+  description="Track invoices, monitor overdue payments and manage your business cashflow."
+  onClick={() => navigateWithBusinessId("/cashflow")}
+  accent="green"
+  badge="NEW"
+/>
+
+
+              <ActionCard
+                icon="💡"
+                title="Suggestions"
+                description="Share ideas and suggestions to help improve your Sodah experience."
+                onClick={() => navigateWithBusinessId("/suggestions")}
+                accent="purple"
               />
             </div>
           </section>
@@ -1345,7 +1821,7 @@ export default function WelcomePage() {
 
               <button
                 type="button"
-                onClick={() => navigate("/whatsapp-campaign")}
+                onClick={openWhatsAppCampaign}
                 className="shrink-0 rounded-2xl bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 px-6 py-3 font-black shadow-[0_0_35px_rgba(124,58,237,0.22)] transition hover:scale-[1.02]"
               >
                 Open AI Assistant →
@@ -1406,6 +1882,142 @@ export default function WelcomePage() {
       </main>
 
       {/* =========================================================
+          GLOBAL ADMIN MAINTENANCE MODE
+
+          Controlled from Admin Settings -> Maintenance Mode.
+          It cannot be closed by the business user. Turning the admin
+          toggle OFF removes it in realtime.
+      ========================================================== */}
+      {!adminSettingsLoading &&
+        adminSettings.maintenance_mode &&
+        !isSuperAdmin && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 p-5 backdrop-blur-md">
+            <div className="w-full max-w-xl rounded-3xl border border-red-400/25 bg-[#0a0f18]/98 p-7 text-center shadow-[0_30px_120px_rgba(0,0,0,0.8)] md:p-10">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-red-400/25 bg-red-500/10 text-3xl">
+                🛠️
+              </div>
+
+              <p className="mt-5 text-[10px] font-black uppercase tracking-[3px] text-red-300">
+                System Maintenance
+              </p>
+
+              <h2 className="mt-2 text-2xl font-black text-white md:text-3xl">
+                Sodah is temporarily unavailable
+              </h2>
+
+              <p className="mx-auto mt-4 max-w-lg whitespace-pre-wrap text-sm leading-6 text-gray-300 md:text-base">
+                {adminSettings.maintenance_message}
+              </p>
+
+              <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-red-400/20 bg-red-500/10 px-4 py-2 text-xs font-black text-red-200">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-red-400" />
+                Maintenance mode is active
+              </div>
+            </div>
+          </div>
+        )}
+
+      {/* =========================================================
+          GLOBAL ADMIN NOTIFICATION
+
+          Controlled from Admin Settings -> Notifications.
+          It cannot be closed by the business user. Turning the admin
+          toggle OFF removes it in realtime.
+      ========================================================== */}
+      {!adminSettingsLoading &&
+        adminSettings.notifications &&
+        !adminSettings.maintenance_mode && (
+          <div className="fixed left-1/2 top-[88px] z-[220] flex w-[min(560px,calc(100vw-2rem))] -translate-x-1/2">
+            <div className="relative w-full rounded-2xl border border-blue-400/25 bg-[#07101a]/96 p-4 text-left shadow-[0_25px_80px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-400/20 bg-blue-400/[0.10] text-lg">
+                  📢
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] font-black uppercase tracking-[2px] text-blue-300">
+                    Sodah Announcement
+                  </p>
+
+                  <p className="mt-1 text-sm font-black text-white md:text-base">
+                    Important Update
+                  </p>
+
+                  <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-gray-300 md:text-sm">
+                    {adminSettings.notification_message}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+      {/* =========================================================
+          PERSONAL ADMIN NOTIFICATIONS
+
+          These are business-specific messages. The business user can
+          close personal messages locally.
+      ========================================================== */}
+      {!adminNotificationsLoading &&
+        adminNotifications.length > 0 && (
+          <div className="fixed left-1/2 top-[88px] z-[210] flex w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 flex-col gap-3">
+            {adminNotifications.map((notification) => {
+              if (
+                dismissedPersonalNotifications.has(
+                  notification.id
+                )
+              ) {
+                return null;
+              }
+
+              return (
+                <div
+                  key={notification.id}
+                  className="relative w-full rounded-2xl border border-cyan-400/25 bg-[#06110c]/95 p-4 text-left shadow-[0_25px_80px_rgba(0,0,0,0.55)] backdrop-blur-2xl"
+                >
+                  <button
+                    type="button"
+                    aria-label="Close personal message"
+                    onClick={() =>
+                      setDismissedPersonalNotifications(
+                        (current) => {
+                          const next = new Set(current);
+                          next.add(notification.id);
+                          return next;
+                        }
+                      )
+                    }
+                    className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-gray-400 transition hover:bg-white/10 hover:text-white"
+                  >
+                    ×
+                  </button>
+
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/[0.10] text-lg">
+                      💬
+                    </div>
+
+                    <div className="min-w-0 flex-1 pr-7">
+                      <p className="text-[9px] font-black uppercase tracking-[2px] text-cyan-400">
+                        Personal Message
+                      </p>
+
+                      <p className="mt-1 text-sm font-black text-white md:text-base">
+                        {notification.title ||
+                          "Personal Message"}
+                      </p>
+
+                      <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-gray-300 md:text-sm">
+                        {notification.message}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      {/* =========================================================
           SUPPORT FLOATING BUTTON
       ========================================================== */}
 
@@ -1413,15 +2025,25 @@ export default function WelcomePage() {
         <button
           type="button"
           onClick={openSupport}
-          aria-label="Open AI support"
-          className="group relative flex h-14 w-14 items-center justify-center rounded-full border border-cyan-300/20 bg-gradient-to-r from-green-500 via-cyan-500 to-blue-600 shadow-[0_0_35px_rgba(34,211,238,0.25)] transition hover:scale-105"
+          aria-label="Open AI Help & Support"
+          className="group relative flex items-center gap-2.5 rounded-2xl border border-cyan-300/20 bg-[#06110c]/92 px-3 py-2.5 text-white shadow-[0_18px_55px_rgba(0,0,0,0.45),0_0_35px_rgba(34,211,238,0.16)] backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300/40 hover:bg-[#071710]/96 hover:shadow-[0_22px_65px_rgba(0,0,0,0.55),0_0_45px_rgba(34,211,238,0.24)] active:scale-95 sm:px-4"
         >
-          <span className="relative z-10 text-2xl">🤖</span>
+          <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-green-400 via-cyan-400 to-blue-500 text-lg shadow-[0_0_20px_rgba(34,211,238,0.20)]">
+            🤖
+            <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#06110c] bg-green-400" />
+          </span>
 
-          <span className="absolute inset-0 animate-ping rounded-full bg-green-400 opacity-10" />
+          <span className="hidden text-left sm:block">
+            <span className="block text-[9px] font-black uppercase tracking-[1.8px] text-cyan-300">
+              AI Assistant
+            </span>
+            <span className="block text-xs font-bold text-white">
+              Help & Support
+            </span>
+          </span>
 
-          <span className="pointer-events-none absolute bottom-full right-0 mb-3 whitespace-nowrap rounded-xl border border-white/10 bg-black/80 px-3 py-2 text-[10px] font-bold text-gray-200 opacity-0 shadow-2xl backdrop-blur-xl transition group-hover:opacity-100">
-            AI Help & Support
+          <span className="text-gray-500 transition group-hover:translate-x-0.5 group-hover:text-cyan-300">
+            →
           </span>
         </button>
       </div>
@@ -1436,19 +2058,25 @@ export default function WelcomePage() {
             icon="⌂"
             label="Home"
             active
-            onClick={() => navigate("/welcome")}
-          />
-
-          <MobileNavButton
-            icon="💬"
-            label="Inbox"
-            onClick={openInboxLogin}
+            onClick={() => navigateWithBusinessId("/welcome")}
           />
 
           <MobileNavButton
             icon="👥"
             label="Leads"
-            onClick={() => navigate("/dashboard")}
+            onClick={() => {
+              if (isMobile) {
+                showDesktopOnly("Leads");
+              } else {
+                navigateWithBusinessId("/dashboard");
+              }
+            }}
+          />
+
+          <MobileNavButton
+            icon="📢"
+            label="Campaign"
+            onClick={openWhatsAppCampaign}
           />
 
           <MobileNavButton
@@ -1476,110 +2104,6 @@ export default function WelcomePage() {
         />
       )}
       
-      {showChannelPicker && (
-  <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
-    <div className="relative w-full max-w-3xl overflow-hidden rounded-[28px] border border-cyan-400/15 bg-[#06100b]/95 p-6 shadow-[0_30px_120px_rgba(0,0,0,0.7)] backdrop-blur-2xl md:p-8">
-      
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[3px] text-green-400">
-            CONNECT CHANNEL
-          </p>
-
-          <h2 className="mt-2 text-2xl font-black text-white md:text-3xl">
-            Choose a channel
-          </h2>
-
-          <p className="mt-2 text-sm text-gray-400">
-            Select the channel you want to connect to your workspace.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setShowChannelPicker(false)}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-xl text-gray-400 transition hover:bg-white/[0.09] hover:text-white"
-          aria-label="Close channel selector"
-        >
-          ×
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <ChannelCard
-          brand="whatsapp"
-          name="WhatsApp"
-          description="Connect WhatsApp Business"
-          status="Connect"
-          onClick={() => {
-            setShowChannelPicker(false);
-            startAutomationSetup();
-          }}
-        />
-
-        <ChannelCard
-          brand="instagram"
-          name="Instagram"
-          description="Connect Instagram"
-          status="Connect"
-          onClick={() => {
-            const businessId = getActiveBusinessId();
-
-            if (!businessId) {
-              console.error(
-                "[Instagram] Missing businessId. Cannot start OAuth."
-              );
-              return;
-            }
-
-            setShowChannelPicker(false);
-
-            try {
-              localStorage.setItem(
-                "business_id",
-                businessId
-              );
-            } catch (error) {
-              console.error(
-                "[Business Context] Failed to persist business_id:",
-                error
-              );
-            }
-
-            router.push(
-              `/api/auth/instagram?businessId=${encodeURIComponent(
-                businessId
-              )}`
-            );
-          }}
-        />
-
-        <ChannelCard
-          brand="facebook"
-          name="Facebook"
-          description="Connect Facebook Pages & Messenger"
-          status="Connect"
-          onClick={() => {
-            setShowChannelPicker(false);
-            navigateWithBusinessId("/channels/facebook");
-          }}
-        />
-
-        <ChannelCard
-          brand="tiktok"
-          name="TikTok"
-          description="Connect TikTok"
-          status="Connect"
-          onClick={() => {
-            setShowChannelPicker(false);
-            navigateWithBusinessId("/channels/tiktok");
-          }}
-        />
-      </div>
-    </div>
-  </div>
-)}      
-
       {/* =========================================================
           WHY SODAH MODAL
       ========================================================== */}
@@ -1835,19 +2359,10 @@ function SodahHeroBrand() {
       />
 
       <BrandOrbitBadge
-        brand="instagram"
-        position="right-4 top-5 md:right-8 md:top-6"
+        brand="gmail"
+        position="right-2 top-10 md:right-5 md:top-12"
       />
 
-      <BrandOrbitBadge
-        brand="facebook"
-        position="right-0 bottom-10 md:right-4 md:bottom-12"
-      />
-
-      <BrandOrbitBadge
-        brand="tiktok"
-        position="left-8 bottom-6 md:left-16 md:bottom-8"
-      />
     </div>
   );
 }
@@ -1940,21 +2455,20 @@ function SodahMark({ className = "" }) {
    BRAND ORBIT
 ================================================================ */
 
-function BrandOrbitBadge({ brand, position }) {
-  const colors = BRAND_COLORS[brand];
-  const logo = BRAND_LOGOS[brand];
+function BrandOrbitBadge({ position, brand = "whatsapp" }) {
+  const color = BRAND_COLORS[brand] || BRAND_COLORS.whatsapp;
 
   return (
     <div
-      className={`absolute ${position} z-20 flex h-12 w-12 items-center justify-center rounded-2xl border backdrop-blur-xl shadow-2xl md:h-14 md:w-14`}
+      className={`absolute ${position} z-20 flex h-12 w-12 items-center justify-center rounded-2xl border backdrop-blur-xl shadow-2xl transition-transform duration-300 hover:scale-110 md:h-14 md:w-14`}
       style={{
-        background: colors.soft,
-        borderColor: colors.border,
-        boxShadow: `0 0 30px ${colors.glow}`,
+        borderColor: color.border,
+        background: color.soft,
+        boxShadow: `0 0 30px ${color.glow}`,
       }}
     >
       <img
-        src={logo}
+        src={BRAND_LOGOS[brand]}
         alt={`${brand} logo`}
         className="h-7 w-7 object-contain md:h-8 md:w-8"
       />
@@ -1964,7 +2478,9 @@ function BrandOrbitBadge({ brand, position }) {
 
 /* ===============================================================
    STAT CARD
-================================================================ */
+=============================================================== */
+
+
 
 function StatCard({ icon, value, label, color }) {
   const colors = {
@@ -1998,56 +2514,131 @@ function StatCard({ icon, value, label, color }) {
 }
 
 /* ===============================================================
+   CONNECTION PILL
+================================================================ */
+
+function ConnectionPill({
+  logo,
+  label,
+  connected = false,
+  brand = "whatsapp",
+}) {
+  const color = BRAND_COLORS[brand] || BRAND_COLORS.whatsapp;
+
+  return (
+    <div
+      className="inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-bold backdrop-blur-xl"
+      style={{
+        borderColor: connected ? color.border : "rgba(255,255,255,0.10)",
+        background: connected ? color.soft : "rgba(255,255,255,0.025)",
+        color: connected ? color.primary : "#9CA3AF",
+      }}
+    >
+      <img
+        src={logo}
+        alt={brand}
+        className="h-3.5 w-3.5 shrink-0 object-contain"
+      />
+
+      <span className="truncate">{label}</span>
+
+      <span
+        className="h-1.5 w-1.5 shrink-0 rounded-full"
+        style={{
+          background: connected ? color.primary : "#6B7280",
+          boxShadow: connected
+            ? `0 0 8px ${color.primary}`
+            : "none",
+        }}
+      />
+    </div>
+  );
+}
+
+/* ===============================================================
    CHANNEL CARD
 ================================================================ */
 
 function ChannelCard({
-  brand,
   name,
   description,
   status,
   connected = false,
+  locked = false,
   onClick,
+  logo,
+  brand = "whatsapp",
+  badge,
 }) {
-  const colors = BRAND_COLORS[brand];
-  const logo = BRAND_LOGOS[brand];
+  const color = BRAND_COLORS[brand] || BRAND_COLORS.whatsapp;
+
+  const clickable = Boolean(onClick) && !locked;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/20 p-4 text-left transition-all duration-300 hover:-translate-y-1 hover:bg-white/[0.05]"
+      disabled={!clickable}
+      aria-disabled={!clickable}
+      className={`group relative overflow-hidden rounded-2xl border p-5 text-left transition-all duration-300 ${
+        locked
+          ? "cursor-not-allowed border-white/10 bg-black/30 opacity-75"
+          : "cursor-pointer border-white/10 bg-black/20 hover:-translate-y-1 hover:bg-white/[0.05]"
+      }`}
       style={{
-        boxShadow: `inset 0 1px 0 ${colors.border}`,
+        boxShadow: connected
+          ? `inset 0 1px 0 ${color.border}`
+          : "inset 0 1px 0 rgba(255,255,255,0.06)",
       }}
     >
       <div
-        className="absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-0 blur-3xl transition-opacity group-hover:opacity-100"
-        style={{
-          background: colors.glow,
-        }}
+        className="absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-20 blur-3xl transition-opacity group-hover:opacity-40"
+        style={{ background: color.primary }}
       />
 
-      <div className="relative flex items-center gap-3">
+      <div className="relative flex items-center gap-4">
         <div
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border"
+          className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border backdrop-blur-xl"
           style={{
-            background: colors.soft,
-            borderColor: colors.border,
-            boxShadow: `0 0 22px ${colors.glow}`,
+            borderColor: color.border,
+            background: color.soft,
+            boxShadow: connected
+              ? `0 0 22px ${color.glow}`
+              : "none",
           }}
         >
           <img
-            src={logo}
+            src={logo || BRAND_LOGOS[brand]}
             alt={`${name} logo`}
-            className="h-7 w-7 object-contain"
+            className="h-8 w-8 object-contain"
           />
+
+          {locked && (
+            <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-white/10 bg-[#07100c] text-[9px] text-gray-400">
+              🔒
+            </span>
+          )}
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate font-bold">{name}</p>
+          <div className="flex items-center gap-2">
+            <p className="truncate font-bold">{name}</p>
 
-          <p className="mt-0.5 truncate text-[11px] text-gray-500">
+            {badge && (
+              <span
+                className="rounded-full border px-2 py-0.5 text-[7px] font-black tracking-wider"
+                style={{
+                  borderColor: color.border,
+                  color: color.primary,
+                  background: color.soft,
+                }}
+              >
+                {badge}
+              </span>
+            )}
+          </div>
+
+          <p className="mt-0.5 line-clamp-2 text-[11px] leading-5 text-gray-500">
             {description}
           </p>
 
@@ -2055,9 +2646,9 @@ function ChannelCard({
             <span
               className="h-1.5 w-1.5 rounded-full"
               style={{
-                background: connected ? "#25D366" : "#6B7280",
+                background: connected ? color.primary : "#6B7280",
                 boxShadow: connected
-                  ? "0 0 8px #25D366"
+                  ? `0 0 8px ${color.primary}`
                   : "none",
               }}
             />
@@ -2065,7 +2656,7 @@ function ChannelCard({
             <span
               className="text-[10px] font-bold"
               style={{
-                color: connected ? "#25D366" : "#9CA3AF",
+                color: connected ? color.primary : "#9CA3AF",
               }}
             >
               {status}
@@ -2074,7 +2665,7 @@ function ChannelCard({
         </div>
 
         <span className="text-gray-600 transition group-hover:text-white">
-          →
+          {locked ? "🔒" : "→"}
         </span>
       </div>
     </button>
@@ -2083,7 +2674,9 @@ function ChannelCard({
 
 /* ===============================================================
    ACTION CARD
-================================================================ */
+=============================================================== */
+
+
 
 function ActionCard({
   icon,
@@ -2100,6 +2693,9 @@ function ActionCard({
     cyan:
       "border-cyan-400/15 bg-cyan-500/[0.055] hover:border-cyan-400/35 hover:bg-cyan-400/[0.10]",
 
+    red:
+      "border-red-400/15 bg-red-500/[0.055] hover:border-red-400/35 hover:bg-red-400/[0.10]",
+
     green:
       "border-green-400/15 bg-green-500/[0.055] hover:border-green-400/35 hover:bg-green-400/[0.10]",
 
@@ -2114,6 +2710,7 @@ function ActionCard({
 
     slate:
       "border-slate-400/15 bg-slate-500/[0.055] hover:border-slate-300/30 hover:bg-slate-400/[0.09]",
+
   };
 
   const iconStyles = {
@@ -2122,6 +2719,9 @@ function ActionCard({
 
     cyan:
       "border-cyan-400/20 bg-cyan-400/[0.08] group-hover:border-cyan-400/35 group-hover:bg-cyan-400/[0.14]",
+
+    red:
+      "border-red-400/20 bg-red-400/[0.08] group-hover:border-red-400/35 group-hover:bg-red-400/[0.14]",
 
     green:
       "border-green-400/20 bg-green-400/[0.08] group-hover:border-green-400/35 group-hover:bg-green-400/[0.14]",
@@ -2137,11 +2737,13 @@ function ActionCard({
 
     slate:
       "border-slate-400/20 bg-slate-400/[0.08] group-hover:border-slate-300/30 group-hover:bg-slate-300/[0.14]",
+
   };
 
   const arrowStyles = {
     default: "group-hover:text-slate-300",
     cyan: "group-hover:text-cyan-400",
+    red: "group-hover:text-red-400",
     green: "group-hover:text-green-400",
     purple: "group-hover:text-purple-400",
     blue: "group-hover:text-blue-400",
@@ -2155,9 +2757,9 @@ function ActionCard({
       onClick={onClick}
       className={`group relative min-h-[155px] overflow-hidden rounded-[22px] border p-5 text-left backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl ${accentStyles[accent]}`}
     >
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between">
         <div
-          className={`flex h-12 w-12 items-center justify-center rounded-2xl border text-2xl transition group-hover:scale-110 ${iconStyles[accent]}`}
+          className={`flex h-10 w-10 items-center justify-center rounded-xl border text-xl transition group-hover:scale-110 ${iconStyles[accent]}`}
         >
           {icon}
         </div>
@@ -2177,9 +2779,9 @@ function ActionCard({
         </div>
       </div>
 
-      <h3 className="text-lg font-bold">{title}</h3>
+      <h3 className="text-base font-bold leading-tight">{title}</h3>
 
-      <p className="mt-2 text-sm leading-6 text-gray-400">
+      <p className="mt-1.5 text-xs leading-5 text-gray-400">
         {description}
       </p>
     </button>
@@ -2216,9 +2818,46 @@ function MobileNavButton({
 ================================================================ */
 
 function SupportModal({ onClose, user }) {
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/75 p-0 backdrop-blur-md sm:items-center sm:p-5">
-      <div className="relative flex h-[88vh] w-full max-w-[1050px] flex-col overflow-hidden rounded-t-[28px] border border-cyan-400/15 bg-[#020907] shadow-[0_30px_120px_rgba(0,0,0,0.7)] sm:h-[82vh] sm:rounded-[28px]">
+    <div
+      className="fixed inset-0 z-[200] flex items-end justify-center bg-black/75 p-0 backdrop-blur-md sm:items-center sm:p-5"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Sodah AI Support"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+      onTouchStart={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        className="relative flex h-[88vh] w-full max-w-[1050px] flex-col overflow-hidden rounded-t-[28px] border border-cyan-400/15 bg-[#020907] shadow-[0_30px_120px_rgba(0,0,0,0.7)] sm:h-[82vh] sm:rounded-[28px]"
+        onMouseDown={(event) => event.stopPropagation()}
+        onTouchStart={(event) => event.stopPropagation()}
+      >
         <div className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#06110c]/90 px-4 py-3 backdrop-blur-xl sm:px-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-green-400 to-cyan-400 text-lg shadow-[0_0_20px_rgba(37,211,102,0.18)]">
@@ -2238,9 +2877,14 @@ function SupportModal({ onClose, user }) {
 
           <button
             type="button"
-            onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-gray-400 transition hover:bg-white/[0.09] hover:text-white"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onClose();
+            }}
+            className="relative z-50 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-xl text-gray-300 transition hover:border-cyan-400/30 hover:bg-cyan-400/[0.10] hover:text-white active:scale-95"
             aria-label="Close support"
+            title="Close support"
           >
             ×
           </button>
@@ -2324,7 +2968,7 @@ function InfoFeature({ icon, title, text }) {
         <div>
           <h3 className="font-bold text-white">{title}</h3>
 
-          <p className="mt-2 text-sm leading-6 text-gray-400">
+          <p className="mt-1.5 text-xs leading-5 text-gray-400">
             {text}
           </p>
         </div>

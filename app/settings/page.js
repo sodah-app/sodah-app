@@ -7,13 +7,208 @@ import { supabase } from "../../lib/supabase";
 export default function Settings() {
   const router = useRouter();
 
-  // 🌗 DARK MODE STATE
+  // =====================================================
+  // STATE
+  // =====================================================
+
   const [dark, setDark] = useState(false);
-const [groupChatsEnabled, setGroupChatsEnabled] =
-  useState(false);
-  // ============================================
+
+  const [groupChatsEnabled, setGroupChatsEnabled] =
+    useState(false);
+
+  const [businessId, setBusinessId] =
+    useState(null);
+
+  const [loadingBusiness, setLoadingBusiness] =
+    useState(true);
+
+  const [savingGroupChats, setSavingGroupChats] =
+    useState(false);
+
+  // =====================================================
+  // LOAD BUSINESS ID
+  // =====================================================
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadBusinessId = async () => {
+      try {
+        setLoadingBusiness(true);
+
+        /*
+         * -------------------------------------------------
+         * 1. Check URL
+         *
+         * Example:
+         *
+         * /settings?businessId=223e4e9d-73a7-4d1f-aa79-34621d1eff30
+         * -------------------------------------------------
+         */
+
+        const params = new URLSearchParams(
+          window.location.search
+        );
+
+        const urlBusinessId =
+          params.get("businessId");
+
+        /*
+         * -------------------------------------------------
+         * 2. Get authenticated Supabase session
+         * -------------------------------------------------
+         */
+
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          console.error(
+            "[Settings] Session error:",
+            sessionError
+          );
+        }
+
+        /*
+         * -------------------------------------------------
+         * 3. Resolve business from authenticated user
+         *
+         * Supabase user_id identifies the account.
+         * business_id identifies the tenant/workspace.
+         * -------------------------------------------------
+         */
+
+        if (session?.user?.id) {
+          const {
+            data,
+            error,
+          } = await supabase
+            .from("businesses")
+            .select("business_id")
+            .eq(
+              "user_id",
+              session.user.id
+            )
+            .maybeSingle();
+
+          if (error) {
+            console.error(
+              "[Settings] Business lookup error:",
+              error
+            );
+          }
+
+          if (data?.business_id) {
+            const activeBusinessId =
+              data.business_id;
+
+            if (mounted) {
+              setBusinessId(
+                activeBusinessId
+              );
+            }
+
+            localStorage.setItem(
+              "business_id",
+              activeBusinessId
+            );
+
+            if (mounted) {
+              setLoadingBusiness(false);
+            }
+
+            return;
+          }
+        }
+
+        /*
+         * -------------------------------------------------
+         * 4. URL fallback
+         * -------------------------------------------------
+         */
+
+        if (urlBusinessId) {
+          if (mounted) {
+            setBusinessId(
+              urlBusinessId
+            );
+          }
+
+          localStorage.setItem(
+            "business_id",
+            urlBusinessId
+          );
+
+          if (mounted) {
+            setLoadingBusiness(false);
+          }
+
+          return;
+        }
+
+        /*
+         * -------------------------------------------------
+         * 5. localStorage fallback
+         * -------------------------------------------------
+         */
+
+        const storedBusinessId =
+          localStorage.getItem(
+            "business_id"
+          );
+
+        if (storedBusinessId) {
+          if (mounted) {
+            setBusinessId(
+              storedBusinessId
+            );
+          }
+
+          if (mounted) {
+            setLoadingBusiness(false);
+          }
+
+          return;
+        }
+
+        /*
+         * -------------------------------------------------
+         * No business found
+         * -------------------------------------------------
+         */
+
+        console.error(
+          "[Settings] Unable to determine active business."
+        );
+
+        if (mounted) {
+          setLoadingBusiness(false);
+        }
+      } catch (error) {
+        console.error(
+          "[Settings] Business resolution error:",
+          error
+        );
+
+        if (mounted) {
+          setLoadingBusiness(false);
+        }
+      }
+    };
+
+    loadBusinessId();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // =====================================================
   // LOAD SAVED THEME GLOBALLY
-  // ============================================
+  // =====================================================
+
   useEffect(() => {
     const savedTheme =
       localStorage.getItem("theme");
@@ -44,65 +239,100 @@ const [groupChatsEnabled, setGroupChatsEnabled] =
         "black";
     }
   }, []);
-useEffect(() => {
-  const loadGroupChatSetting = async () => {
-    try {
-     const {
-  data: { session },
-} = await supabase.auth.getSession();
 
-if (!session?.user?.id)
-  return;
+  // =====================================================
+  // LOAD GROUP CHAT SETTING
+  // =====================================================
 
-const { data, error } =
-  await supabase
-    .from("businesses")
-    .select("*")
-    .eq(
-      "user_id",
-      session.user.id
-    )
-    .single();
-      console.log(
-        "Loaded Active Business:",
-        data
-      );
+  useEffect(() => {
+    if (!businessId) {
+      return;
+    }
 
-      console.log(
-        "Load Error:",
-        error
-      );
+    let mounted = true;
 
-      if (error) {
-        console.error(error);
-        return;
-      }
+    const loadGroupChatSetting = async () => {
+      try {
+        /*
+         * IMPORTANT:
+         *
+         * We use business_id here.
+         *
+         * This prevents one business from reading
+         * another business's settings.
+         */
 
-      if (data) {
-        setGroupChatsEnabled(
-          !!data.group_chat_enabled
+        const {
+          data,
+          error,
+        } = await supabase
+          .from("businesses")
+          .select(
+            "business_id, group_chat_enabled"
+          )
+          .eq(
+            "business_id",
+            businessId
+          )
+          .maybeSingle();
+
+        console.log(
+          "[Settings] Active Business:",
+          data
+        );
+
+        console.log(
+          "[Settings] Business ID:",
+          businessId
+        );
+
+        console.log(
+          "[Settings] Group Chat Load Error:",
+          error
+        );
+
+        if (error) {
+          console.error(
+            "[Settings] Group chat load error:",
+            error
+          );
+
+          return;
+        }
+
+        if (
+          data &&
+          mounted
+        ) {
+          setGroupChatsEnabled(
+            !!data.group_chat_enabled
+          );
+        }
+      } catch (error) {
+        console.error(
+          "[Settings] Load Group Chat Error:",
+          error
         );
       }
-    } catch (err) {
-      console.error(
-        "Load Group Chat Error:",
-        err
-      );
-    }
-  };
+    };
 
-  loadGroupChatSetting();
-}, []);
-  // ============================================
+    loadGroupChatSetting();
+
+    return () => {
+      mounted = false;
+    };
+  }, [businessId]);
+
+  // =====================================================
   // GLOBAL DARK MODE TOGGLE
-  // ============================================
+  // =====================================================
+
   const toggleDark = () => {
     const newMode = !dark;
 
     setDark(newMode);
 
     if (newMode) {
-      // ENABLE DARK
       document.documentElement.classList.add(
         "dark"
       );
@@ -112,14 +342,12 @@ const { data, error } =
         "dark"
       );
 
-      // APPLY TO WHOLE SYSTEM
       document.body.style.background =
         "#020617";
 
       document.body.style.color =
         "white";
     } else {
-      // DISABLE DARK
       document.documentElement.classList.remove(
         "dark"
       );
@@ -129,7 +357,6 @@ const { data, error } =
         "light"
       );
 
-      // APPLY TO WHOLE SYSTEM
       document.body.style.background =
         "#ffffff";
 
@@ -137,111 +364,229 @@ const { data, error } =
         "black";
     }
 
-    // FORCE REFRESH DASHBOARD COLORS
+    /*
+     * Force other components to notice
+     * the theme change.
+     */
+
     window.dispatchEvent(
       new Event("storage")
     );
   };
-const handleResetAccount = () => {
-  const confirmed = window.confirm(
-    "Reset your account and clear all data?"
-  );
 
-  if (!confirmed) return;
+  // =====================================================
+  // NAVIGATION HELPERS
+  // =====================================================
 
-  localStorage.clear();
+  const getBusinessQuery = () => {
+    if (!businessId) {
+      return "";
+    }
 
-  router.push("/signup");
-};
+    return `?businessId=${encodeURIComponent(
+      businessId
+    )}`;
+  };
 
-const toggleGroupChats = async () => {
-  try {
+  const goToChannels = () => {
+    if (businessId) {
+      router.push(
+        `/channels?businessId=${encodeURIComponent(
+          businessId
+        )}`
+      );
+    } else {
+      router.push("/channels");
+    }
+  };
+
+  const goToProfile = () => {
+    if (businessId) {
+      router.push(
+        `/profile?businessId=${encodeURIComponent(
+          businessId
+        )}`
+      );
+    } else {
+      router.push("/profile");
+    }
+  };
+
+  const openAIAssistant = () => {
+    const baseUrl =
+      "/system-support";
+    const assistantUrl =
+      businessId
+        ? `${baseUrl}?businessId=${encodeURIComponent(
+            businessId
+          )}`
+        : baseUrl;
+
+    window.open(
+      assistantUrl,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  };
+
+  // =====================================================
+  // RESET ACCOUNT
+  // =====================================================
+
+  const handleResetAccount = () => {
+    const confirmed =
+      window.confirm(
+        "Reset your account and clear all data?"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    /*
+     * This intentionally clears local application
+     * state because the user explicitly requested
+     * an account reset.
+     */
+
+    localStorage.clear();
+
+    router.push("/signup");
+  };
+
+  // =====================================================
+  // TOGGLE GROUP CHATS
+  // =====================================================
+
+  const toggleGroupChats = async () => {
+    if (!businessId) {
+      alert(
+        "No active business found."
+      );
+
+      return;
+    }
+
+    if (savingGroupChats) {
+      return;
+    }
+
     const newValue =
       !groupChatsEnabled;
+
+    /*
+     * Optimistic UI update.
+     */
 
     setGroupChatsEnabled(
       newValue
     );
 
-const {
-  data: { session },
-} = await supabase.auth.getSession();
+    try {
+      setSavingGroupChats(true);
 
-if (!session?.user?.id) {
-  alert("User not logged in.");
-  return;
-}
+      console.log(
+        "[Settings] Saving Group Chat:"
+      );
 
-const {
-  data: activeBusiness,
-  error: businessError,
-} = await supabase
-  .from("businesses")
-  .select("*")
-  .eq(
-    "user_id",
-    session.user.id
-  )
-  .single();
+      console.log(
+        "Business ID:",
+        businessId
+      );
 
-console.log(
-  "BUSINESS:",
-  activeBusiness
-);
+      console.log(
+        "New Value:",
+        newValue
+      );
 
-console.log(
-  "ERROR:",
-  businessError
-);
-console.log(
-  "Active Business:",
-  activeBusiness
-);
-console.log(
-  "Business ID Used:",
-  activeBusiness?.business_id
-);
+      /*
+       * IMPORTANT:
+       *
+       * Save strictly using business_id.
+       */
 
-if (
-  businessError ||
-  !activeBusiness
-) {
-  alert(
-    "No active business found."
-  );
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("businesses")
+        .update({
+          group_chat_enabled:
+            newValue,
+        })
+        .eq(
+          "business_id",
+          businessId
+        )
+        .select(
+          "business_id, group_chat_enabled"
+        );
 
-  setGroupChatsEnabled(
-    !newValue
-  );
+      console.log(
+        "[Settings] Saved Data:",
+        data
+      );
 
-  return;
-}
+      console.log(
+        "[Settings] Save Error:",
+        error
+      );
 
-const { data, error } =
-  await supabase
-    .from("businesses")
-    .update({
-      group_chat_enabled:
-        newValue,
-    })
-    .eq(
-      "business_id",
-      activeBusiness.business_id
-    )
-    .select();
-console.log("Saved Value:", newValue);
-console.log("Returned Data:", data);
-console.log("Returned Error:", error);
+      if (error) {
+        console.error(
+          "[Settings] Failed to save group chat:",
+          error
+        );
 
-if (data && data.length > 0) {
-  console.log(
-    "Database Value After Save:",
-    data[0].group_chat_enabled
-  );
-}
+        /*
+         * Roll back UI if database save failed.
+         */
 
+        setGroupChatsEnabled(
+          !newValue
+        );
 
-    if (error) {
+        alert(
+          "Failed to save setting."
+        );
+
+        return;
+      }
+
+      if (
+        !data ||
+        data.length === 0
+      ) {
+        console.error(
+          "[Settings] No business row was updated."
+        );
+
+        setGroupChatsEnabled(
+          !newValue
+        );
+
+        alert(
+          "The active business could not be updated."
+        );
+
+        return;
+      }
+
+      console.log(
+        "[Settings] Group Chat successfully saved for Business:",
+        data[0].business_id
+      );
+
+      console.log(
+        "[Settings] Database Value:",
+        data[0].group_chat_enabled
+      );
+    } catch (error) {
+      console.error(
+        "[Settings] Toggle Error:",
+        error
+      );
+
       setGroupChatsEnabled(
         !newValue
       );
@@ -249,18 +594,37 @@ if (data && data.length > 0) {
       alert(
         "Failed to save setting."
       );
+    } finally {
+      setSavingGroupChats(false);
     }
-  } catch (err) {
-    console.error(
-      "Toggle Error:",
-      err
-    );
+  };
 
-    alert(
-      "Failed to save setting."
+  // =====================================================
+  // LOADING
+  // =====================================================
+
+  if (loadingBusiness) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#020617] text-white">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl px-7 py-6 text-center shadow-2xl">
+          <div className="mx-auto mb-4 h-8 w-8 rounded-full border-2 border-white/10 border-t-green-400 animate-spin" />
+
+          <p className="text-sm font-bold">
+            Loading Settings...
+          </p>
+
+          <p className="mt-1 text-xs text-white/40">
+            Resolving your business workspace
+          </p>
+        </div>
+      </div>
     );
   }
-};
+
+  // =====================================================
+  // PAGE
+  // =====================================================
+
   return (
     <div
       className={`
@@ -276,43 +640,152 @@ if (data && data.length > 0) {
         }
       `}
     >
-      <div className="w-full max-w-xl mx-auto space-y-4">
-        {/* HEADER */}
-        <div>
-          <h1
-            className={`
-              text-3xl
-              font-bold
-              ${
-                dark
-                  ? "text-white"
-                  : "text-black"
-              }
-            `}
-          >
-            ⚙️ Settings
-          </h1>
+      <div className="w-full max-w-2xl mx-auto space-y-4">
 
-          <p
-            className={`
-              text-sm
-              ${
-                dark
-                  ? "text-gray-400"
-                  : "text-gray-500"
-              }
-            `}
+        {/* =================================================
+            HEADER
+        ================================================= */}
+
+        <div className="flex items-start justify-between gap-4">
+
+          <div>
+            <p
+              className={`
+                text-[10px]
+                uppercase
+                tracking-[0.25em]
+                font-black
+                mb-1
+                ${
+                  dark
+                    ? "text-green-400"
+                    : "text-green-600"
+                }
+              `}
+            >
+              Workspace
+            </p>
+
+            <h1
+              className={`
+                text-3xl
+                font-black
+                ${
+                  dark
+                    ? "text-white"
+                    : "text-black"
+                }
+              `}
+            >
+              ⚙️ Settings
+            </h1>
+
+            <p
+              className={`
+                text-sm
+                mt-1
+                ${
+                  dark
+                    ? "text-gray-400"
+                    : "text-gray-500"
+                }
+              `}
+            >
+              Manage your business workspace and preferences
+            </p>
+          </div>
+
+          {/* BUSINESS ID */}
+
+          <div
+            className="
+              shrink-0
+              rounded-2xl
+              border
+              border-green-400/20
+              bg-green-400/10
+              px-3
+              py-2
+              text-right
+            "
           >
-            Manage your account and preferences
-          </p>
+            <p className="text-[8px] uppercase tracking-wider text-green-300/60">
+              Business ID
+            </p>
+
+            <p className="mt-1 max-w-[150px] break-all font-mono text-[9px] font-bold text-green-300">
+              {businessId ||
+                "Unavailable"}
+            </p>
+          </div>
+
         </div>
 
-        {/* PROFILE */}
+        {/* =================================================
+            ACTIVE BUSINESS
+        ================================================= */}
+
+        <div
+          className={`
+            rounded-2xl
+            border
+            p-4
+            ${
+              dark
+                ? "bg-white/[0.035] border-white/10"
+                : "bg-white border-gray-200"
+            }
+          `}
+        >
+          <div className="flex items-center gap-3">
+
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-400/10 border border-green-400/20">
+              <span className="h-2.5 w-2.5 rounded-full bg-green-400 animate-pulse" />
+            </div>
+
+            <div className="min-w-0">
+              <p
+                className={`
+                  text-xs
+                  font-black
+                  ${
+                    dark
+                      ? "text-white"
+                      : "text-gray-900"
+                  }
+                `}
+              >
+                Active Business Workspace
+              </p>
+
+              <p
+                className={`
+                  mt-1
+                  font-mono
+                  text-[10px]
+                  break-all
+                  ${
+                    dark
+                      ? "text-green-300"
+                      : "text-green-700"
+                  }
+                `}
+              >
+                {businessId ||
+                  "No Business ID detected"}
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+        {/* =================================================
+            PROFILE
+        ================================================= */}
+
         <Card
           dark={dark}
-          onClick={() =>
-            router.push("/profile")
-          }
+          onClick={goToProfile}
         >
           <Title
             dark={dark}
@@ -321,20 +794,27 @@ if (data && data.length > 0) {
           />
         </Card>
 
-        {/* DARK MODE */}
+        {/* =================================================
+            DARK MODE
+        ================================================= */}
+
         <Card dark={dark}>
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center gap-4">
+
             <Title
               dark={dark}
               title="Dark Mode"
-              desc="Switch connect whatsapp appearance"
+              desc="Switch Sodah workspace appearance"
             />
 
             <div
               onClick={toggleDark}
+              role="button"
+              tabIndex={0}
               className={`
                 w-14
                 h-7
+                shrink-0
                 flex
                 items-center
                 rounded-full
@@ -367,16 +847,21 @@ if (data && data.length > 0) {
                 `}
               />
             </div>
+
           </div>
         </Card>
 
-        {/* WHATSAPP SUPPORT */}
+        {/* =================================================
+            SYSTEM SUPPORT
+        ================================================= */}
+
         <Card
           dark={dark}
           onClick={() =>
             window.open(
               "https://wa.me/971544027954",
-              "_blank"
+              "_blank",
+              "noopener,noreferrer"
             )
           }
         >
@@ -387,155 +872,274 @@ if (data && data.length > 0) {
           />
         </Card>
 
-        {/* AI ASSISTANT */}
+        {/* =================================================
+            AI ASSISTANT
+        ================================================= */}
+
         <Card
           dark={dark}
-          onClick={() =>
-            window.open(
-              "https://solomon-n8n.duckdns.org/webhook/a7935547-15a5-4742-8ac0-b8fab937d44c/chat",
-              "_blank"
-            )
-          }
+          onClick={openAIAssistant}
         >
           <Title
             dark={dark}
             title="AI Assistant"
-            desc="Ask anything about the system"
+            desc={
+              businessId
+                ? "Ask anything about your business workspace"
+                : "Ask anything about the system"
+            }
           />
         </Card>
 
-       {/* COMMUNITY + RESET */}
-<div className="grid grid-cols-2 gap-3">
+        {/* =================================================
+            GROUP CHAT + RESET
+        ================================================= */}
 
-  {/* WHATSAPP GROUP CHATS */}
-<div
-  className={`
-    p-5
-    rounded-2xl
-    transition-all
-    duration-300
-    border
-    ${
-      dark
-        ? "bg-white/5 border-white/10"
-        : "bg-white border-gray-200"
-    }
-  `}
->
-  <div className="flex justify-between items-center">
-    <div>
-      <h3 className="text-green-500 font-semibold">
-        WhatsApp Group Chats
-      </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
-      <p
-        className={`
-          text-sm
-          ${
-            dark
-              ? "text-gray-400"
-              : "text-gray-500"
-          }
-        `}
-      >
-        Enable or disable AI replies in groups
-      </p>
-    </div>
+          {/* GROUP CHAT */}
 
-    <div
-     onClick={toggleGroupChats}
-      className={`
-        w-14
-        h-7
-        flex
-        items-center
-        rounded-full
-        p-1
-        cursor-pointer
-        transition-all
-        duration-300
-        ${
-          groupChatsEnabled
-            ? "bg-gradient-to-r from-green-500 to-emerald-400"
-            : "bg-gray-400"
-        }
-      `}
-    >
-      <div
-        className={`
-          bg-white
-          w-5
-          h-5
-          rounded-full
-          shadow-md
-          transform
-          transition-all
-          duration-300
-          ${
-            groupChatsEnabled
-              ? "translate-x-7"
-              : "translate-x-0"
-          }
-        `}
-      />
-    </div>
-  </div>
-</div>
+          <div
+            className={`
+              p-5
+              rounded-2xl
+              transition-all
+              duration-300
+              border
+              ${
+                dark
+                  ? "bg-white/5 border-white/10"
+                  : "bg-white border-gray-200"
+              }
+            `}
+          >
+            <div className="flex justify-between items-start gap-4">
 
-  {/* RESET ACCOUNT */}
-  <div
-    onClick={handleResetAccount}
-    className={`
-      p-5
-      rounded-2xl
-      cursor-pointer
-      transition-all
-      duration-300
-      border
-      hover:scale-[1.02]
-      ${
-        dark
-          ? "bg-red-500/10 border-red-500/30"
-          : "bg-red-50 border-red-300"
-      }
-    `}
-  >
-    <h3 className="text-red-500 font-semibold">
-      Reset Account
-    </h3>
+              <div>
+                <h3
+                  className={`
+                    font-semibold
+                    ${
+                      dark
+                        ? "text-green-400"
+                        : "text-green-600"
+                    }
+                  `}
+                >
+                  WhatsApp Group Chats
+                </h3>
 
-    <p
-      className={`
-        text-sm
-        ${
-          dark
-            ? "text-gray-400"
-            : "text-gray-500"
-        }
-      `}
-    >
-      Clear all data
-    </p>
-  </div>
+                <p
+                  className={`
+                    text-sm
+                    mt-1
+                    ${
+                      dark
+                        ? "text-gray-400"
+                        : "text-gray-500"
+                    }
+                  `}
+                >
+                  Enable or disable AI replies in groups
+                </p>
 
-</div>
-     
-</div>
+                {businessId && (
+                  <p className="mt-2 font-mono text-[8px] text-white/25 break-all">
+                    Business: {businessId}
+                  </p>
+                )}
+              </div>
+
+              <div
+                onClick={
+                  toggleGroupChats
+                }
+                role="button"
+                tabIndex={0}
+                className={`
+                  w-14
+                  h-7
+                  shrink-0
+                  flex
+                  items-center
+                  rounded-full
+                  p-1
+                  cursor-pointer
+                  transition-all
+                  duration-300
+                  ${
+                    groupChatsEnabled
+                      ? "bg-gradient-to-r from-green-500 to-emerald-400 shadow-lg shadow-green-500/20"
+                      : "bg-gray-400"
+                  }
+                  ${
+                    savingGroupChats
+                      ? "opacity-60"
+                      : ""
+                  }
+                `}
+              >
+                <div
+                  className={`
+                    bg-white
+                    w-5
+                    h-5
+                    rounded-full
+                    shadow-md
+                    transform
+                    transition-all
+                    duration-300
+                    ${
+                      groupChatsEnabled
+                        ? "translate-x-7"
+                        : "translate-x-0"
+                    }
+                  `}
+                />
+              </div>
+
+            </div>
+
+            {savingGroupChats && (
+              <p className="mt-3 text-[10px] text-green-400">
+                Saving workspace setting...
+              </p>
+            )}
+          </div>
+
+          {/* RESET ACCOUNT */}
+
+          <div
+            onClick={
+              handleResetAccount
+            }
+            className={`
+              p-5
+              rounded-2xl
+              cursor-pointer
+              transition-all
+              duration-300
+              border
+              hover:scale-[1.01]
+              ${
+                dark
+                  ? "bg-red-500/10 border-red-500/30 hover:bg-red-500/15"
+                  : "bg-red-50 border-red-300 hover:bg-red-100"
+              }
+            `}
+          >
+            <h3 className="text-red-500 font-semibold">
+              Reset Account
+            </h3>
+
+            <p
+              className={`
+                text-sm
+                mt-1
+                ${
+                  dark
+                    ? "text-gray-400"
+                    : "text-gray-500"
+                }
+              `}
+            >
+              Clear local account data and start again
+            </p>
+          </div>
+
+        </div>
+
+        {/* =================================================
+            WORKSPACE STATUS
+        ================================================= */}
+
+        <div
+          className={`
+            rounded-2xl
+            border
+            p-5
+            ${
+              dark
+                ? "bg-white/[0.025] border-white/10"
+                : "bg-white border-gray-200"
+            }
+          `}
+        >
+          <div className="flex items-center justify-between gap-4">
+
+            <div>
+              <p
+                className={`
+                  text-xs
+                  font-black
+                  ${
+                    dark
+                      ? "text-white"
+                      : "text-gray-900"
+                  }
+                `}
+              >
+                Workspace Security
+              </p>
+
+              <p
+                className={`
+                  mt-1
+                  text-[11px]
+                  ${
+                    dark
+                      ? "text-white/40"
+                      : "text-gray-500"
+                  }
+                `}
+              >
+                Settings are associated with the active business workspace.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+
+              <span className="text-[9px] uppercase tracking-wider font-bold text-green-400">
+                Active
+              </span>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      {/* =================================================
+          BACK BUTTON
+      ================================================= */}
 
       <button
-        onClick={() => router.push("/channels")}
+        type="button"
+        onClick={goToChannels}
+        aria-label="Back to Channels"
         className="
-          fixed bottom-6 left-6 z-50
-          w-14 h-14
+          fixed
+          bottom-6
+          left-6
+          z-50
+          w-14
+          h-14
           rounded-2xl
           bg-white/10
-          border border-white/10
+          border
+          border-white/10
           backdrop-blur-xl
-          flex items-center justify-center
-          text-white text-2xl
+          flex
+          items-center
+          justify-center
+          text-white
+          text-2xl
           shadow-lg
           hover:scale-105
-          transition-all duration-300
+          hover:bg-white/15
+          transition-all
+          duration-300
         "
       >
         ←
@@ -545,9 +1149,9 @@ if (data && data.length > 0) {
   );
 }
 
-/* ============================================
-   CARD
-============================================ */
+// =====================================================
+// CARD
+// =====================================================
 
 function Card({
   children,
@@ -562,8 +1166,11 @@ function Card({
         rounded-2xl
         transition-all
         duration-300
-        cursor-pointer
-        hover:scale-[1.01]
+        ${
+          onClick
+            ? "cursor-pointer hover:scale-[1.01]"
+            : ""
+        }
         hover:shadow-xl
         ${
           dark
@@ -577,9 +1184,9 @@ function Card({
   );
 }
 
-/* ============================================
-   TITLE
-============================================ */
+// =====================================================
+// TITLE
+// =====================================================
 
 function Title({
   title,
@@ -604,6 +1211,7 @@ function Title({
       <p
         className={`
           text-sm
+          mt-1
           ${
             dark
               ? "text-gray-400"

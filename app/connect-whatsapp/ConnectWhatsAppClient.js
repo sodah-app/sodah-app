@@ -1,502 +1,520 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
-const DUPLICATE_WHATSAPP_MESSAGE =
-  "This WhatsApp number is already registered. Please upgrade your plan or contact our support team for further assistance.";
+const POLL_INTERVAL = 1500;
+const MAX_WAIT_TIME = 120000;
 
 export default function ConnectWhatsAppClient() {
-  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [businessId, setBusinessId] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [generatingQr, setGeneratingQr] = useState(false);
-
-  const [status, setStatus] = useState(
-    "Checking your WhatsApp connection..."
-  );
-
   const [qrCode, setQrCode] = useState("");
+  const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
+  const [phone, setPhone] = useState("");
+
+  const pollTimerRef = useRef(null);
+  const timeoutRef = useRef(null);
+  const mountedRef = useRef(true);
+  const qrRef = useRef("");
 
   /*
-   * ------------------------------------------------------------------------
-   * FIND LOGGED-IN USER'S BUSINESS
-   * ------------------------------------------------------------------------
-   */
-  const findBusiness = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError("");
-      setQrCode("");
-      setStatus("Checking your account...");
+  |--------------------------------------------------------------------------
+  | Keep QR ref synchronized
+  |--------------------------------------------------------------------------
+  */
 
-      /*
-       * Get authenticated Supabase user.
-       */
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+  useEffect(() => {
+    qrRef.current = qrCode;
+  }, [qrCode]);
 
-      if (userError) {
-        throw new Error(
-          userError.message ||
-            "Unable to verify your account."
-        );
-      }
+  /*
+  |--------------------------------------------------------------------------
+  | Resolve Business ID
+  |--------------------------------------------------------------------------
+  */
 
-      if (!user) {
-        throw new Error(
-          "You are not logged in. Please log in again."
-        );
-      }
+  useEffect(() => {
+    if (!searchParams) return;
 
-      console.log(
-        "[WhatsApp Connect] Logged-in user:",
-        user.id
-      );
+    const queryBusinessId =
+      searchParams.get("businessId") ||
+      searchParams.get("business_id") ||
+      searchParams.get("sessionId");
 
-      /*
-       * IMPORTANT:
-       *
-       * Do NOT use .maybeSingle().
-       *
-       * There may currently be more than one business row
-       * belonging to this user because of older data.
-       *
-       * We retrieve the rows and handle the situation ourselves.
-       */
-      const {
-        data: businesses,
-        error: businessError,
-      } = await supabase
-        .from("businesses")
-        .select(
-          `
-            business_id,
-            user_id,
-            whatsapp_connected,
-            full_name,
-            business_name,
-            ai_number,
-            support_number
-          `
-        )
-        .eq("user_id", user.id)
-        .order("created_at", {
-          ascending: true,
-        });
+    let resolved =
+      queryBusinessId?.trim() || "";
 
-      if (businessError) {
+    if (!resolved) {
+      try {
+        resolved =
+          localStorage.getItem(
+            "sodah_business_id"
+          ) || "";
+      } catch (error) {
         console.error(
-          "[WhatsApp Connect] Business lookup error:",
-          businessError
+          "Unable to read business ID:",
+          error
         );
+      }
+    }
 
-        throw new Error(
-          businessError.message ||
-            "Unable to find your business."
-        );
+    resolved = resolved.trim();
+
+    if (resolved) {
+      setBusinessId(resolved);
+    } else {
+      setError(
+        "Business ID is missing. Please return to your business setup and try again."
+      );
+      setStatus("error");
+    }
+  }, [searchParams]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Cleanup
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+
+      if (pollTimerRef.current) {
+        clearTimeout(pollTimerRef.current);
+      }
+
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Clear timers
+  |--------------------------------------------------------------------------
+  */
+
+  const clearTimers = useCallback(() => {
+    if (pollTimerRef.current) {
+      clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Apply API response
+  |--------------------------------------------------------------------------
+  */
+
+  const applyResponse = useCallback(
+    (data) => {
+      if (!mountedRef.current) return false;
+
+      if (!data) {
+        return false;
+      }
+
+      const receivedQR =
+        data.qrCode ||
+        data.qr ||
+        data.qrDataUrl ||
+        null;
+
+      const receivedStatus =
+        data.status || "";
+
+      const connected =
+        data.connected === true ||
+        receivedStatus === "connected";
+
+      if (data.phone) {
+        setPhone(String(data.phone));
       }
 
       /*
-       * No business.
+       * Connected
        */
-      if (!businesses || businesses.length === 0) {
-        setStatus(
-          "No business found. Please complete your business setup."
-        );
+      if (connected) {
+        clearTimers();
 
-        setTimeout(() => {
-          router.replace("/channels");
-        }, 1000);
+        setQrCode("");
+        qrRef.current = "";
 
-        return null;
-      }
+        setStatus("connected");
+        setError("");
 
-      console.log(
-        "[WhatsApp Connect] Businesses found:",
-        businesses
-      );
-
-      /*
-       * --------------------------------------------------------------------
-       * HANDLE MULTIPLE BUSINESS RECORDS
-       * --------------------------------------------------------------------
-       *
-       * This prevents:
-       *
-       * "JSON object requested, multiple (or no) rows returned"
-       *
-       * from ever reaching the user.
-       */
-      if (businesses.length > 1) {
-        console.warn(
-          "[WhatsApp Connect] Multiple business records found:",
-          businesses
-        );
-
-        /*
-         * Look for an existing WhatsApp number across these records.
-         *
-         * If multiple records exist because the same number was registered
-         * more than once, show the duplicate-number message.
-         */
-        const numbers = [];
-
-        for (const business of businesses) {
-          if (business.ai_number) {
-            numbers.push({
-              number: String(
-                business.ai_number
-              ).trim(),
-              businessId:
-                business.business_id,
-            });
-          }
-
-          if (business.support_number) {
-            numbers.push({
-              number: String(
-                business.support_number
-              ).trim(),
-              businessId:
-                business.business_id,
-            });
-          }
-        }
-
-        const numberMap = new Map();
-
-        for (const item of numbers) {
-          if (!item.number) {
-            continue;
-          }
-
-          const existing =
-            numberMap.get(item.number) || [];
-
-          existing.push(item.businessId);
-
-          numberMap.set(
-            item.number,
-            existing
-          );
-        }
-
-        const duplicateNumber =
-          Array.from(numberMap.entries()).find(
-            ([, ids]) => ids.length > 1
-          );
-
-        if (duplicateNumber) {
-          setError(
-            DUPLICATE_WHATSAPP_MESSAGE
-          );
-
-          setStatus(
-            "This WhatsApp number is already registered."
-          );
-
-          return null;
-        }
-
-        /*
-         * If there are multiple businesses but no duplicate number,
-         * we still don't silently guess which business should be used.
-         *
-         * That would risk connecting WhatsApp to the wrong business.
-         */
-        throw new Error(
-          "Multiple business profiles were found for your account. Please contact support so we can correct your business setup."
-        );
+        return true;
       }
 
       /*
-       * Exactly one business.
+       * QR received
        */
-      const business = businesses[0];
+      if (receivedQR) {
+        setQrCode(receivedQR);
+        qrRef.current = receivedQR;
 
-      if (!business.business_id) {
-        throw new Error(
-          "Your business does not have a business ID."
-        );
+        setStatus("qr");
+        setError("");
+
+        return true;
       }
 
-      console.log(
-        "[WhatsApp Connect] Business found:",
-        business
-      );
-
       /*
-       * Save business ID locally for convenience.
-       *
-       * Supabase remains the source of truth.
-       */
-      localStorage.setItem(
-        "business_id",
-        business.business_id
-      );
-
-      setBusinessId(
-        business.business_id
-      );
-
-      /*
-       * --------------------------------------------------------------------
-       * CHECK EXISTING WHATSAPP CONNECTION
-       * --------------------------------------------------------------------
+       * Session is being created/connected.
        */
       if (
-        business.whatsapp_connected === true
+        receivedStatus === "connecting" ||
+        receivedStatus === "reconnecting" ||
+        receivedStatus === "qr"
       ) {
-        setStatus(
-          "WhatsApp is already connected to this business."
-        );
+        setStatus("waiting");
+        setError("");
 
-        setTimeout(() => {
-          router.replace(
-            "/channels?connected=true"
-          );
-        }, 1800);
-
-        return {
-          connected: true,
-          businessId:
-            business.business_id,
-        };
+        return false;
       }
 
       /*
-       * Business exists and WhatsApp is not connected.
+       * Session does not exist.
        */
-      setStatus(
-        "Business found. Checking WhatsApp registration..."
-      );
-
-      return {
-        connected: false,
-        businessId:
-          business.business_id,
-      };
-    } catch (err) {
-      console.error(
-        "[WhatsApp Connect] Business lookup failed:",
-        err
-      );
-
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Unable to find your business.";
-
-      setError(message);
-      setStatus(
-        "Unable to continue."
-      );
-
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
-  /*
-   * ------------------------------------------------------------------------
-   * GENERATE QR CODE
-   * ------------------------------------------------------------------------
-   */
-  const generateQRCode = useCallback(
-    async (id) => {
-      if (!id) {
-        setError(
-          "Missing business ID."
-        );
-        return;
+      if (receivedStatus === "not_found") {
+        setStatus("not_found");
+        setError("");
+        return false;
       }
 
-      setGeneratingQr(true);
-      setError("");
-      setQrCode("");
+      return false;
+    },
+    [clearTimers]
+  );
 
-      setStatus(
-        "Checking WhatsApp registration..."
-      );
+  /*
+  |--------------------------------------------------------------------------
+  | Check existing session
+  |--------------------------------------------------------------------------
+  */
+
+  const checkExistingSession =
+    useCallback(async () => {
+      if (!businessId) return null;
 
       try {
         const response = await fetch(
-          `/api/whatsapp/connect?businessId=${encodeURIComponent(
-            id
-          )}`,
+          `/api/connect-whatsapp?businessId=${encodeURIComponent(
+            businessId
+          )}&_=${Date.now()}`,
           {
-            method: "POST",
+            method: "GET",
             cache: "no-store",
+            headers: {
+              Accept: "application/json",
+            },
           }
         );
 
-        const text =
-          await response.text();
+        const data =
+          await response.json().catch(() => null);
 
         console.log(
-          "[WhatsApp Connect] Raw API response:",
-          text
-        );
-
-        let data = {};
-
-        if (text) {
-          try {
-            data = JSON.parse(text);
-          } catch {
-            throw new Error(
-              `Invalid API response: ${text}`
-            );
-          }
-        }
-
-        console.log(
-          "[WhatsApp Connect] Parsed response:",
+          "[Connect WhatsApp] GET:",
+          response.status,
           data
         );
 
-        /*
-         * Duplicate WhatsApp number.
-         */
-        if (
-          data.duplicate ||
-          data.alreadyRegistered
-        ) {
-          setQrCode("");
-
-          setError(
-            data.message ||
-              DUPLICATE_WHATSAPP_MESSAGE
-          );
-
-          setStatus(
-            "This WhatsApp number is already registered."
-          );
-
-          return;
-        }
-
-        /*
-         * Already connected.
-         */
-        if (
-          data.connected ||
-          data.alreadyConnected ||
-          data.whatsappConnected
-        ) {
-          setQrCode("");
-
-          setError("");
-
-          setStatus(
-            data.message ||
-              "WhatsApp is already connected."
-          );
-
-          setTimeout(() => {
-            router.replace(
-              "/channels?connected=true"
-            );
-          }, 1800);
-
-          return;
-        }
-
-        /*
-         * Other server error.
-         */
         if (!response.ok) {
           throw new Error(
-            data?.message ||
-              `Request failed with status ${response.status}`
+            data?.error ||
+              `Connect API returned HTTP ${response.status}.`
           );
         }
 
-        /*
-         * QR returned.
-         */
-        if (data.qrCode) {
-          setQrCode(data.qrCode);
+        applyResponse(data);
 
-          setStatus(
-            data.message ||
-              "Scan this QR code with WhatsApp."
-          );
-
-          return;
-        }
-
-        throw new Error(
-          data.message ||
-            "QR code not found."
-        );
+        return data;
       } catch (err) {
         console.error(
-          "[WhatsApp Connect] QR generation error:",
+          "[Connect WhatsApp] Existing session check failed:",
           err
         );
 
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Unexpected error."
-        );
-
-        setStatus(
-          "Unable to generate QR code."
-        );
-      } finally {
-        setGeneratingQr(false);
+        throw err;
       }
-    },
-    [router]
-  );
+    }, [businessId, applyResponse]);
 
   /*
-   * ------------------------------------------------------------------------
-   * INITIAL LOAD
-   * ------------------------------------------------------------------------
-   */
+  |--------------------------------------------------------------------------
+  | Create / Reuse WhatsApp Session
+  |--------------------------------------------------------------------------
+  */
+
+  const generateQRCode =
+    useCallback(async () => {
+      if (!businessId) {
+        setStatus("error");
+        setError(
+          "Business ID is missing."
+        );
+        return;
+      }
+
+      clearTimers();
+
+      setStatus("loading");
+      setError("");
+      setQrCode("");
+      qrRef.current = "";
+      setPhone("");
+
+      try {
+        /*
+         * IMPORTANT:
+         *
+         * POST tells our API:
+         *
+         * "Use the existing session if it exists.
+         * Otherwise create it."
+         */
+        const response = await fetch(
+          `/api/connect-whatsapp`,
+          {
+            method: "POST",
+            cache: "no-store",
+            headers: {
+              "Content-Type":
+                "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({
+              businessId,
+            }),
+          }
+        );
+
+        const data =
+          await response.json().catch(() => null);
+
+        console.log(
+          "[Connect WhatsApp] POST:",
+          response.status,
+          data
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            data?.error ||
+              `Connect API returned HTTP ${response.status}.`
+          );
+        }
+
+        const handled =
+          applyResponse(data);
+
+        /*
+         * If POST did not yet produce QR,
+         * begin polling the existing session.
+         */
+        if (!handled || !qrRef.current) {
+          startPolling();
+        }
+      } catch (err) {
+        console.error(
+          "[Connect WhatsApp] QR generation failed:",
+          err
+        );
+
+        if (!mountedRef.current) return;
+
+        clearTimers();
+
+        setQrCode("");
+        qrRef.current = "";
+
+        setStatus("error");
+
+        setError(
+          err?.message ||
+            "Unable to generate QR code."
+        );
+      }
+    }, [
+      businessId,
+      clearTimers,
+      applyResponse,
+    ]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Poll Existing Session
+  |--------------------------------------------------------------------------
+  */
+
+  const startPolling =
+    useCallback(() => {
+      if (!businessId) return;
+
+      clearTimers();
+
+      const startedAt = Date.now();
+
+      const poll = async () => {
+        if (!mountedRef.current) return;
+
+        if (Date.now() - startedAt >= MAX_WAIT_TIME) {
+          setStatus("error");
+          setError(
+            "The WhatsApp QR code did not become available. Please try again."
+          );
+
+          return;
+        }
+
+        try {
+          const response =
+            await fetch(
+              `/api/connect-whatsapp?businessId=${encodeURIComponent(
+                businessId
+              )}&_=${Date.now()}`,
+              {
+                method: "GET",
+                cache: "no-store",
+                headers: {
+                  Accept:
+                    "application/json",
+                },
+              }
+            );
+
+          const data =
+            await response
+              .json()
+              .catch(() => null);
+
+          console.log(
+            "[Connect WhatsApp] Poll:",
+            response.status,
+            data
+          );
+
+          if (!response.ok) {
+            throw new Error(
+              data?.error ||
+                `Connect API returned HTTP ${response.status}.`
+            );
+          }
+
+          const finished =
+            applyResponse(data);
+
+          if (finished) {
+            return;
+          }
+        } catch (err) {
+          console.error(
+            "[Connect WhatsApp] Poll failed:",
+            err
+          );
+        }
+
+        pollTimerRef.current =
+          setTimeout(
+            poll,
+            POLL_INTERVAL
+          );
+      };
+
+      poll();
+    }, [
+      businessId,
+      clearTimers,
+      applyResponse,
+    ]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Initial Load
+  |--------------------------------------------------------------------------
+  */
+
   useEffect(() => {
+    if (!businessId) return;
+
     let cancelled = false;
 
     async function initialize() {
-      const result =
-        await findBusiness();
+      setStatus("loading");
+      setError("");
 
-      if (
-        cancelled ||
-        !result
-      ) {
-        return;
+      try {
+        /*
+         * FIRST:
+         *
+         * Look for the existing session.
+         *
+         * This allows an already-generated QR
+         * to be displayed without creating
+         * another WhatsApp session.
+         */
+        const data =
+          await checkExistingSession();
+
+        if (cancelled) return;
+
+        if (
+          data?.connected === true ||
+          data?.status === "connected"
+        ) {
+          return;
+        }
+
+        if (
+          data?.qrCode ||
+          data?.qr
+        ) {
+          return;
+        }
+
+        /*
+         * If the business has no provider session,
+         * create/reuse it.
+         */
+        if (
+          data?.status ===
+          "not_found"
+        ) {
+          await generateQRCode();
+          return;
+        }
+
+        /*
+         * Existing session is starting.
+         */
+        startPolling();
+      } catch (err) {
+        if (cancelled) return;
+
+        console.error(
+          "[Connect WhatsApp] Initialization failed:",
+          err
+        );
+
+        /*
+         * If GET fails, POST can still
+         * attempt to create/reuse the session.
+         */
+        await generateQRCode();
       }
-
-      /*
-       * Already connected.
-       *
-       * findBusiness() already handled
-       * the redirect.
-       */
-      if (result.connected) {
-        return;
-      }
-
-      /*
-       * Business exists and WhatsApp
-       * is not connected.
-       *
-       * Now generate the QR code.
-       */
-      await generateQRCode(
-        result.businessId
-      );
     }
 
     initialize();
@@ -505,169 +523,341 @@ export default function ConnectWhatsAppClient() {
       cancelled = true;
     };
   }, [
-    findBusiness,
-    generateQRCode,
-  ]);
-
-  /*
-   * ------------------------------------------------------------------------
-   * WHATSAPP STATUS POLLING
-   * ------------------------------------------------------------------------
-   */
-  useEffect(() => {
-    if (
-      !businessId ||
-      !qrCode
-    ) {
-      return;
-    }
-
-    const interval =
-      setInterval(async () => {
-        try {
-          const response =
-            await fetch(
-              `/api/whatsapp/status?businessId=${encodeURIComponent(
-                businessId
-              )}`,
-              {
-                cache: "no-store",
-              }
-            );
-
-          const data =
-            await response.json();
-
-          console.log(
-            "[WhatsApp Status Check]:",
-            data
-          );
-
-          if (
-            data.connected
-          ) {
-            clearInterval(
-              interval
-            );
-
-            setQrCode("");
-
-            setError("");
-
-            setStatus(
-              "WhatsApp connected successfully."
-            );
-
-            setTimeout(() => {
-              router.replace(
-                "/channels?connected=true"
-              );
-            }, 1200);
-          }
-        } catch (error) {
-          console.error(
-            "[WhatsApp Status Check]",
-            error
-          );
-        }
-      }, 3000);
-
-    return () =>
-      clearInterval(interval);
-  }, [
     businessId,
-    qrCode,
-    router,
+    checkExistingSession,
+    generateQRCode,
+    startPolling,
   ]);
 
   /*
-   * ------------------------------------------------------------------------
-   * UI
-   * ------------------------------------------------------------------------
-   */
+  |--------------------------------------------------------------------------
+  | Try Again
+  |--------------------------------------------------------------------------
+  */
+
+  const handleRetry = () => {
+    generateQRCode();
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Render
+  |--------------------------------------------------------------------------
+  */
+
   return (
-    <div className="min-h-screen bg-[#0B1120] text-white flex items-center justify-center p-5">
-      <div className="w-full max-w-md bg-[#111827] rounded-3xl p-6 text-center shadow-2xl">
+    <main
+      style={{
+        minHeight: "100vh",
+        background:
+          "#070d1d",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px",
+        color: "#fff",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "450px",
+          background:
+            "#111b2e",
+          border:
+            "1px solid rgba(255,255,255,0.12)",
+          borderRadius: "24px",
+          padding: "34px 32px",
+          textAlign: "center",
+          boxSizing: "border-box",
+        }}
+      >
+        {/* Logo */}
+        <div
+          style={{
+            marginBottom: "28px",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              width: "48px",
+              height: "48px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <div
+              style={{
+                width: "25px",
+                height: "25px",
+                border:
+                  "4px solid #00aaff",
+                transform:
+                  "rotate(45deg)",
+                display: "flex",
+                alignItems:
+                  "center",
+                justifyContent:
+                  "center",
+              }}
+            >
+              <div
+                style={{
+                  width: "10px",
+                  height: "10px",
+                  border:
+                    "3px solid #00aaff",
+                }}
+              />
+            </div>
+          </div>
+        </div>
 
-        <img
-          src="https://res.cloudinary.com/djnjhphf5/image/upload/v1779814901/sodah.io_logo_z6xflv.png"
-          alt="Sodah.io"
-          className="w-20 h-20 mx-auto mb-5 rounded-2xl"
-        />
-
-        <h1 className="text-3xl font-bold mb-3">
+        {/* Heading */}
+        <h1
+          style={{
+            margin: 0,
+            fontSize: "30px",
+            fontWeight: 700,
+          }}
+        >
           Connect WhatsApp
         </h1>
 
-        <p className="text-gray-400 mb-8">
-          Connect your WhatsApp account
-          to your AI assistant.
+        <p
+          style={{
+            margin:
+              "14px 0 28px",
+            color:
+              "#aab4c7",
+            fontSize: "15px",
+          }}
+        >
+          Connect your WhatsApp account to your AI assistant.
         </p>
 
+        {/* QR area */}
+        <div
+          style={{
+            width: "100%",
+            aspectRatio: "1 / 1",
+            maxWidth: "288px",
+            margin:
+              "0 auto 24px",
+            borderRadius: "16px",
+            background:
+              "#202d43",
+            display: "flex",
+            alignItems:
+              "center",
+            justifyContent:
+              "center",
+            overflow: "hidden",
+          }}
+        >
+          {status === "connected" ? (
+            <div
+              style={{
+                padding: "24px",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "48px",
+                  marginBottom: "12px",
+                }}
+              >
+                ✓
+              </div>
+
+              <div
+                style={{
+                  fontSize: "18px",
+                  fontWeight: 700,
+                }}
+              >
+                WhatsApp Connected
+              </div>
+
+              {phone && (
+                <div
+                  style={{
+                    marginTop: "8px",
+                    color:
+                      "#aab4c7",
+                    fontSize: "13px",
+                  }}
+                >
+                  {phone}
+                </div>
+              )}
+            </div>
+          ) : qrCode ? (
+            <div
+              style={{
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems:
+                  "center",
+                justifyContent:
+                  "center",
+                padding: "18px",
+                boxSizing:
+                  "border-box",
+                background:
+                  "#ffffff",
+              }}
+            >
+              <img
+                src={qrCode}
+                alt="WhatsApp QR Code"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit:
+                    "contain",
+                  imageRendering:
+                    "pixelated",
+                }}
+              />
+            </div>
+          ) : (
+            <div
+              style={{
+                padding: "30px",
+              }}
+            >
+              <div
+                style={{
+                  width: "42px",
+                  height: "42px",
+                  border:
+                    "4px solid rgba(255,255,255,0.18)",
+                  borderTopColor:
+                    "#00bfff",
+                  borderRadius:
+                    "50%",
+                  animation:
+                    "sodah-spin 0.8s linear infinite",
+                  margin:
+                    "0 auto 22px",
+                }}
+              />
+
+              <div
+                style={{
+                  color:
+                    status === "error"
+                      ? "#ffb3b3"
+                      : "#aab4c7",
+                  fontSize: "14px",
+                  lineHeight: 1.5,
+                }}
+              >
+                {status === "error"
+                  ? "Unable to generate QR code."
+                  : status === "not_found"
+                  ? "Starting WhatsApp connection..."
+                  : "Connecting to WhatsApp..."}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Error */}
         {error && (
-          <div className="mb-6 rounded-xl border border-red-500 bg-red-500/10 p-4 text-red-300 text-sm break-words">
+          <div
+            style={{
+              border:
+                "1px solid #ff334f",
+              background:
+                "rgba(255,51,79,0.10)",
+              borderRadius:
+                "12px",
+              padding:
+                "16px 18px",
+              marginBottom:
+                "24px",
+              color:
+                "#ffb5be",
+              fontSize: "14px",
+              lineHeight: 1.5,
+            }}
+          >
             {error}
           </div>
         )}
 
-        {loading ||
-        generatingQr ? (
-          <div className="w-72 h-72 mx-auto rounded-2xl bg-[#1E293B] animate-pulse flex items-center justify-center">
-            <div className="text-gray-400 text-sm px-6">
-              {status}
-            </div>
-          </div>
-        ) : qrCode ? (
-          <>
-            <div className="bg-white p-4 rounded-2xl inline-block">
-              <img
-                src={qrCode}
-                alt="WhatsApp QR Code"
-                className="w-72 h-72"
-              />
-            </div>
-
-            <p className="mt-6 text-sm text-gray-400">
-              Scan this QR code using
-              WhatsApp.
-            </p>
-          </>
-        ) : error ? (
+        {/* Retry */}
+        {(status === "error" ||
+          status === "not_found") && (
           <button
-            onClick={async () => {
-              const result =
-                await findBusiness();
-
-              if (
-                result &&
-                !result.connected
-              ) {
-                await generateQRCode(
-                  result.businessId
-                );
-              }
+            type="button"
+            onClick={handleRetry}
+            style={{
+              width: "100%",
+              border: "none",
+              borderRadius:
+                "12px",
+              padding:
+                "16px",
+              background:
+                "#00d15a",
+              color: "#fff",
+              fontSize: "16px",
+              fontWeight: 700,
+              cursor: "pointer",
             }}
-            className="w-full rounded-lg bg-green-600 px-4 py-3 text-white hover:bg-green-700 transition"
           >
             Try Again
           </button>
-        ) : (
-          <div className="text-gray-400 text-sm">
-            {status}
+        )}
+
+        {/* Connected information */}
+        {status === "connected" && (
+          <div
+            style={{
+              color:
+                "#7f8ba3",
+              fontSize: "13px",
+            }}
+          >
+            Your WhatsApp account is now connected to Sodah.
           </div>
         )}
 
-        <div className="mt-6 text-sm text-gray-400">
-          {status}
-        </div>
-
+        {/* Business ID */}
         {businessId && (
-          <p className="mt-4 text-xs text-gray-500">
-            Business ID:{" "}
-            {businessId}
-          </p>
+          <div
+            style={{
+              marginTop: "28px",
+              color:
+                "#68748b",
+              fontSize: "12px",
+              wordBreak:
+                "break-word",
+            }}
+          >
+            Business ID: {businessId}
+          </div>
         )}
       </div>
-    </div>
+
+      <style jsx>{`
+        @keyframes sodah-spin {
+          from {
+            transform: rotate(0deg);
+          }
+
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
+    </main>
   );
 }

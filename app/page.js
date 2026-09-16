@@ -26,14 +26,9 @@ const LEAD_IMAGE =
 const WHATSAPP_LOGO =
   "https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg";
 
-const INSTAGRAM_LOGO =
-  "https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg";
-
-const FACEBOOK_LOGO =
-  "https://upload.wikimedia.org/wikipedia/commons/c/c2/F_icon.svg";
-
-const TIKTOK_LOGO =
-  "https://upload.wikimedia.org/wikipedia/commons/a/a9/TikTok_logo.svg";
+// Official Gmail product icon used by the email features.
+const GMAIL_LOGO =
+  "https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_48dp.png";
 
 const SOCIALS = [
   {
@@ -41,133 +36,78 @@ const SOCIALS = [
     src: WHATSAPP_LOGO,
     href: SUPPORT_WHATSAPP,
   },
-  {
-    name: "Instagram",
-    src: INSTAGRAM_LOGO,
-    href: "#contact",
-  },
-  {
-    name: "Facebook",
-    src: FACEBOOK_LOGO,
-    href: "#contact",
-  },
-  {
-    name: "TikTok",
-    src: TIKTOK_LOGO,
-    href: "#contact",
-  },
-];
-
-const CHANNELS = [
-  {
-    name: "WhatsApp",
-    logo: WHATSAPP_LOGO,
-    description: "Customer conversations",
-    className:
-      "bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600",
-  },
-  {
-    name: "Instagram",
-    logo: INSTAGRAM_LOGO,
-    description: "Social conversations",
-    className:
-      "bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500",
-  },
-  {
-    name: "Facebook",
-    logo: FACEBOOK_LOGO,
-    description: "Messenger conversations",
-    className: "bg-gradient-to-r from-blue-500 to-blue-700",
-  },
-  {
-    name: "TikTok",
-    logo: TIKTOK_LOGO,
-    description: "TikTok conversations",
-    className:
-      "bg-gradient-to-r from-[#071018] via-[#101820] to-[#17252b]",
-  },
 ];
 
 const CHANNEL_CONNECTION_STEPS = [
-  { name: "WhatsApp", logo: WHATSAPP_LOGO, text: "Connect your existing WhatsApp, scan the QR code, and start AI-powered customer conversations." },
-  { name: "Instagram", logo: INSTAGRAM_LOGO, text: "Connect your Instagram account through secure authorization and bring customer conversations into Sodah." },
-  { name: "Facebook", logo: FACEBOOK_LOGO, text: "Connect Facebook Messenger and manage customer conversations from your Sodah workspace." },
-  { name: "TikTok", logo: TIKTOK_LOGO, text: "Connect TikTok securely through TikTok authorization and keep your customer communication connected." },
+  {
+    name: "WhatsApp",
+    logo: WHATSAPP_LOGO,
+    text: "Connect your existing WhatsApp, scan the QR code, and start AI-powered customer conversations.",
+  },
 ];
 
-const FEATURES = [
+const PRIMARY_FEATURES = [
   {
-    icon: "✦",
-    title: "AI Customer Conversations",
-    text: "Respond to common questions, guide customers and keep conversations moving without requiring your team to answer every message manually.",
-    tone: "green",
+    icon: "文",
+    title: "Multi-Language Support",
+    text: "Communicate naturally with customers in different languages and give every conversation a smoother experience.",
   },
   {
-    icon: "◎",
-    title: "Lead Capture & Qualification",
-    text: "Turn conversations into organized opportunities and give your team clearer visibility into customers who are ready to buy.",
-    tone: "blue",
+    icon: "✦",
+    title: "Professional Chatting",
+    text: "Handle customer conversations professionally with fast, clear and AI-powered responses.",
   },
   {
     icon: "◫",
-    title: "Bookings & Appointments",
-    text: "Keep booking requests, appointments and customer details connected to the conversation.",
-    tone: "mint",
+    title: "Appointment Booking",
+    text: "Let customers request and confirm appointments directly through WhatsApp conversations.",
   },
   {
     icon: "↻",
-    title: "Automated Follow-Up",
-    text: "Stay consistent with reminders and follow-ups so interested customers do not get forgotten.",
-    tone: "purple",
+    title: "Fast Follow-Up",
+    text: "Automatically follow up with interested customers so important conversations never go cold.",
   },
   {
-    icon: "◉",
-    title: "WhatsApp Campaign Automation",
-    text: "Create WhatsApp campaigns and customer outreach without manually rebuilding the same process every time.",
-    tone: "green",
-  },
-  {
-    icon: "文",
-    title: "Multi-Language AI",
-    text: "Give customers a smoother experience with AI-assisted conversations across different languages.",
-    tone: "blue",
-  },
-  {
-    icon: "▦",
-    title: "Analytics Dashboard",
-    text: "Monitor leads, bookings, follow-ups, conversations and important business activity from one workspace.",
-    tone: "cyan",
-  },
-  {
-    icon: "◇",
-    title: "Business Visibility",
-    text: "Keep customer activity, leads, bookings and campaigns organized in one professional workspace.",
-    tone: "mint",
-  },
-  {
-    icon: "⚙",
-    title: "Update Your Business Yourself",
-    text: "Update business information and automation settings yourself without depending on an agency for every change.",
-    tone: "green",
-  },
-  {
-    icon: "↗",
-    title: "Easy Self Setup",
-    text: "Connect your workflow and configure your business information with a simple guided setup process.",
-    tone: "blue",
+    icon: "⏰",
+    title: "Reminders",
+    text: "Send timely reminders for appointments and customer follow-ups without manual effort.",
   },
   {
     icon: "⚡",
-    title: "Faster Response",
-    text: "Give customers quicker answers and reduce the amount of repetitive communication your team handles manually.",
-    tone: "cyan",
+    title: "WhatsApp Messaging",
+    text: "Send messages to your customers or team whenever you need to, directly from your Sodah workspace.",
   },
   {
-    icon: "⌁",
-    title: "Connected Channels",
-    text: "Bring WhatsApp, Instagram, Facebook and TikTok customer communication into one connected workflow.",
-    tone: "purple",
+    icon: "◷",
+    title: "Daily, Weekly & Monthly Scheduling",
+    text: "Schedule recurring WhatsApp messages for your customers or team on a daily, weekly or monthly basis.",
   },
+  {
+    icon: "∞",
+    title: "Flexible Messaging",
+    text: "Run or schedule your WhatsApp messages for customer and team communication, subject to applicable WhatsApp and service limits.",
+  },
+  {
+    icon: "⚙",
+    title: "Update Your Business Anytime",
+    text: "Change your business information, services, promotions, packages and customer-facing details yourself whenever you need to.",
+  },
+  {
+    icon: "✚",
+    title: "New Promotions & Packages",
+    text: "Add a new promotion, service or package anytime without depending on an agent to make the update for you.",
+  },
+];
+
+const FEATURES = [
+  { icon: "⌁", title: "Instant WhatsApp Connection", text: "Connect your existing WhatsApp by scanning a QR code. No API setup and no agency required.", arabic: "اربط واتساب مباشرة عبر مسح رمز QR، بدون إعداد API أو الحاجة إلى وكالة.", german: "Verbinden Sie Ihr bestehendes WhatsApp per QR-Code – ohne API-Einrichtung und ohne Agentur.", tone: "green" },
+  { icon: "✦", title: "AI Customer Conversations", text: "Respond professionally to customers, answer common questions and keep conversations moving automatically.", arabic: "إدارة محادثات العملاء والرد على الأسئلة الشائعة باحترافية وبشكل تلقائي.", german: "Bearbeiten Sie Kundengespräche professionell und beantworten Sie häufige Fragen automatisch.", tone: "green" },
+  { icon: "文", title: "Multi-Language AI", text: "Chat with customers in their language. Sodah understands the conversation and responds naturally.", arabic: "تواصل مع العملاء بلغتهم، ويفهم Sodah المحادثة ويرد بطريقة طبيعية.", german: "Kommunizieren Sie in der Sprache Ihrer Kunden – Sodah versteht Gespräche und antwortet natürlich.", tone: "blue" },
+  { icon: "⚙", title: "Update Your Business Anytime", text: "Update business information, services, promotions and packages yourself whenever you need to.", arabic: "حدّث معلومات نشاطك التجاري وخدماتك وعروضك وباقاتك بنفسك في أي وقت.", german: "Aktualisieren Sie Geschäftsinformationen, Leistungen, Angebote und Pakete jederzeit selbst.", tone: "mint" },
+  { icon: "◫", title: "Professional Appointment Booking", text: "Turn WhatsApp conversations into organized appointment requests and confirmations.", arabic: "حوّل محادثات واتساب إلى طلبات مواعيد منظمة وتأكيدات للحجز.", german: "Verwandeln Sie WhatsApp-Gespräche in strukturierte Terminanfragen und Bestätigungen.", tone: "blue" },
+  { icon: "↻", title: "Fast Follow-Up & Reminders", text: "Automatically follow up with customers and send timely appointment reminders.", arabic: "تابع العملاء تلقائياً وأرسل تذكيرات المواعيد في الوقت المناسب.", german: "Führen Sie automatische Nachfassaktionen durch und senden Sie rechtzeitig Terminerinnerungen.", tone: "purple" },
+  { icon: "◉", title: "WhatsApp Campaigns", text: "Create, schedule and manage WhatsApp campaigns for customers or your team.", arabic: "أنشئ وجدول وأدر حملات واتساب للعملاء أو لفريقك.", german: "Erstellen, planen und verwalten Sie WhatsApp-Kampagnen für Kunden oder Ihr Team.", tone: "green" },
+  { icon: "✉", title: "Smart Email Inbox", text: "Premium businesses can bring email conversations together and use AI-assisted replies.", arabic: "يمكن لمستخدمي Premium إدارة محادثات البريد الإلكتروني واستخدام ردود مدعومة بالذكاء الاصطناعي.", german: "Premium-Nutzer können E-Mail-Konversationen zentral verwalten und KI-gestützte Antworten nutzen.", tone: "cyan" },
 ];
 
 const USE_CASES = [
@@ -251,7 +191,6 @@ export default function Home() {
   const [showContact, setShowContact] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [showInstall, setShowInstall] = useState(false);
-  const [activeChannel, setActiveChannel] = useState("WhatsApp");
 
   useEffect(() => {
     function handleAbout() {
@@ -788,20 +727,16 @@ export default function Home() {
               </h1>
 
               <p className="mx-auto mt-8 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
-                Sodah.io brings WhatsApp, Instagram, Facebook and TikTok
-                customer conversations into one intelligent workflow for
-                lead capture, bookings, follow-up, campaigns and customer
-                support.
+                Sodah.io brings your WhatsApp customer conversations into
+                one intelligent workflow for professional chatting, lead
+                capture, appointment booking, fast follow-up, reminders,
+                campaigns and customer support.
               </p>
 
               {/* BENEFITS */}
               <div className="mx-auto mt-7 flex max-w-5xl flex-wrap justify-center gap-x-5 gap-y-3 text-xs font-bold text-slate-600">
                 <span className="rounded-full border border-emerald-200 bg-white/65 px-3 py-2">
                   ✓ No API Setup
-                </span>
-
-                <span className="rounded-full border border-emerald-200 bg-white/65 px-3 py-2">
-                  ✓ No Facebook Business Account
                 </span>
 
                 <span className="rounded-full border border-emerald-200 bg-white/65 px-3 py-2">
@@ -839,59 +774,137 @@ export default function Home() {
               </div>
             </div>
 
-            {/* =================================================
-              CHANNEL CONNECTION LAYER
-          ================================================= */}
-
-          <section className="relative mt-14 overflow-hidden rounded-[34px] border border-emerald-200/80 bg-gradient-to-br from-[#e4f9ec] via-white to-[#e8f5ff] p-5 shadow-[0_25px_70px_rgba(16,185,129,.10)] sm:mt-16 sm:p-8">
-            <div className="absolute left-[-8%] top-[-30%] h-72 w-72 rounded-full bg-emerald-300/20 blur-[90px]" />
-            <div className="absolute right-[-8%] bottom-[-30%] h-72 w-72 rounded-full bg-cyan-300/15 blur-[90px]" />
-            <div className="relative">
-              <div className="mx-auto max-w-3xl text-center">
-                <p className="text-[10px] font-black uppercase tracking-[3px] text-emerald-700 sm:text-xs">One connected platform</p>
-                <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950 sm:text-4xl">Connect your customer channels to Sodah.io.</h2>
-                <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">Connect WhatsApp, Instagram, Facebook and TikTok to one AI-powered business automation service.</p>
-              </div>
-
-              <div className="relative mx-auto mt-8 max-w-6xl sm:mt-10">
-                <div className="relative z-10 mx-auto flex w-fit flex-col items-center">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-[24px] border border-white bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,.12)] sm:h-24 sm:w-24">
-                    <img src={LOGO_URL} alt="Sodah.io" className="h-full w-full object-contain" />
-                  </div>
-                  <div className="mt-3 text-lg font-black text-slate-950">Sodah<span className="text-emerald-500">.io</span></div>
-                  <div className="mt-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[9px] font-black uppercase tracking-[1.5px] text-emerald-700">AI Automation Service</div>
+              {/* =================================================
+                SYSTEM FEATURES — IMMEDIATELY AFTER FREE TRIAL
+            ====================================================== */}
+            <section id="features" className="relative mt-14 overflow-hidden rounded-[36px] border border-emerald-200 bg-[#dff7e8] px-5 py-14 shadow-[0_25px_80px_rgba(16,185,129,.10)] sm:mt-16 sm:px-8 sm:py-16">
+              <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-emerald-300/25 blur-[100px]" />
+              <div className="absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-green-300/20 blur-[110px]" />
+              <div className="relative mx-auto max-w-6xl">
+                <div className="mx-auto max-w-4xl text-center">
+                  <p className="text-xs font-black uppercase tracking-[3px] text-emerald-700">Modern System Features</p>
+                  <h2 className="mt-3 text-4xl font-black tracking-tight text-slate-950 sm:text-6xl">More than WhatsApp automation.</h2>
+                  <p className="mx-auto mt-5 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">Sodah turns WhatsApp conversations into leads, bookings, follow-ups and revenue through one intelligent workflow.</p>
                 </div>
-
-                <div className="pointer-events-none absolute left-1/2 top-[96px] hidden h-12 w-[72%] -translate-x-1/2 sm:block">
-                  <div className="absolute left-1/2 top-0 h-6 -translate-x-1/2 border-l-2 border-dashed border-emerald-300" />
-                  <div className="absolute left-0 right-0 top-6 border-t-2 border-dashed border-emerald-300" />
-                  <div className="absolute left-[12.5%] top-6 h-6 border-l-2 border-dashed border-emerald-300" />
-                  <div className="absolute left-[37.5%] top-6 h-6 border-l-2 border-dashed border-emerald-300" />
-                  <div className="absolute left-[62.5%] top-6 h-6 border-l-2 border-dashed border-emerald-300" />
-                  <div className="absolute left-[87.5%] top-6 h-6 border-l-2 border-dashed border-emerald-300" />
-                </div>
-
-                <div className="pointer-events-none absolute left-1/2 top-[128px] h-[calc(100%-128px)] -translate-x-1/2 border-l-2 border-dashed border-emerald-200 sm:hidden" />
-
-                <div className="relative mt-8 grid gap-4 pt-5 sm:mt-12 sm:grid-cols-4 sm:gap-4 sm:pt-8">
-                  {CHANNEL_CONNECTION_STEPS.map((channel) => (
-                    <div key={channel.name} className="relative z-10 rounded-[24px] border border-white/90 bg-white/85 p-5 shadow-sm backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-md">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-slate-100 bg-white shadow-sm">
-                          <img src={channel.logo} alt={channel.name} className="h-7 w-7 object-contain" />
-                        </div>
-                        <div>
-                          <h3 className="font-black text-slate-950">{channel.name}</h3>
-                          <p className="text-[9px] font-bold uppercase tracking-[1px] text-emerald-600">Connected channel</p>
-                        </div>
-                      </div>
-                      <p className="mt-4 text-xs leading-5 text-slate-500">{channel.text}</p>
-                    </div>
+                <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                  {FEATURES.map((feature) => (
+                    <FeatureCard key={feature.title} icon={feature.icon} title={feature.title} text={feature.text} arabic={feature.arabic} german={feature.german} tone={feature.tone} />
                   ))}
                 </div>
               </div>
+            </section>
+
+            {/* =================================================
+                SODAH VS TRADITIONAL PROGRAM SETUP
+            ====================================================== */}
+            <section className="relative mt-14 overflow-hidden rounded-[36px] border border-slate-200 bg-white p-5 shadow-[0_25px_80px_rgba(15,23,42,.08)] sm:mt-16 sm:p-8">
+              <div className="mx-auto max-w-6xl">
+                <div className="mx-auto max-w-4xl text-center">
+                  <p className="text-xs font-black uppercase tracking-[3px] text-emerald-600">Sodah comparison</p>
+                  <h2 className="mt-3 text-4xl font-black text-slate-950 sm:text-6xl">Sodah vs. Traditional Program Setup</h2>
+                  <p className="mx-auto mt-5 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">Replace complicated, technical and agency-dependent setup with a simpler WhatsApp-first automation system.</p>
+                </div>
+                <div className="mt-12 overflow-hidden rounded-[28px] border border-slate-200">
+                  <div className="grid grid-cols-2 bg-slate-950 text-white">
+                    <div className="p-5 sm:p-6"><p className="text-xl font-black sm:text-2xl">Sodah</p><p className="mt-1 text-xs text-emerald-300">Simple • WhatsApp-first • Self-managed</p></div>
+                    <div className="border-l border-white/10 p-5 sm:p-6"><p className="text-xl font-black sm:text-2xl">Traditional Setup</p><p className="mt-1 text-xs text-slate-400">Offline • Technical • Complex</p></div>
+                  </div>
+                  <div className="divide-y divide-slate-200">
+                    {[
+                      ["WhatsApp connection", "Scan QR and connect your existing WhatsApp", "Technical setup, API work or manual configuration"],
+                      ["Business updates", "Update information, promotions and packages yourself", "Often requires technical or agency assistance"],
+                      ["Customer language", "AI understands and responds in the customer's language", "May require separate language configuration or tools"],
+                      ["Automation", "One intelligent workflow for conversations, leads, bookings and follow-up", "Multiple technical processes and disconnected tools"],
+                      ["Campaigns", "Run WhatsApp campaigns from the same system", "Often another system or additional setup"],
+                      ["Email intelligence", "Smart Email Inbox and AI-assisted replies for Premium", "Often another paid tool"],
+                      ["Business size", "Affordable for small businesses and powerful for larger businesses", "Complex setup can be difficult and costly for smaller businesses"],
+                      ["Support", "Direct access to the Sodah team", "Often dependent on an agency or technical provider"],
+                    ].map(([label, sodah, traditional]) => (
+                      <div key={label} className="grid grid-cols-2">
+                        <div className="border-r border-slate-200 bg-emerald-50/70 p-5 sm:p-6"><p className="text-xs font-black uppercase tracking-[1.5px] text-emerald-700">{label}</p><p className="mt-2 text-sm font-bold leading-6 text-slate-800">✓ {sodah}</p></div>
+                        <div className="bg-slate-50 p-5 sm:p-6"><p className="text-sm leading-6 text-slate-500">{traditional}</p></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+        {/* =====================================================
+            HOW IT WORKS
+        ====================================================== */}
+
+        <section
+          id="how-it-works"
+          className="border-y border-emerald-100 bg-gradient-to-br from-[#dff7e8] via-[#f9fffb] to-[#e8f5ff] px-5 py-24 sm:px-6"
+        >
+
+          <div className="mx-auto max-w-7xl">
+
+            <div className="mx-auto max-w-3xl text-center">
+
+              <p className="text-xs font-black uppercase tracking-[3px] text-emerald-600">
+                Simple setup
+              </p>
+
+              <h2 className="mt-3 text-4xl font-black text-slate-950 sm:text-6xl">
+                Get Started in 4 Simple Steps
+              </h2>
+
+              <p className="mt-5 text-lg leading-8 text-slate-600">
+                You can set up your business yourself without depending on an
+                agency for every update.
+              </p>
             </div>
-          </section>
+
+            <div className="mt-14 grid gap-5 md:grid-cols-4">
+
+              <StepCard
+                number="01"
+                icon="⌕"
+                title="Search sodah.io"
+                text="Open your browser and search for sodah.io."
+              />
+
+              <StepCard
+                number="02"
+                icon="✚"
+                title="Sign Up"
+                text="Create your account in seconds."
+              />
+
+              <StepCard
+                number="03"
+                icon="⚙"
+                title="Fill Business Details"
+                text="Add your business information and automation settings."
+              />
+
+              <StepCard
+                number="04"
+                icon="▦"
+                title="Scan QR Code"
+                text="Use your WhatsApp to scan the QR code."
+              />
+            </div>
+
+            <div className="mx-auto mt-8 max-w-3xl rounded-[28px] bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 p-7 text-center text-white shadow-[0_20px_50px_rgba(16,185,129,.2)]">
+
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/15">
+                ✓
+              </div>
+
+              <h3 className="mt-4 text-2xl font-black">
+                Automation Starts
+              </h3>
+
+              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-emerald-50">
+                Your AI is live and ready to chat with customers.
+              </p>
+            </div>
+          </div>
+        </section>
+
 
           {/* =================================================
               SECOND HERO LAYER — QR CODE + PHONE
@@ -1127,105 +1140,41 @@ export default function Home() {
         </section>
 
         {/* =====================================================
-            CHANNEL CONVERSATION LAYER
+            WHATSAPP CONVERSATION LAYER
         ====================================================== */}
 
         <section className="relative overflow-hidden border-y border-emerald-200/70 bg-gradient-to-br from-[#d9f5e5] via-[#f7fffa] to-[#e0f1f8] px-5 py-12 sm:px-6">
-
           <div className="absolute right-[-10%] top-[-20%] h-80 w-80 rounded-full bg-emerald-300/20 blur-3xl" />
 
           <div className="relative mx-auto max-w-7xl">
-
             <div className="mb-7 text-center">
               <p className="text-xs font-black uppercase tracking-[3px] text-emerald-700">
-                Connected conversations
+                WhatsApp automation
               </p>
 
               <h2 className="mt-2 text-3xl font-black text-slate-950 sm:text-4xl">
-                Every customer channel. One intelligent workflow.
+                Professional WhatsApp conversations. One intelligent workflow.
               </h2>
             </div>
 
             <div className="sodah-shadow overflow-hidden rounded-[30px] border border-white/90 bg-white/80 backdrop-blur-xl">
-
-              {/* CHANNEL BAR */}
-              <div className="flex overflow-x-auto border-b border-slate-200/80 bg-white/90">
-
-                {CHANNELS.map((channel) => {
-                  const active = activeChannel === channel.name;
-
-                  return (
-                    <button
-                      type="button"
-                      key={channel.name}
-                      onClick={() => setActiveChannel(channel.name)}
-                      className={`flex min-w-[180px] flex-1 items-center justify-center gap-3 border-r border-white/30 px-5 py-4 transition last:border-r-0 ${
-                        active
-                          ? `${channel.className} text-white`
-                          : "bg-white text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      <img
-                        src={channel.logo}
-                        alt=""
-                        className={`h-7 w-7 object-contain ${
-                          channel.name === "WhatsApp" && active
-                            ? "brightness-0 invert"
-                            : ""
-                        }`}
-                      />
-
-                      <div className="text-left">
-                        <div className="text-sm font-black">
-                          {channel.name}
-                        </div>
-
-                        <div
-                          className={`text-[9px] ${
-                            active ? "text-white/75" : "text-slate-400"
-                          }`}
-                        >
-                          {channel.description}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* CHAT */}
               <div className="sodah-chat-wallpaper relative overflow-hidden">
-
                 <div className="relative mx-auto max-w-4xl p-4 sm:p-8">
-
                   <div className="overflow-hidden rounded-[26px] border border-white/90 bg-white/80 shadow-[0_25px_70px_rgba(15,23,42,.12)] backdrop-blur-xl">
 
                     <div className="flex items-center justify-between bg-gradient-to-r from-[#075e54] via-emerald-600 to-green-600 px-5 py-4 text-white">
-
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15">
                           <img
-                            src={
-                              activeChannel === "WhatsApp"
-                                ? WHATSAPP_LOGO
-                                : activeChannel === "Instagram"
-                                ? INSTAGRAM_LOGO
-                                : activeChannel === "Facebook"
-                                ? FACEBOOK_LOGO
-                                : TIKTOK_LOGO
-                            }
-                            alt=""
-                            className={`h-6 w-6 object-contain ${
-                              activeChannel === "WhatsApp"
-                                ? "brightness-0 invert"
-                                : ""
-                            }`}
+                            src={WHATSAPP_LOGO}
+                            alt="WhatsApp"
+                            className="h-6 w-6 brightness-0 invert"
                           />
                         </div>
 
                         <div>
                           <p className="text-sm font-black">
-                            {activeChannel} Business
+                            WhatsApp Business
                           </p>
 
                           <p className="text-[10px] text-emerald-100">
@@ -1240,7 +1189,6 @@ export default function Home() {
                     </div>
 
                     <div className="space-y-4 p-5 sm:p-8">
-
                       <div
                         className="sodah-message mr-auto max-w-[88%] sm:max-w-[64%]"
                         style={{ animationDelay: "0.15s" }}
@@ -1328,7 +1276,6 @@ export default function Home() {
                         style={{ animationDelay: "1.45s" }}
                       >
                         <div className="rounded-2xl border border-emerald-300 bg-gradient-to-r from-emerald-50 to-green-100 p-4 text-center shadow-[0_10px_30px_rgba(16,185,129,.12)]">
-
                           <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-xl text-white">
                             ✓
                           </div>
@@ -1362,7 +1309,6 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-
             </div>
           </div>
         </section>
@@ -1614,127 +1560,6 @@ export default function Home() {
                 </div>
               </div>
             ))}
-          </div>
-        </section>
-
-        {/* =====================================================
-            FEATURES
-        ====================================================== */}
-
-        <section
-          id="features"
-          className="relative overflow-hidden bg-gradient-to-br from-[#f4fff8] via-white to-[#edf7ff] px-5 py-24 sm:px-6"
-        >
-
-          <div className="absolute left-[-10%] top-[20%] h-80 w-80 rounded-full bg-emerald-200/20 blur-3xl" />
-
-          <div className="absolute right-[-10%] bottom-[10%] h-80 w-80 rounded-full bg-green-200/20 blur-3xl" />
-
-          <div className="relative mx-auto max-w-7xl">
-
-            <div className="mx-auto max-w-3xl text-center">
-
-              <p className="text-xs font-black uppercase tracking-[3px] text-emerald-600">
-                Powerful Features
-              </p>
-
-              <h2 className="mt-3 text-4xl font-black text-slate-950 sm:text-6xl">
-                Powerful Features for Your Business
-              </h2>
-
-              <p className="mt-5 text-lg leading-8 text-slate-600">
-                From the first message to the next booking, Sodah.io gives
-                your business a connected customer workflow.
-              </p>
-            </div>
-
-            <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-
-              {FEATURES.map((feature) => (
-                <FeatureCard
-                  key={feature.title}
-                  icon={feature.icon}
-                  title={feature.title}
-                  text={feature.text}
-                  tone={feature.tone}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* =====================================================
-            HOW IT WORKS
-        ====================================================== */}
-
-        <section
-          id="how-it-works"
-          className="border-y border-emerald-100 bg-gradient-to-br from-[#dff7e8] via-[#f9fffb] to-[#e8f5ff] px-5 py-24 sm:px-6"
-        >
-
-          <div className="mx-auto max-w-7xl">
-
-            <div className="mx-auto max-w-3xl text-center">
-
-              <p className="text-xs font-black uppercase tracking-[3px] text-emerald-600">
-                Simple setup
-              </p>
-
-              <h2 className="mt-3 text-4xl font-black text-slate-950 sm:text-6xl">
-                Get Started in 4 Simple Steps
-              </h2>
-
-              <p className="mt-5 text-lg leading-8 text-slate-600">
-                You can set up your business yourself without depending on an
-                agency for every update.
-              </p>
-            </div>
-
-            <div className="mt-14 grid gap-5 md:grid-cols-4">
-
-              <StepCard
-                number="01"
-                icon="⌕"
-                title="Search sodah.io"
-                text="Open your browser and search for sodah.io."
-              />
-
-              <StepCard
-                number="02"
-                icon="✚"
-                title="Sign Up"
-                text="Create your account in seconds."
-              />
-
-              <StepCard
-                number="03"
-                icon="⚙"
-                title="Fill Business Details"
-                text="Add your business information and automation settings."
-              />
-
-              <StepCard
-                number="04"
-                icon="▦"
-                title="Scan QR Code"
-                text="Use your WhatsApp to scan the QR code."
-              />
-            </div>
-
-            <div className="mx-auto mt-8 max-w-3xl rounded-[28px] bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 p-7 text-center text-white shadow-[0_20px_50px_rgba(16,185,129,.2)]">
-
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/15">
-                ✓
-              </div>
-
-              <h3 className="mt-4 text-2xl font-black">
-                Automation Starts
-              </h3>
-
-              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-emerald-50">
-                Your AI is live and ready to chat with customers.
-              </p>
-            </div>
           </div>
         </section>
 
@@ -2167,9 +1992,8 @@ export default function Home() {
                 </div>
 
                 <p className="mt-4 max-w-md text-sm leading-6 text-slate-400">
-                  AI-powered business automation for customer conversations,
-                  WhatsApp, Instagram, Facebook, TikTok, leads, bookings,
-                  follow-up and growth.
+                  AI-powered business automation for WhatsApp customer
+                  conversations, leads, bookings, follow-up, reminders and growth.
                 </p>
               </div>
 
@@ -2347,9 +2171,9 @@ export default function Home() {
               </p>
 
               <p>
-                The platform supports channels such as WhatsApp, Instagram,
-                Facebook and TikTok together with AI assistance and business
-                automation.
+                The platform is built around WhatsApp customer conversations,
+                AI assistance and business automation for leads, bookings,
+                follow-up and reminders.
               </p>
 
               <p>
@@ -2631,39 +2455,17 @@ function Benefit({ text }) {
    FEATURE CARD
 ========================================================= */
 
-function FeatureCard({ icon, title, text, tone }) {
-  const tones = {
-    green:
-      "from-emerald-50 to-green-50 text-emerald-600 border-emerald-100",
-    blue:
-      "from-blue-50 to-sky-50 text-blue-600 border-blue-100",
-    mint:
-      "from-green-50 to-teal-50 text-teal-600 border-teal-100",
-    purple:
-      "from-purple-50 to-indigo-50 text-purple-600 border-purple-100",
-    cyan:
-      "from-cyan-50 to-blue-50 text-cyan-600 border-cyan-100",
-  };
-
+function FeatureCard({ icon, title, text, arabic, german, tone }) {
+  const tones = { green: "from-emerald-50 to-green-50 text-emerald-600 border-emerald-100", blue: "from-blue-50 to-sky-50 text-blue-600 border-blue-100", mint: "from-green-50 to-teal-50 text-teal-600 border-teal-100", purple: "from-purple-50 to-indigo-50 text-purple-600 border-purple-100", cyan: "from-cyan-50 to-blue-50 text-cyan-600 border-cyan-100" };
   return (
-    <div className="group rounded-[26px] border border-slate-200 bg-white/80 p-7 shadow-sm transition duration-300 hover:-translate-y-2 hover:shadow-xl">
-
-      <div
-        className={`flex h-14 w-14 items-center justify-center rounded-2xl border bg-gradient-to-br text-2xl font-black ${tones[tone]}`}
-      >
-        {icon}
-      </div>
-
-      <h3 className="mt-6 text-xl font-black text-slate-900">
-        {title}
-      </h3>
-
-      <p className="mt-3 text-sm leading-7 text-slate-500">
-        {text}
-      </p>
-
-      <div className="mt-6 text-xs font-black text-emerald-600 transition group-hover:translate-x-1">
-        Explore capability →
+    <div className="rounded-[28px] border border-emerald-200/80 bg-white/80 p-6 shadow-sm">
+      <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border bg-gradient-to-br text-2xl font-black ${tones[tone] || tones.green}`}>{icon}</div>
+      <h3 className="mt-6 text-xl font-black text-slate-950">{title}</h3>
+      <p className="mt-3 text-sm leading-7 text-slate-600">{text}</p>
+      <div className="mt-5 border-t border-emerald-100 pt-4">
+        <p className="text-[9px] font-black uppercase tracking-[1.8px] text-emerald-700">Modern system feature</p>
+        {arabic && <p dir="rtl" lang="ar" className="mt-3 text-xs leading-6 text-slate-500">{arabic}</p>}
+        {german && <p lang="de" className="mt-2 text-xs leading-6 text-slate-500">{german}</p>}
       </div>
     </div>
   );

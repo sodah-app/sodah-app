@@ -1,128 +1,159 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-/* -------------------------------------------------------------------------- */
-/* COUNTRY LIST                                                               */
-/* -------------------------------------------------------------------------- */
+/* ==========================================================================
+   SODAH AUTOMATION / ONBOARDING
+   File:
+     app/update.js
+
+   IMPORTANT:
+   - Existing onboarding tracking is preserved.
+   - A new authenticated user is immediately recorded in sodah_onboarding.
+   - Existing businesses are checked immediately.
+   - Existing users are sent directly to /channels.
+   - AI capabilities remain automatic and hidden from the user.
+   - Canada and USA both use +1 correctly.
+   - The phone selector uses a unique country ID instead of using the
+     duplicated +1 value as the React select key/value.
+   ========================================================================== */
+
+/* ==========================================================================
+   COUNTRIES
+   ========================================================================== */
 
 const countries = [
-  { code: "+93", flag: "🇦🇫", name: "Afghanistan" },
-  { code: "+355", flag: "🇦🇱", name: "Albania" },
-  { code: "+213", flag: "🇩🇿", name: "Algeria" },
-  { code: "+376", flag: "🇦🇩", name: "Andorra" },
-  { code: "+244", flag: "🇦🇴", name: "Angola" },
-  { code: "+54", flag: "🇦🇷", name: "Argentina" },
-  { code: "+374", flag: "🇦🇲", name: "Armenia" },
-  { code: "+61", flag: "🇦🇺", name: "Australia" },
-  { code: "+43", flag: "🇦🇹", name: "Austria" },
-  { code: "+994", flag: "🇦🇿", name: "Azerbaijan" },
-  { code: "+973", flag: "🇧🇭", name: "Bahrain" },
-  { code: "+880", flag: "🇧🇩", name: "Bangladesh" },
-  { code: "+375", flag: "🇧🇾", name: "Belarus" },
-  { code: "+32", flag: "🇧🇪", name: "Belgium" },
-  { code: "+229", flag: "🇧🇯", name: "Benin" },
-  { code: "+591", flag: "🇧🇴", name: "Bolivia" },
-  { code: "+387", flag: "🇧🇦", name: "Bosnia and Herzegovina" },
-  { code: "+267", flag: "🇧🇼", name: "Botswana" },
-  { code: "+55", flag: "🇧🇷", name: "Brazil" },
-  { code: "+359", flag: "🇧🇬", name: "Bulgaria" },
-  { code: "+226", flag: "🇧🇫", name: "Burkina Faso" },
-  { code: "+257", flag: "🇧🇮", name: "Burundi" },
-  { code: "+855", flag: "🇰🇭", name: "Cambodia" },
-  { code: "+237", flag: "🇨🇲", name: "Cameroon" },
-  { code: "+1", flag: "🇨🇦", name: "Canada" },
-  { code: "+238", flag: "🇨🇻", name: "Cape Verde" },
-  { code: "+236", flag: "🇨🇫", name: "Central African Republic" },
-  { code: "+235", flag: "🇹🇩", name: "Chad" },
-  { code: "+56", flag: "🇨🇱", name: "Chile" },
-  { code: "+86", flag: "🇨🇳", name: "China" },
-  { code: "+57", flag: "🇨🇴", name: "Colombia" },
-  { code: "+269", flag: "🇰🇲", name: "Comoros" },
-  { code: "+242", flag: "🇨🇬", name: "Congo" },
-  { code: "+243", flag: "🇨🇩", name: "Congo (DRC)" },
-  { code: "+506", flag: "🇨🇷", name: "Costa Rica" },
-  { code: "+385", flag: "🇭🇷", name: "Croatia" },
-  { code: "+53", flag: "🇨🇺", name: "Cuba" },
-  { code: "+357", flag: "🇨🇾", name: "Cyprus" },
-  { code: "+420", flag: "🇨🇿", name: "Czech Republic" },
-  { code: "+45", flag: "🇩🇰", name: "Denmark" },
-  { code: "+253", flag: "🇩🇯", name: "Djibouti" },
-  { code: "+20", flag: "🇪🇬", name: "Egypt" },
-  { code: "+372", flag: "🇪🇪", name: "Estonia" },
-  { code: "+251", flag: "🇪🇹", name: "Ethiopia" },
-  { code: "+358", flag: "🇫🇮", name: "Finland" },
-  { code: "+33", flag: "🇫🇷", name: "France" },
-  { code: "+49", flag: "🇩🇪", name: "Germany" },
-  { code: "+233", flag: "🇬🇭", name: "Ghana" },
-  { code: "+30", flag: "🇬🇷", name: "Greece" },
-  { code: "+852", flag: "🇭🇰", name: "Hong Kong" },
-  { code: "+36", flag: "🇭🇺", name: "Hungary" },
-  { code: "+354", flag: "🇮🇸", name: "Iceland" },
-  { code: "+91", flag: "🇮🇳", name: "India" },
-  { code: "+62", flag: "🇮🇩", name: "Indonesia" },
-  { code: "+98", flag: "🇮🇷", name: "Iran" },
-  { code: "+964", flag: "🇮🇶", name: "Iraq" },
-  { code: "+353", flag: "🇮🇪", name: "Ireland" },
-  { code: "+972", flag: "🇮🇱", name: "Israel" },
-  { code: "+39", flag: "🇮🇹", name: "Italy" },
-  { code: "+81", flag: "🇯🇵", name: "Japan" },
-  { code: "+962", flag: "🇯🇴", name: "Jordan" },
-  { code: "+254", flag: "🇰🇪", name: "Kenya" },
-  { code: "+965", flag: "🇰🇼", name: "Kuwait" },
-  { code: "+961", flag: "🇱🇧", name: "Lebanon" },
-  { code: "+218", flag: "🇱🇾", name: "Libya" },
-  { code: "+352", flag: "🇱🇺", name: "Luxembourg" },
-  { code: "+60", flag: "🇲🇾", name: "Malaysia" },
-  { code: "+356", flag: "🇲🇹", name: "Malta" },
-  { code: "+52", flag: "🇲🇽", name: "Mexico" },
-  { code: "+212", flag: "🇲🇦", name: "Morocco" },
-  { code: "+31", flag: "🇳🇱", name: "Netherlands" },
-  { code: "+64", flag: "🇳🇿", name: "New Zealand" },
-  { code: "+234", flag: "🇳🇬", name: "Nigeria" },
-  { code: "+47", flag: "🇳🇴", name: "Norway" },
-  { code: "+968", flag: "🇴🇲", name: "Oman" },
-  { code: "+92", flag: "🇵🇰", name: "Pakistan" },
-  { code: "+507", flag: "🇵🇦", name: "Panama" },
-  { code: "+51", flag: "🇵🇪", name: "Peru" },
-  { code: "+63", flag: "🇵🇭", name: "Philippines" },
-  { code: "+48", flag: "🇵🇱", name: "Poland" },
-  { code: "+351", flag: "🇵🇹", name: "Portugal" },
-  { code: "+974", flag: "🇶🇦", name: "Qatar" },
-  { code: "+40", flag: "🇷🇴", name: "Romania" },
-  { code: "+7", flag: "🇷🇺", name: "Russia" },
-  { code: "+966", flag: "🇸🇦", name: "Saudi Arabia" },
-  { code: "+221", flag: "🇸🇳", name: "Senegal" },
-  { code: "+65", flag: "🇸🇬", name: "Singapore" },
-  { code: "+27", flag: "🇿🇦", name: "South Africa" },
-  { code: "+82", flag: "🇰🇷", name: "South Korea" },
-  { code: "+34", flag: "🇪🇸", name: "Spain" },
-  { code: "+94", flag: "🇱🇰", name: "Sri Lanka" },
-  { code: "+46", flag: "🇸🇪", name: "Sweden" },
-  { code: "+41", flag: "🇨🇭", name: "Switzerland" },
-  { code: "+963", flag: "🇸🇾", name: "Syria" },
-  { code: "+886", flag: "🇹🇼", name: "Taiwan" },
-  { code: "+66", flag: "🇹🇭", name: "Thailand" },
-  { code: "+216", flag: "🇹🇳", name: "Tunisia" },
-  { code: "+90", flag: "🇹🇷", name: "Turkey" },
-  { code: "+256", flag: "🇺🇬", name: "Uganda" },
-  { code: "+380", flag: "🇺🇦", name: "Ukraine" },
-  { code: "+971", flag: "🇦🇪", name: "United Arab Emirates" },
-  { code: "+44", flag: "🇬🇧", name: "United Kingdom" },
-  { code: "+1", flag: "🇺🇸", name: "United States" },
-  { code: "+598", flag: "🇺🇾", name: "Uruguay" },
-  { code: "+58", flag: "🇻🇪", name: "Venezuela" },
-  { code: "+84", flag: "🇻🇳", name: "Vietnam" },
-  { code: "+967", flag: "🇾🇪", name: "Yemen" },
-  { code: "+260", flag: "🇿🇲", name: "Zambia" },
-  { code: "+263", flag: "🇿🇼", name: "Zimbabwe" }
+  { id: "AF", code: "+93", flag: "🇦🇫", name: "Afghanistan" },
+  { id: "AL", code: "+355", flag: "🇦🇱", name: "Albania" },
+  { id: "DZ", code: "+213", flag: "🇩🇿", name: "Algeria" },
+  { id: "AD", code: "+376", flag: "🇦🇩", name: "Andorra" },
+  { id: "AO", code: "+244", flag: "🇦🇴", name: "Angola" },
+  { id: "AR", code: "+54", flag: "🇦🇷", name: "Argentina" },
+  { id: "AM", code: "+374", flag: "🇦🇲", name: "Armenia" },
+  { id: "AU", code: "+61", flag: "🇦🇺", name: "Australia" },
+  { id: "AT", code: "+43", flag: "🇦🇹", name: "Austria" },
+  { id: "AZ", code: "+994", flag: "🇦🇿", name: "Azerbaijan" },
+  { id: "BH", code: "+973", flag: "🇧🇭", name: "Bahrain" },
+  { id: "BD", code: "+880", flag: "🇧🇩", name: "Bangladesh" },
+  { id: "BY", code: "+375", flag: "🇧🇾", name: "Belarus" },
+  { id: "BE", code: "+32", flag: "🇧🇪", name: "Belgium" },
+  { id: "BJ", code: "+229", flag: "🇧🇯", name: "Benin" },
+  { id: "BO", code: "+591", flag: "🇧🇴", name: "Bolivia" },
+  { id: "BA", code: "+387", flag: "🇧🇦", name: "Bosnia and Herzegovina" },
+  { id: "BW", code: "+267", flag: "🇧🇼", name: "Botswana" },
+  { id: "BR", code: "+55", flag: "🇧🇷", name: "Brazil" },
+  { id: "BG", code: "+359", flag: "🇧🇬", name: "Bulgaria" },
+  { id: "BF", code: "+226", flag: "🇧🇫", name: "Burkina Faso" },
+  { id: "BI", code: "+257", flag: "🇧🇮", name: "Burundi" },
+  { id: "KH", code: "+855", flag: "🇰🇭", name: "Cambodia" },
+  { id: "CM", code: "+237", flag: "🇨🇲", name: "Cameroon" },
+
+  /*
+   * IMPORTANT:
+   * Canada and USA both use +1.
+   *
+   * They MUST have different IDs.
+   * Never use the dial code itself as the React select identity.
+   */
+  { id: "CA", code: "+1", flag: "🇨🇦", name: "Canada" },
+
+  { id: "CV", code: "+238", flag: "🇨🇻", name: "Cape Verde" },
+  { id: "CF", code: "+236", flag: "🇨🇫", name: "Central African Republic" },
+  { id: "TD", code: "+235", flag: "🇹🇩", name: "Chad" },
+  { id: "CL", code: "+56", flag: "🇨🇱", name: "Chile" },
+  { id: "CN", code: "+86", flag: "🇨🇳", name: "China" },
+  { id: "CO", code: "+57", flag: "🇨🇴", name: "Colombia" },
+  { id: "KM", code: "+269", flag: "🇰🇲", name: "Comoros" },
+  { id: "CG", code: "+242", flag: "🇨🇬", name: "Congo" },
+  { id: "CD", code: "+243", flag: "🇨🇩", name: "Congo (DRC)" },
+  { id: "CR", code: "+506", flag: "🇨🇷", name: "Costa Rica" },
+  { id: "HR", code: "+385", flag: "🇭🇷", name: "Croatia" },
+  { id: "CU", code: "+53", flag: "🇨🇺", name: "Cuba" },
+  { id: "CY", code: "+357", flag: "🇨🇾", name: "Cyprus" },
+  { id: "CZ", code: "+420", flag: "🇨🇿", name: "Czech Republic" },
+  { id: "DK", code: "+45", flag: "🇩🇰", name: "Denmark" },
+  { id: "DJ", code: "+253", flag: "🇩🇯", name: "Djibouti" },
+  { id: "EG", code: "+20", flag: "🇪🇬", name: "Egypt" },
+  { id: "EE", code: "+372", flag: "🇪🇪", name: "Estonia" },
+  { id: "ET", code: "+251", flag: "🇪🇹", name: "Ethiopia" },
+  { id: "FI", code: "+358", flag: "🇫🇮", name: "Finland" },
+  { id: "FR", code: "+33", flag: "🇫🇷", name: "France" },
+  { id: "DE", code: "+49", flag: "🇩🇪", name: "Germany" },
+  { id: "GH", code: "+233", flag: "🇬🇭", name: "Ghana" },
+  { id: "GR", code: "+30", flag: "🇬🇷", name: "Greece" },
+  { id: "HK", code: "+852", flag: "🇭🇰", name: "Hong Kong" },
+  { id: "HU", code: "+36", flag: "🇭🇺", name: "Hungary" },
+  { id: "IS", code: "+354", flag: "🇮🇸", name: "Iceland" },
+  { id: "IN", code: "+91", flag: "🇮🇳", name: "India" },
+  { id: "ID", code: "+62", flag: "🇮🇩", name: "Indonesia" },
+  { id: "IR", code: "+98", flag: "🇮🇷", name: "Iran" },
+  { id: "IQ", code: "+964", flag: "🇮🇶", name: "Iraq" },
+  { id: "IE", code: "+353", flag: "🇮🇪", name: "Ireland" },
+  { id: "IL", code: "+972", flag: "🇮🇱", name: "Israel" },
+  { id: "IT", code: "+39", flag: "🇮🇹", name: "Italy" },
+  { id: "JP", code: "+81", flag: "🇯🇵", name: "Japan" },
+  { id: "JO", code: "+962", flag: "🇯🇴", name: "Jordan" },
+  { id: "KE", code: "+254", flag: "🇰🇪", name: "Kenya" },
+  { id: "KW", code: "+965", flag: "🇰🇼", name: "Kuwait" },
+  { id: "LB", code: "+961", flag: "🇱🇧", name: "Lebanon" },
+  { id: "LY", code: "+218", flag: "🇱🇾", name: "Libya" },
+  { id: "LU", code: "+352", flag: "🇱🇺", name: "Luxembourg" },
+  { id: "MY", code: "+60", flag: "🇲🇾", name: "Malaysia" },
+  { id: "MT", code: "+356", flag: "🇲🇹", name: "Malta" },
+  { id: "MX", code: "+52", flag: "🇲🇽", name: "Mexico" },
+  { id: "MA", code: "+212", flag: "🇲🇦", name: "Morocco" },
+  { id: "NL", code: "+31", flag: "🇳🇱", name: "Netherlands" },
+  { id: "NZ", code: "+64", flag: "🇳🇿", name: "New Zealand" },
+  { id: "NG", code: "+234", flag: "🇳🇬", name: "Nigeria" },
+  { id: "NO", code: "+47", flag: "🇳🇴", name: "Norway" },
+  { id: "OM", code: "+968", flag: "🇴🇲", name: "Oman" },
+  { id: "PK", code: "+92", flag: "🇵🇰", name: "Pakistan" },
+  { id: "PA", code: "+507", flag: "🇵🇦", name: "Panama" },
+  { id: "PE", code: "+51", flag: "🇵🇪", name: "Peru" },
+  { id: "PH", code: "+63", flag: "🇵🇭", name: "Philippines" },
+  { id: "PL", code: "+48", flag: "🇵🇱", name: "Poland" },
+  { id: "PT", code: "+351", flag: "🇵🇹", name: "Portugal" },
+  { id: "QA", code: "+974", flag: "🇶🇦", name: "Qatar" },
+  { id: "RO", code: "+40", flag: "🇷🇴", name: "Romania" },
+  { id: "RU", code: "+7", flag: "🇷🇺", name: "Russia" },
+  { id: "SA", code: "+966", flag: "🇸🇦", name: "Saudi Arabia" },
+  { id: "SN", code: "+221", flag: "🇸🇳", name: "Senegal" },
+  { id: "SG", code: "+65", flag: "🇸🇬", name: "Singapore" },
+  { id: "ZA", code: "+27", flag: "🇿🇦", name: "South Africa" },
+  { id: "KR", code: "+82", flag: "🇰🇷", name: "South Korea" },
+  { id: "ES", code: "+34", flag: "🇪🇸", name: "Spain" },
+  { id: "LK", code: "+94", flag: "🇱🇰", name: "Sri Lanka" },
+  { id: "SE", code: "+46", flag: "🇸🇪", name: "Sweden" },
+  { id: "CH", code: "+41", flag: "🇨🇭", name: "Switzerland" },
+  { id: "SY", code: "+963", flag: "🇸🇾", name: "Syria" },
+  { id: "TW", code: "+886", flag: "🇹🇼", name: "Taiwan" },
+  { id: "TH", code: "+66", flag: "🇹🇭", name: "Thailand" },
+  { id: "TN", code: "+216", flag: "🇹🇳", name: "Tunisia" },
+  { id: "TR", code: "+90", flag: "🇹🇷", name: "Turkey" },
+  { id: "UG", code: "+256", flag: "🇺🇬", name: "Uganda" },
+  { id: "UA", code: "+380", flag: "🇺🇦", name: "Ukraine" },
+  { id: "AE", code: "+971", flag: "🇦🇪", name: "United Arab Emirates" },
+  { id: "GB", code: "+44", flag: "🇬🇧", name: "United Kingdom" },
+
+  /*
+   * USA has the same +1 dial code as Canada.
+   * Its unique ID is US.
+   */
+  { id: "US", code: "+1", flag: "🇺🇸", name: "United States" },
+
+  { id: "UY", code: "+598", flag: "🇺🇾", name: "Uruguay" },
+  { id: "VE", code: "+58", flag: "🇻🇪", name: "Venezuela" },
+  { id: "VN", code: "+84", flag: "🇻🇳", name: "Vietnam" },
+  { id: "YE", code: "+967", flag: "🇾🇪", name: "Yemen" },
+  { id: "ZM", code: "+260", flag: "🇿🇲", name: "Zambia" },
+  { id: "ZW", code: "+263", flag: "🇿🇼", name: "Zimbabwe" },
 ];
 
-/* -------------------------------------------------------------------------- */
-/* OPTIONS                                                                    */
-/* -------------------------------------------------------------------------- */
+/* ==========================================================================
+   OPTIONS
+   ========================================================================== */
 
 const industries = [
   "Healthcare",
@@ -143,18 +174,7 @@ const industries = [
   "Hotel",
   "Cleaning Services",
   "Repair Services",
-  "Consulting"
-];
-
-const personalUseOptions = [
-  "Appointment Booking",
-  "Receive Unknown Messages",
-  "Auto Reply",
-  "Reminder Messages",
-  "Personal Assistant",
-  "Follow-up Messages",
-  "Task Notifications",
-  "Event Reminders"
+  "Consulting",
 ];
 
 const priceRanges = [
@@ -164,7 +184,7 @@ const priceRanges = [
   "$500 - $1,000",
   "$1,000 - $5,000",
   "$5,000+",
-  "Custom Pricing"
+  "Custom Pricing",
 ];
 
 const workingDaysList = [
@@ -174,10 +194,15 @@ const workingDaysList = [
   "Thursday",
   "Friday",
   "Saturday",
-  "Sunday"
+  "Sunday",
 ];
 
-const capabilityList = [
+/*
+ * These are intentionally NOT displayed to the user.
+ *
+ * Business automation capabilities are selected automatically.
+ */
+const BUSINESS_CAPABILITIES = [
   "Appointment Booking",
   "Follow-up Messages",
   "Order Handling",
@@ -191,19 +216,88 @@ const capabilityList = [
   "Review Requests",
   "Quotation Requests",
   "Inventory Checks",
-  "Sales Automation"
+  "Sales Automation",
 ];
 
-/* -------------------------------------------------------------------------- */
-/* PAGE                                                                       */
-/* -------------------------------------------------------------------------- */
+/*
+ * Personal automation capabilities are also selected automatically.
+ */
+const PERSONAL_CAPABILITIES = [
+  "Appointment Booking",
+  "Receive Unknown Messages",
+  "Auto Reply",
+  "Reminder Messages",
+  "Personal Assistant",
+  "Follow-up Messages",
+  "Task Notifications",
+  "Event Reminders",
+];
+
+/* ==========================================================================
+   HELPERS
+   ========================================================================== */
+
+function cleanPhoneNumber(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function normalizeCountryId(value) {
+  const id = String(value || "").trim().toUpperCase();
+
+  if (countries.some((country) => country.id === id)) {
+    return id;
+  }
+
+  return "AE";
+}
+
+function countryById(id) {
+  return (
+    countries.find(
+      (country) => country.id === normalizeCountryId(id)
+    ) || countries.find((country) => country.id === "AE")
+  );
+}
+
+function formatInternationalNumber(countryId, number) {
+  const country = countryById(countryId);
+
+  const code = country?.code || "+971";
+  const localNumber = cleanPhoneNumber(number);
+
+  return `${code}${localNumber}`;
+}
+
+/*
+ * NANP countries such as Canada and USA both use +1.
+ *
+ * We therefore validate the local number as a 10-digit number
+ * when either CA or US is selected.
+ */
+function isValidPhoneNumber(countryId, number) {
+  const clean = cleanPhoneNumber(number);
+
+  const id = normalizeCountryId(countryId);
+
+  if (id === "CA" || id === "US") {
+    return clean.length === 10;
+  }
+
+  return clean.length >= 5;
+}
+
+/* ==========================================================================
+   PAGE
+   ========================================================================== */
 
 export default function AutomationPage() {
   const router = useRouter();
 
   const [darkMode, setDarkMode] = useState(false);
+
   const [loading, setLoading] = useState(false);
-  const [checkingAccount, setCheckingAccount] = useState(false);
+  const [checkingAccount, setCheckingAccount] = useState(true);
+  const [initializing, setInitializing] = useState(true);
 
   const [error, setError] = useState("");
   const [shake, setShake] = useState(false);
@@ -213,21 +307,18 @@ export default function AutomationPage() {
   const [userEmail, setUserEmail] = useState("");
 
   const [showDaysDropdown, setShowDaysDropdown] = useState(false);
-  const [showCapabilitiesDropdown, setShowCapabilitiesDropdown] =
-    useState(false);
 
   const daysRef = useRef(null);
-  const capabilitiesRef = useRef(null);
 
-  /* ---------------------------------------------------------------------- */
-  /* FORM                                                                    */
-  /* ---------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------
+     FORM
+     ------------------------------------------------------------------------ */
 
   const [form, setForm] = useState({
     setupType: "business",
 
     fullName: "",
-    personalGoal: "",
+    personalGoal: "Auto Reply",
 
     businessName: "",
     industry: "",
@@ -237,9 +328,22 @@ export default function AutomationPage() {
     customPrice: "",
     serviceDescription: "",
 
+    /*
+     * Country ID is separate from dial code.
+     *
+     * This fixes Canada/USA because both have +1.
+     */
+    aiCountry: "AE",
     aiCode: "+971",
     aiNumber: "",
 
+    /*
+     * Support number remains available for business automation.
+     *
+     * If the user leaves it empty, the AI number becomes the support
+     * number automatically.
+     */
+    supportCountry: "AE",
     supportCode: "+971",
     supportNumber: "",
 
@@ -247,12 +351,16 @@ export default function AutomationPage() {
     hours: "",
     customHours: "",
 
-    capabilities: []
+    /*
+     * Never displayed in the UI.
+     * Automatically populated before submission.
+     */
+    capabilities: BUSINESS_CAPABILITIES,
   });
 
-  /* ---------------------------------------------------------------------- */
-  /* THEME                                                                   */
-  /* ---------------------------------------------------------------------- */
+  /* ==========================================================================
+     THEME
+     ========================================================================== */
 
   useEffect(() => {
     try {
@@ -262,30 +370,52 @@ export default function AutomationPage() {
         setDarkMode(true);
       }
     } catch (err) {
-      console.warn("Could not load theme:", err);
+      console.warn(
+        "[Sodah Update] Could not load theme:",
+        err
+      );
     }
   }, []);
 
-  /* ---------------------------------------------------------------------- */
-  /* LOAD AUTHENTICATED USER                                                 */
-  /* ---------------------------------------------------------------------- */
+  /* ==========================================================================
+     INITIAL AUTHENTICATION + ONBOARDING + EXISTING BUSINESS CHECK
+     ========================================================================== */
 
   useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const {
-          data: { user },
-          error: authError
-        } = await supabase.auth.getUser();
+    let mounted = true;
 
-        if (authError) {
-          console.error("Authentication error:", authError);
+    const initializePage = async () => {
+      setInitializing(true);
+      setCheckingAccount(true);
+
+      try {
+        /*
+         * ---------------------------------------------------------------
+         * 1. GET CURRENT SESSION
+         * ---------------------------------------------------------------
+         */
+
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          throw sessionError;
         }
+
+        const user = session?.user;
 
         if (!user) {
-          router.push("/login");
+          router.replace("/login");
           return;
         }
+
+        /*
+         * ---------------------------------------------------------------
+         * 2. USER DETAILS
+         * ---------------------------------------------------------------
+         */
 
         const metadata = user.user_metadata || {};
 
@@ -299,47 +429,325 @@ export default function AutomationPage() {
 
         const email = user.email || "";
 
+        if (!mounted) {
+          return;
+        }
+
         setUserName(name);
         setUserEmail(email);
 
-        setForm((prev) => ({
-          ...prev,
-          fullName: name,
-          email
+        /*
+         * Automatically populate login email.
+         */
+        setForm((previous) => ({
+          ...previous,
+
+          fullName:
+            previous.fullName || name,
+
+          email:
+            previous.email || email,
+
+          /*
+           * Business capabilities are automatic.
+           */
+          capabilities: BUSINESS_CAPABILITIES,
+
+          /*
+           * Personal goal is automatic.
+           */
+          personalGoal: "Auto Reply",
         }));
+
+        /*
+         * ---------------------------------------------------------------
+         * 3. IMMEDIATELY TRACK ONBOARDING
+         * ---------------------------------------------------------------
+         *
+         * This MUST happen as soon as the authenticated user enters
+         * the page.
+         *
+         * The existing /api/onboarding/track endpoint:
+         *
+         * - authenticates the user
+         * - checks businesses
+         * - creates/updates sodah_onboarding
+         * - preserves followup_stage
+         * - marks onboarding completed when a business already exists
+         *
+         * This keeps the existing onboarding lifecycle intact.
+         */
+
+        let onboardingData = null;
+
+        try {
+          const onboardingResponse = await fetch(
+            "/api/onboarding/track",
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type": "application/json",
+
+                Authorization: `Bearer ${session.access_token}`,
+              },
+
+              credentials: "include",
+
+              cache: "no-store",
+
+              body: JSON.stringify({
+                event: "login",
+              }),
+            }
+          );
+
+          onboardingData =
+            await onboardingResponse
+              .json()
+              .catch(() => ({}));
+
+          if (!onboardingResponse.ok) {
+            console.warn(
+              "[Sodah Update] Onboarding tracking returned an error:",
+              onboardingData?.error ||
+                onboardingData?.message ||
+                "Unknown error"
+            );
+          }
+        } catch (onboardingError) {
+          /*
+           * Do not prevent the form from opening if onboarding tracking
+           * has a temporary network problem.
+           */
+          console.warn(
+            "[Sodah Update] Onboarding tracking failed:",
+            onboardingError
+          );
+        }
+
+        /*
+         * ---------------------------------------------------------------
+         * 4. EXISTING BUSINESS CHECK
+         * ---------------------------------------------------------------
+         *
+         * We do an explicit businesses table check as well.
+         *
+         * This makes the page independent of whether the onboarding
+         * endpoint returned the business ID.
+         */
+
+        let existingBusiness = null;
+
+        /*
+         * FIRST:
+         * Search by authenticated Supabase user ID.
+         */
+
+        const {
+          data: businessByUser,
+          error: businessUserError,
+        } = await supabase
+          .from("businesses")
+          .select(
+            "id,business_id,user_id,business_name,whatsapp_connected"
+          )
+          .eq("user_id", user.id)
+          .limit(1);
+
+        if (businessUserError) {
+          console.warn(
+            "[Sodah Update] Business user lookup failed:",
+            businessUserError
+          );
+        } else if (
+          Array.isArray(businessByUser) &&
+          businessByUser.length > 0
+        ) {
+          existingBusiness = businessByUser[0];
+        }
+
+        /*
+         * SECOND:
+         * Search by authenticated email if user_id lookup did not
+         * return a business.
+         *
+         * The email comes from Supabase Auth, never from a browser
+         * supplied arbitrary value.
+         */
+
+        if (!existingBusiness && user.email) {
+          const {
+            data: businessByEmail,
+            error: businessEmailError,
+          } = await supabase
+            .from("businesses")
+            .select(
+              "id,business_id,user_id,business_name,whatsapp_connected"
+            )
+            .eq("email", user.email)
+            .limit(1);
+
+          if (businessEmailError) {
+            console.warn(
+              "[Sodah Update] Business email lookup failed:",
+              businessEmailError
+            );
+          } else if (
+            Array.isArray(businessByEmail) &&
+            businessByEmail.length > 0
+          ) {
+            existingBusiness = businessByEmail[0];
+          }
+        }
+
+        /*
+         * ---------------------------------------------------------------
+         * 5. ONBOARDING API CAN ALSO RETURN THE BUSINESS
+         * ---------------------------------------------------------------
+         */
+
+        const onboardingBusinessId =
+          onboardingData?.business_id || "";
+
+        if (
+          !existingBusiness &&
+          onboardingData?.onboarding_completed &&
+          onboardingBusinessId
+        ) {
+          existingBusiness = {
+            business_id: onboardingBusinessId,
+          };
+        }
+
+        /*
+         * ---------------------------------------------------------------
+         * 6. EXISTING BUSINESS FOUND
+         * ---------------------------------------------------------------
+         */
+
+        if (
+          existingBusiness?.business_id
+        ) {
+          const businessId =
+            String(
+              existingBusiness.business_id
+            ).trim();
+
+          try {
+            localStorage.setItem(
+              "business_id",
+              businessId
+            );
+
+            localStorage.setItem(
+              "user_id",
+              user.id
+            );
+
+            if (user.email) {
+              localStorage.setItem(
+                "user_email",
+                user.email
+              );
+            }
+          } catch (storageError) {
+            console.warn(
+              "[Sodah Update] Local storage unavailable:",
+              storageError
+            );
+          }
+
+          /*
+           * Existing account goes directly to Channels.
+           *
+           * No need for the user to fill the setup form again.
+           */
+          router.replace(
+            `/channels?businessId=${encodeURIComponent(
+              businessId
+            )}`
+          );
+
+          return;
+        }
+
+        /*
+         * ---------------------------------------------------------------
+         * 7. NO BUSINESS
+         * ---------------------------------------------------------------
+         *
+         * User remains on this page and can complete onboarding.
+         */
+
+        try {
+          localStorage.removeItem(
+            "business_id"
+          );
+        } catch {}
+
+        if (mounted) {
+          setCheckingAccount(false);
+          setInitializing(false);
+        }
       } catch (err) {
         console.error(
-          "Failed to load authenticated user:",
+          "[Sodah Update] Initialization failed:",
           err
         );
+
+        if (!mounted) {
+          return;
+        }
+
+        /*
+         * Only redirect when the authentication itself is missing.
+         */
+        const message =
+          err?.message || "";
+
+        if (
+          /session/i.test(message) &&
+          /expired|missing|invalid/i.test(
+            message
+          )
+        ) {
+          router.replace("/login");
+          return;
+        }
+
+        setCheckingAccount(false);
+        setInitializing(false);
       }
     };
 
-    loadUser();
+    initializePage();
+
+    return () => {
+      mounted = false;
+    };
   }, [router]);
 
-  /* ---------------------------------------------------------------------- */
-  /* CLOSE DROPDOWNS                                                         */
-  /* ---------------------------------------------------------------------- */
+  /* ==========================================================================
+     CLOSE DROPDOWNS
+     ========================================================================== */
 
   useEffect(() => {
-    const handleClickOutside = (e) => {
+    const handleClickOutside = (event) => {
       if (
         daysRef.current &&
-        !daysRef.current.contains(e.target)
+        !daysRef.current.contains(
+          event.target
+        )
       ) {
         setShowDaysDropdown(false);
       }
-
-      if (
-        capabilitiesRef.current &&
-        !capabilitiesRef.current.contains(e.target)
-      ) {
-        setShowCapabilitiesDropdown(false);
-      }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener(
+      "mousedown",
+      handleClickOutside
+    );
 
     return () => {
       document.removeEventListener(
@@ -349,447 +757,833 @@ export default function AutomationPage() {
     };
   }, []);
 
-  /* ---------------------------------------------------------------------- */
-  /* MULTI SELECT                                                            */
-  /* ---------------------------------------------------------------------- */
+  /* ==========================================================================
+     ALREADY HAVE AN ACCOUNT
+     ========================================================================== */
 
-  const toggleSelection = (field, value) => {
-    setForm((prev) => ({
-      ...prev,
-      [field]: prev[field].includes(value)
-        ? prev[field].filter((item) => item !== value)
-        : [...prev[field], value]
+  const handleAlreadyHaveAccount =
+    async () => {
+      if (
+        checkingAccount ||
+        loading
+      ) {
+        return;
+      }
+
+      setCheckingAccount(true);
+      setError("");
+
+      try {
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          throw sessionError;
+        }
+
+        const user = session?.user;
+
+        if (!user) {
+          router.replace("/login");
+          return;
+        }
+
+        let business = null;
+
+        /*
+         * Check user ID first.
+         */
+        const {
+          data: byUser,
+          error: byUserError,
+        } = await supabase
+          .from("businesses")
+          .select(
+            "id,business_id,user_id,business_name,whatsapp_connected"
+          )
+          .eq("user_id", user.id)
+          .limit(1);
+
+        if (byUserError) {
+          console.warn(
+            "[Sodah Update] Existing account user lookup failed:",
+            byUserError
+          );
+        } else if (
+          Array.isArray(byUser) &&
+          byUser.length > 0
+        ) {
+          business = byUser[0];
+        }
+
+        /*
+         * Check email second.
+         */
+        if (!business && user.email) {
+          const {
+            data: byEmail,
+            error: byEmailError,
+          } = await supabase
+            .from("businesses")
+            .select(
+              "id,business_id,user_id,business_name,whatsapp_connected"
+            )
+            .eq("email", user.email)
+            .limit(1);
+
+          if (byEmailError) {
+            console.warn(
+              "[Sodah Update] Existing account email lookup failed:",
+              byEmailError
+            );
+          } else if (
+            Array.isArray(byEmail) &&
+            byEmail.length > 0
+          ) {
+            business = byEmail[0];
+          }
+        }
+
+        if (business?.business_id) {
+          const businessId =
+            String(
+              business.business_id
+            ).trim();
+
+          localStorage.setItem(
+            "business_id",
+            businessId
+          );
+
+          localStorage.setItem(
+            "user_id",
+            user.id
+          );
+
+          if (user.email) {
+            localStorage.setItem(
+              "user_email",
+              user.email
+            );
+          }
+
+          router.replace(
+            `/channels?businessId=${encodeURIComponent(
+              businessId
+            )}`
+          );
+
+          return;
+        }
+
+        setError(
+          "No existing business account was found. Please complete your setup below."
+        );
+      } catch (err) {
+        console.error(
+          "[Sodah Update] Existing account check failed:",
+          err
+        );
+
+        setError(
+          "We could not check your existing account right now. Please try again."
+        );
+      } finally {
+        setCheckingAccount(false);
+      }
+    };
+
+  /* ==========================================================================
+     MULTI SELECT
+     ========================================================================== */
+
+  const toggleSelection = (
+    field,
+    value
+  ) => {
+    setForm((previous) => ({
+      ...previous,
+
+      [field]:
+        previous[field].includes(value)
+          ? previous[field].filter(
+              (item) => item !== value
+            )
+          : [
+              ...previous[field],
+              value,
+            ],
     }));
   };
 
-  const displaySelected = (items, placeholder) => {
-    if (!items || !items.length) {
+  const displaySelected = (
+    items,
+    placeholder
+  ) => {
+    if (
+      !items ||
+      !items.length
+    ) {
       return placeholder;
     }
 
     return items.join(", ");
   };
 
-  /* ---------------------------------------------------------------------- */
-  /* ALREADY HAVE AN ACCOUNT                                                 */
-  /* ---------------------------------------------------------------------- */
+  /* ==========================================================================
+     SUBMIT
+     ========================================================================== */
 
-  const handleAlreadyHaveAccount = async () => {
-    if (checkingAccount || loading) {
-      return;
-    }
+  const handleSubmit =
+    async () => {
+      setError("");
+      setInvalidFields([]);
 
-    setCheckingAccount(true);
-    setError("");
+      const invalid = [];
 
-    try {
-      /* ------------------------------------------------------------------ */
-      /* GET CURRENT AUTH USER                                               */
-      /* ------------------------------------------------------------------ */
-
-      const {
-        data: { user },
-        error: authError
-      } = await supabase.auth.getUser();
-
-      if (authError) {
-        throw authError;
-      }
-
-      if (!user) {
-        alert(
-          "Please log in first. We could not find your account."
-        );
-
-        router.push("/login");
-        return;
-      }
-
-      let business = null;
-
-      /* ------------------------------------------------------------------ */
-      /* FIRST CHECK: USER ID                                               */
-      /* ------------------------------------------------------------------ */
-
-      const {
-        data: businessesByUserId,
-        error: userIdError
-      } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("user_id", user.id)
-        .limit(1);
-
-      if (userIdError) {
-        console.error(
-          "Business user_id lookup failed:",
-          userIdError
-        );
-      } else if (
-        businessesByUserId &&
-        businessesByUserId.length > 0
+      /*
+       * Business validation.
+       */
+      if (
+        form.setupType ===
+        "business"
       ) {
-        business = businessesByUserId[0];
-      }
-
-      /* ------------------------------------------------------------------ */
-      /* SECOND CHECK: EMAIL                                                */
-      /* ------------------------------------------------------------------ */
-
-      if (!business && user.email) {
-        const {
-          data: businessesByEmail,
-          error: emailError
-        } = await supabase
-          .from("businesses")
-          .select("id")
-          .eq("email", user.email)
-          .limit(1);
-
-        if (emailError) {
-          console.error(
-            "Business email lookup failed:",
-            emailError
-          );
-        } else if (
-          businessesByEmail &&
-          businessesByEmail.length > 0
+        if (
+          !form.businessName.trim()
         ) {
-          business = businessesByEmail[0];
+          invalid.push(
+            "businessName"
+          );
+        }
+
+        if (!form.industry) {
+          invalid.push(
+            "industry"
+          );
         }
       }
 
-      /* ------------------------------------------------------------------ */
-      /* EXISTING ACCOUNT FOUND                                             */
-      /* ------------------------------------------------------------------ */
+      /*
+       * Personal validation.
+       */
+      if (
+        form.setupType ===
+        "personal"
+      ) {
+        if (
+          !form.fullName.trim()
+        ) {
+          invalid.push(
+            "fullName"
+          );
+        }
+      }
 
-      if (business?.id) {
-        localStorage.setItem(
-          "business_id",
-          business.id
+      /*
+       * WhatsApp number is required in both modes.
+       */
+      if (
+        !isValidPhoneNumber(
+          form.aiCountry,
+          form.aiNumber
+        )
+      ) {
+        invalid.push(
+          "aiNumber"
+        );
+      }
+
+      /*
+       * Business support number is optional.
+       *
+       * If supplied, validate it.
+       */
+      if (
+        form.setupType ===
+          "business" &&
+        form.supportNumber.trim() &&
+        !isValidPhoneNumber(
+          form.supportCountry,
+          form.supportNumber
+        )
+      ) {
+        invalid.push(
+          "supportNumber"
+        );
+      }
+
+      if (invalid.length > 0) {
+        setInvalidFields(
+          invalid
         );
 
-        router.push(
-          `/channels?businessId=${encodeURIComponent(
-            business.id
-          )}`
+        if (
+          invalid.includes(
+            "aiNumber"
+          )
+        ) {
+          const selectedCountry =
+            countryById(
+              form.aiCountry
+            );
+
+          if (
+            selectedCountry?.id ===
+              "CA" ||
+            selectedCountry?.id ===
+              "US"
+          ) {
+            setError(
+              "Please enter a valid 10-digit Canada or USA WhatsApp number."
+            );
+          } else {
+            setError(
+              "Please enter a valid WhatsApp number."
+            );
+          }
+        } else {
+          setError(
+            "Please complete the required fields."
+          );
+        }
+
+        setShake(true);
+
+        setTimeout(
+          () => {
+            setShake(false);
+          },
+          400
+        );
+
+        setTimeout(
+          () => {
+            setError("");
+            setInvalidFields(
+              []
+            );
+          },
+          4000
         );
 
         return;
       }
 
-      /* ------------------------------------------------------------------ */
-      /* NO BUSINESS FOUND                                                   */
-      /* ------------------------------------------------------------------ */
-
-      alert(
-        "We couldn't find an existing business account for this login. Please tell us about your business and continue with the setup below."
-      );
-    } catch (err) {
-      console.error(
-        "Failed to check existing business account:",
-        err
-      );
-
-      alert(
-        "We couldn't check your existing account right now. Please try again."
-      );
-    } finally {
-      setCheckingAccount(false);
-    }
-  };
-
-  /* ---------------------------------------------------------------------- */
-  /* SUBMIT                                                                  */
-  /* ---------------------------------------------------------------------- */
-
-  const handleSubmit = async () => {
-    setError("");
-    setInvalidFields([]);
-
-    const invalid = [];
-
-    if (form.setupType === "business") {
-      if (!form.businessName.trim()) {
-        invalid.push("businessName");
+      if (
+        loading ||
+        checkingAccount
+      ) {
+        return;
       }
 
-      if (!form.industry) {
-        invalid.push("industry");
-      }
-    }
+      setLoading(true);
+      setError("");
 
-    if (form.setupType === "personal") {
-      if (!form.fullName.trim()) {
-        invalid.push("fullName");
-      }
+      try {
+        /*
+         * ---------------------------------------------------------------
+         * GET AUTHENTICATED USER
+         * ---------------------------------------------------------------
+         */
 
-      if (!form.personalGoal) {
-        invalid.push("personalGoal");
-      }
-    }
+        const {
+          data: { user },
+          error: authError,
+        } =
+          await supabase.auth.getUser();
 
-    if (!form.aiNumber.trim()) {
-      invalid.push("aiNumber");
-    }
-
-    if (invalid.length > 0) {
-      setInvalidFields(invalid);
-      setError("Please complete the required fields.");
-
-      setShake(true);
-
-      setTimeout(() => {
-        setShake(false);
-      }, 400);
-
-      setTimeout(() => {
-        setError("");
-        setInvalidFields([]);
-      }, 3000);
-
-      return;
-    }
-
-    if (loading || checkingAccount) {
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      /* ------------------------------------------------------------------ */
-      /* GET AUTHENTICATED USER                                              */
-      /* ------------------------------------------------------------------ */
-
-      const {
-        data: { user },
-        error: authError
-      } = await supabase.auth.getUser();
-
-      if (authError) {
-        throw authError;
-      }
-
-      if (!user) {
-        throw new Error(
-          "Your session has expired. Please log in again."
-        );
-      }
-
-      /* ------------------------------------------------------------------ */
-      /* BUILD PAYLOAD                                                       */
-      /* ------------------------------------------------------------------ */
-
-      const apiPayload = {
-        userId: user.id,
-
-        setupType: form.setupType,
-
-        /* Personal */
-        fullName: form.fullName || userName || "",
-        personalGoal: form.personalGoal || "",
-
-        /* Business */
-        businessName:
-          form.setupType === "business"
-            ? form.businessName.trim()
-            : form.fullName.trim(),
-
-        industry:
-          form.setupType === "business"
-            ? form.industry
-            : "Personal Use",
-
-        email: form.email || user.email || "",
-        location: form.location || "",
-
-        priceRange:
-          form.priceRange === "Custom Pricing"
-            ? form.customPrice
-            : form.priceRange,
-
-        serviceDescription:
-          form.serviceDescription || "",
-
-        /* Numbers */
-        aiNumber: `${form.aiCode}${form.aiNumber}`,
-
-        supportNumber: form.supportNumber
-          ? `${form.supportCode}${form.supportNumber}`
-          : `${form.aiCode}${form.aiNumber}`,
-
-        /* Schedule */
-        workingDays: Array.isArray(form.workingDays)
-          ? form.workingDays.join(", ")
-          : "",
-
-        hours:
-          form.hours === "Custom Hours"
-            ? form.customHours
-            : form.hours,
-
-        /* Capabilities */
-        capabilities: Array.isArray(form.capabilities)
-          ? form.capabilities.join(", ")
-          : ""
-      };
-
-      console.log(
-        "Saving automation setup:",
-        apiPayload
-      );
-
-      /* ------------------------------------------------------------------ */
-      /* SAVE THROUGH INTERNAL API                                          */
-      /* ------------------------------------------------------------------ */
-
-      const apiRes = await fetch(
-        "/api/business/automation",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(apiPayload)
+        if (authError) {
+          throw authError;
         }
-      );
 
-      let apiData = {};
+        if (!user) {
+          throw new Error(
+            "Your session has expired. Please log in again."
+          );
+        }
 
-      try {
-        apiData = await apiRes.json();
-      } catch {
-        throw new Error(
-          "The server returned an invalid response."
-        );
-      }
+        /*
+         * ---------------------------------------------------------------
+         * AUTOMATIC CAPABILITIES
+         * ---------------------------------------------------------------
+         *
+         * The user does not choose capabilities anymore.
+         */
 
-      if (!apiRes.ok || !apiData.success) {
-        throw new Error(
-          apiData.message ||
-            "Failed to save your business setup."
-        );
-      }
+        const automaticCapabilities =
+          form.setupType ===
+          "business"
+            ? BUSINESS_CAPABILITIES
+            : PERSONAL_CAPABILITIES;
 
-      /* ------------------------------------------------------------------ */
-      /* GET BUSINESS ID                                                     */
-      /* ------------------------------------------------------------------ */
+        /*
+         * ---------------------------------------------------------------
+         * AUTOMATIC PERSONAL GOAL
+         * ---------------------------------------------------------------
+         */
 
-      const businessId = apiData.business_id;
+        const automaticPersonalGoal =
+          form.setupType ===
+          "personal"
+            ? "Auto Reply"
+            : "";
 
-      if (!businessId) {
-        throw new Error(
-          "Setup was saved, but no business ID was returned."
-        );
-      }
+        /*
+         * ---------------------------------------------------------------
+         * NUMBERS
+         * ---------------------------------------------------------------
+         */
 
-      /* ------------------------------------------------------------------ */
-      /* SAVE BUSINESS ID LOCALLY                                            */
-      /* ------------------------------------------------------------------ */
+        const aiNumber =
+          formatInternationalNumber(
+            form.aiCountry,
+            form.aiNumber
+          );
 
-      localStorage.setItem(
-        "business_id",
-        businessId
-      );
+        /*
+         * Business support number:
+         *
+         * If user enters one, use it.
+         *
+         * If not, use the same WhatsApp number as the AI/support
+         * number so the AI always has a support number.
+         */
+        const supportNumber =
+          form.setupType ===
+            "business" &&
+          form.supportNumber.trim()
+            ? formatInternationalNumber(
+                form.supportCountry,
+                form.supportNumber
+              )
+            : aiNumber;
 
-      console.log(
-        "Business ID saved:",
-        businessId
-      );
+        /*
+         * ---------------------------------------------------------------
+         * BUILD PAYLOAD
+         * ---------------------------------------------------------------
+         */
 
-      /* ------------------------------------------------------------------ */
-      /* SEND TO N8N                                                         */
-      /* ------------------------------------------------------------------ */
+        const apiPayload = {
+          userId: user.id,
 
-      const webhookPayload = {
-        businessId,
+          setupType:
+            form.setupType,
 
-        setupType: apiPayload.setupType,
+          /*
+           * Personal
+           */
+          fullName:
+            form.fullName.trim() ||
+            user.user_metadata
+              ?.full_name ||
+            user.email
+              ?.split("@")[0] ||
+            "",
 
-        fullName: apiPayload.fullName,
-        personalGoal: apiPayload.personalGoal,
+          personalGoal:
+            automaticPersonalGoal,
 
-        businessName: apiPayload.businessName,
-        industry: apiPayload.industry,
+          /*
+           * Business
+           */
+          businessName:
+            form.setupType ===
+            "business"
+              ? form.businessName.trim()
+              : form.fullName.trim(),
 
-        email: apiPayload.email,
-        location: apiPayload.location,
+          industry:
+            form.setupType ===
+            "business"
+              ? form.industry
+              : "Personal Use",
 
-        priceRange: apiPayload.priceRange,
-        serviceDescription:
-          apiPayload.serviceDescription,
+          email:
+            form.email.trim() ||
+            user.email ||
+            "",
 
-        aiNumber: apiPayload.aiNumber,
-        supportNumber: apiPayload.supportNumber,
+          location:
+            form.location.trim(),
 
-        workingDays: apiPayload.workingDays,
-        hours: apiPayload.hours,
+          priceRange:
+            form.priceRange ===
+            "Custom Pricing"
+              ? form.customPrice.trim()
+              : form.priceRange,
 
-        capability: apiPayload.capabilities
-      };
+          serviceDescription:
+            form.serviceDescription.trim(),
 
-      /* ------------------------------------------------------------------ */
-      /* N8N IS SUPPLEMENTARY                                               */
-      /* ------------------------------------------------------------------ */
+          /*
+           * Numbers
+           */
+          aiNumber,
 
-      try {
-        await fetch(
-          "https://solomon-n8n.duckdns.org/webhook/setup-ai",
+          supportNumber,
+
+          /*
+           * Schedule
+           */
+          workingDays:
+            Array.isArray(
+              form.workingDays
+            )
+              ? form.workingDays.join(
+                  ", "
+                )
+              : "",
+
+          hours:
+            form.hours ===
+            "Custom Hours"
+              ? form.customHours.trim()
+              : form.hours,
+
+          /*
+           * Automatic AI capabilities.
+           *
+           * Never depend on what was in the browser state.
+           */
+          capabilities:
+            automaticCapabilities.join(
+              ", "
+            ),
+        };
+
+        console.log(
+          "[Sodah Update] Saving automation setup:",
           {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(webhookPayload)
+            ...apiPayload,
+            aiNumber:
+              aiNumber
+                ? `${aiNumber.slice(
+                    0,
+                    -4
+                  )}****`
+                : "",
+            supportNumber:
+              supportNumber
+                ? `${supportNumber.slice(
+                    0,
+                    -4
+                  )}****`
+                : "",
           }
         );
-      } catch (webhookError) {
-        console.warn(
-          "n8n setup webhook failed. Continuing anyway:",
-          webhookError
-        );
-      }
 
-      /* ------------------------------------------------------------------ */
-      /* SUCCESS                                                             */
-      /* ------------------------------------------------------------------ */
+        /*
+         * ---------------------------------------------------------------
+         * SAVE BUSINESS THROUGH INTERNAL API
+         * ---------------------------------------------------------------
+         */
 
-      setError("Setup saved successfully.");
+        const apiRes =
+          await fetch(
+            "/api/business/automation",
+            {
+              method: "POST",
 
-      router.push(
-        `/channels?businessId=${encodeURIComponent(
+              headers: {
+                "Content-Type":
+                  "application/json",
+
+                Authorization: `Bearer ${
+                  (
+                    await supabase.auth.getSession()
+                  )?.data?.session
+                    ?.access_token || ""
+                }`,
+              },
+
+              credentials:
+                "include",
+
+              cache: "no-store",
+
+              body: JSON.stringify(
+                apiPayload
+              ),
+            }
+          );
+
+        let apiData = {};
+
+        try {
+          apiData =
+            await apiRes.json();
+        } catch {
+          throw new Error(
+            "The server returned an invalid response."
+          );
+        }
+
+        /*
+         * ---------------------------------------------------------------
+         * API ERROR
+         * ---------------------------------------------------------------
+         */
+
+        if (
+          !apiRes.ok ||
+          !apiData.success
+        ) {
+          if (
+            apiData?.alreadyExists &&
+            apiData?.business_id
+          ) {
+            const existingBusinessId =
+              String(
+                apiData.business_id
+              ).trim();
+
+            localStorage.setItem(
+              "business_id",
+              existingBusinessId
+            );
+
+            localStorage.setItem(
+              "user_id",
+              user.id
+            );
+
+            router.replace(
+              `/channels?businessId=${encodeURIComponent(
+                existingBusinessId
+              )}`
+            );
+
+            return;
+          }
+
+          throw new Error(
+            apiData.message ||
+              "Failed to save your business setup."
+          );
+        }
+
+        /*
+         * ---------------------------------------------------------------
+         * BUSINESS ID
+         * ---------------------------------------------------------------
+         */
+
+        const businessId =
+          String(
+            apiData.business_id ||
+              ""
+          ).trim();
+
+        if (!businessId) {
+          throw new Error(
+            "Setup was saved, but no business ID was returned."
+          );
+        }
+
+        /*
+         * ---------------------------------------------------------------
+         * STORE BUSINESS CONTEXT
+         * ---------------------------------------------------------------
+         */
+
+        localStorage.setItem(
+          "business_id",
           businessId
-        )}`
-      );
-    } catch (err) {
-      console.error(
-        "Submission failed:",
-        err
-      );
+        );
 
-      setError(
-        err?.message ||
-          "Failed to save your setup. Please try again."
-      );
+        localStorage.setItem(
+          "user_id",
+          user.id
+        );
 
-      setShake(true);
+        if (user.email) {
+          localStorage.setItem(
+            "user_email",
+            user.email
+          );
+        }
 
-      setTimeout(() => {
-        setShake(false);
-      }, 400);
+        /*
+         * ---------------------------------------------------------------
+         * WELCOME EMAIL
+         * ---------------------------------------------------------------
+         *
+         * Preserved from the existing implementation.
+         *
+         * Failure here must never undo a successful business setup.
+         */
 
-      setTimeout(() => {
-        setError("");
-      }, 5000);
-    } finally {
-      setLoading(false);
-    }
-  };
+        try {
+          const emailResponse =
+            await fetch(
+              "/api/auth/welcome-email",
+              {
+                method: "POST",
 
-  /* ---------------------------------------------------------------------- */
-  /* RENDER                                                                  */
-  /* ---------------------------------------------------------------------- */
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+
+                credentials:
+                  "include",
+
+                body: JSON.stringify(
+                  {
+                    user_id:
+                      user.id,
+
+                    email:
+                      user.email ||
+                      apiPayload.email ||
+                      "",
+
+                    full_name:
+                      apiPayload.fullName ||
+                      userName ||
+                      "",
+
+                    business_name:
+                      apiPayload.businessName ||
+                      "",
+
+                    business_id:
+                      businessId,
+                  }
+                ),
+              }
+            );
+
+          if (
+            !emailResponse.ok
+          ) {
+            const emailData =
+              await emailResponse
+                .json()
+                .catch(
+                  () => ({})
+                );
+
+            console.warn(
+              "[Sodah Update] Welcome email was not sent:",
+              emailData?.error ||
+                emailData?.message ||
+                "Unknown error"
+            );
+          }
+        } catch (
+          emailError
+        ) {
+          console.warn(
+            "[Sodah Update] Welcome email request failed:",
+            emailError
+          );
+        }
+
+        /*
+         * ---------------------------------------------------------------
+         * SUCCESS
+         * ---------------------------------------------------------------
+         */
+
+        setError(
+          "Setup saved successfully."
+        );
+
+        router.replace(
+          `/channels?businessId=${encodeURIComponent(
+            businessId
+          )}`
+        );
+      } catch (err) {
+        console.error(
+          "[Sodah Update] Submission failed:",
+          err
+        );
+
+        setError(
+          err?.message ||
+            "Failed to save your setup. Please try again."
+        );
+
+        setShake(true);
+
+        setTimeout(
+          () => {
+            setShake(false);
+          },
+          400
+        );
+
+        setTimeout(
+          () => {
+            setError("");
+          },
+          5000
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  /* ==========================================================================
+     LOADING STATE
+     ========================================================================== */
+
+  if (initializing) {
+    return (
+      <main className="min-h-screen w-full bg-[#020617] text-white flex items-center justify-center">
+        <div className="fixed inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-green-500/10 blur-[120px]" />
+
+          <div className="absolute top-1/3 -right-40 w-[500px] h-[500px] rounded-full bg-cyan-500/10 blur-[120px]" />
+
+          <div className="absolute bottom-[-200px] left-1/3 w-[500px] h-[500px] rounded-full bg-indigo-500/10 blur-[140px]" />
+        </div>
+
+        <div className="relative z-10 flex flex-col items-center justify-center px-6 text-center">
+          <div className="loadingRing" />
+
+          <h2 className="mt-6 text-lg font-semibold text-white">
+            Preparing your Sodah workspace
+          </h2>
+
+          <p className="mt-2 text-sm text-white/45">
+            Checking your account and setup...
+          </p>
+        </div>
+
+        <style jsx>{`
+          .loadingRing {
+            width: 42px;
+            height: 42px;
+            border-radius: 999px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: rgba(
+              74,
+              222,
+              128,
+              0.95
+            );
+            animation: spin 0.8s linear infinite;
+          }
+
+          @keyframes spin {
+            to {
+              transform: rotate(360deg);
+            }
+          }
+        `}</style>
+      </main>
+    );
+  }
+
+  /* ==========================================================================
+     RENDER
+     ========================================================================== */
 
   return (
     <main
@@ -797,7 +1591,10 @@ export default function AutomationPage() {
         darkMode ? "dark" : ""
       } bg-[#020617] text-white overflow-x-hidden`}
     >
-      {/* PREMIUM BACKGROUND */}
+      {/* =====================================================================
+          PREMIUM BACKGROUND
+          ===================================================================== */}
+
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-green-500/10 blur-[120px]" />
 
@@ -806,12 +1603,19 @@ export default function AutomationPage() {
         <div className="absolute bottom-[-200px] left-1/3 w-[500px] h-[500px] rounded-full bg-indigo-500/10 blur-[140px]" />
       </div>
 
-      {/* TOP BRAND */}
+      {/* =====================================================================
+          HEADER
+          ===================================================================== */}
+
       <header className="relative z-10 w-full px-6 sm:px-10 py-6">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <button
             type="button"
-            onClick={() => router.push("/welcome")}
+            onClick={() =>
+              router.push(
+                "/welcome"
+              )
+            }
             className="flex items-center gap-3 group"
           >
             <div className="w-11 h-11 rounded-2xl bg-white/10 border border-white/10 backdrop-blur-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition">
@@ -835,22 +1639,34 @@ export default function AutomationPage() {
 
           <div className="hidden sm:flex items-center gap-2 text-xs text-white/45">
             <span className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_12px_rgba(74,222,128,0.8)]" />
+
             Secure setup
           </div>
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
+      {/* =====================================================================
+          MAIN
+          ===================================================================== */}
+
       <section className="relative z-10 px-4 sm:px-6 pb-10">
         <div
           className={`max-w-5xl mx-auto transition-all duration-300 ${
-            shake ? "shake" : ""
+            shake
+              ? "shake"
+              : ""
           }`}
         >
-          {/* GREETING */}
+          {/* =================================================================
+              GREETING
+              ================================================================= */}
+
           <div className="max-w-3xl mx-auto mb-8">
             <p className="text-white/55 text-sm sm:text-base mb-2">
-              Hello {userName || "there"} 👋
+              Hello{" "}
+              {userName ||
+                "there"}{" "}
+              👋
             </p>
 
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">
@@ -864,13 +1680,18 @@ export default function AutomationPage() {
             </p>
           </div>
 
-          {/* MAIN CARD */}
+          {/* =================================================================
+              MAIN CARD
+              ================================================================= */}
+
           <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.055] backdrop-blur-2xl shadow-[0_30px_100px_rgba(0,0,0,0.45)]">
-            {/* CARD TOP GLOW */}
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-green-400/70 to-transparent" />
 
             <div className="p-5 sm:p-8 md:p-10">
-              {/* SETUP TYPE */}
+              {/* =============================================================
+                  SETUP TYPE
+                  ============================================================= */}
+
               <div className="mb-8">
                 <div className="flex items-center justify-between mb-3">
                   <div>
@@ -886,16 +1707,27 @@ export default function AutomationPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   {/* BUSINESS */}
+
                   <button
                     type="button"
                     onClick={() =>
-                      setForm((prev) => ({
-                        ...prev,
-                        setupType: "business"
-                      }))
+                      setForm(
+                        (
+                          previous
+                        ) => ({
+                          ...previous,
+
+                          setupType:
+                            "business",
+
+                          capabilities:
+                            BUSINESS_CAPABILITIES,
+                        })
+                      )
                     }
                     className={`group relative h-[58px] rounded-2xl border transition-all duration-200 ${
-                      form.setupType === "business"
+                      form.setupType ===
+                      "business"
                         ? "bg-green-500 border-green-400 shadow-[0_12px_30px_rgba(34,197,94,0.22)]"
                         : "bg-white/[0.035] border-white/10 hover:bg-white/[0.07]"
                     }`}
@@ -910,7 +1742,8 @@ export default function AutomationPage() {
                       </span>
                     </div>
 
-                    {form.setupType === "business" && (
+                    {form.setupType ===
+                      "business" && (
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white">
                         ✓
                       </span>
@@ -918,16 +1751,30 @@ export default function AutomationPage() {
                   </button>
 
                   {/* PERSONAL */}
+
                   <button
                     type="button"
                     onClick={() =>
-                      setForm((prev) => ({
-                        ...prev,
-                        setupType: "personal"
-                      }))
+                      setForm(
+                        (
+                          previous
+                        ) => ({
+                          ...previous,
+
+                          setupType:
+                            "personal",
+
+                          personalGoal:
+                            "Auto Reply",
+
+                          capabilities:
+                            PERSONAL_CAPABILITIES,
+                        })
+                      )
                     }
                     className={`group relative h-[58px] rounded-2xl border transition-all duration-200 ${
-                      form.setupType === "personal"
+                      form.setupType ===
+                      "personal"
                         ? "bg-indigo-500 border-indigo-400 shadow-[0_12px_30px_rgba(99,102,241,0.22)]"
                         : "bg-white/[0.035] border-white/10 hover:bg-white/[0.07]"
                     }`}
@@ -942,7 +1789,8 @@ export default function AutomationPage() {
                       </span>
                     </div>
 
-                    {form.setupType === "personal" && (
+                    {form.setupType ===
+                      "personal" && (
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white">
                         ✓
                       </span>
@@ -951,8 +1799,12 @@ export default function AutomationPage() {
                 </div>
               </div>
 
-              {/* BUSINESS */}
-              {form.setupType === "business" && (
+              {/* =============================================================
+                  BUSINESS
+                  ============================================================= */}
+
+              {form.setupType ===
+                "business" && (
                 <>
                   <SectionTitle
                     number="01"
@@ -971,12 +1823,24 @@ export default function AutomationPage() {
                       <input
                         className="premiumInput"
                         placeholder="e.g. Sodah Clinic"
-                        value={form.businessName}
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            businessName: e.target.value
-                          })
+                        value={
+                          form.businessName
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setForm(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+
+                              businessName:
+                                event
+                                  .target
+                                  .value,
+                            })
+                          )
                         }
                       />
                     </Field>
@@ -990,26 +1854,48 @@ export default function AutomationPage() {
                     >
                       <select
                         className="premiumInput"
-                        value={form.industry}
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            industry: e.target.value
-                          })
+                        value={
+                          form.industry
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setForm(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+
+                              industry:
+                                event
+                                  .target
+                                  .value,
+                            })
+                          )
                         }
                       >
                         <option value="">
                           Choose your industry
                         </option>
 
-                        {industries.map((item) => (
-                          <option
-                            key={item}
-                            value={item}
-                          >
-                            {item}
-                          </option>
-                        ))}
+                        {industries.map(
+                          (
+                            industry
+                          ) => (
+                            <option
+                              key={
+                                industry
+                              }
+                              value={
+                                industry
+                              }
+                            >
+                              {
+                                industry
+                              }
+                            </option>
+                          )
+                        )}
                       </select>
                     </Field>
 
@@ -1020,12 +1906,24 @@ export default function AutomationPage() {
                       <input
                         className="premiumInput"
                         type="email"
-                        value={form.email}
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            email: e.target.value
-                          })
+                        value={
+                          form.email
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setForm(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+
+                              email:
+                                event
+                                  .target
+                                  .value,
+                            })
+                          )
                         }
                       />
                     </Field>
@@ -1034,12 +1932,24 @@ export default function AutomationPage() {
                       <input
                         className="premiumInput"
                         placeholder="e.g. Dubai, UAE"
-                        value={form.location}
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            location: e.target.value
-                          })
+                        value={
+                          form.location
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setForm(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+
+                              location:
+                                event
+                                  .target
+                                  .value,
+                            })
+                          )
                         }
                       />
                     </Field>
@@ -1051,23 +1961,47 @@ export default function AutomationPage() {
                           type="text"
                           className="premiumInput"
                           placeholder="Enter your custom budget"
-                          value={form.customPrice}
-                          onChange={(e) =>
-                            setForm({
-                              ...form,
-                              customPrice: e.target.value
-                            })
+                          value={
+                            form.customPrice
+                          }
+                          onChange={(
+                            event
+                          ) =>
+                            setForm(
+                              (
+                                previous
+                              ) => ({
+                                ...previous,
+
+                                customPrice:
+                                  event
+                                    .target
+                                    .value,
+                              })
+                            )
                           }
                         />
                       ) : (
                         <select
                           className="premiumInput"
-                          value={form.priceRange}
-                          onChange={(e) =>
-                            setForm({
-                              ...form,
-                              priceRange: e.target.value
-                            })
+                          value={
+                            form.priceRange
+                          }
+                          onChange={(
+                            event
+                          ) =>
+                            setForm(
+                              (
+                                previous
+                              ) => ({
+                                ...previous,
+
+                                priceRange:
+                                  event
+                                    .target
+                                    .value,
+                              })
+                            )
                           }
                         >
                           <option value="">
@@ -1075,12 +2009,20 @@ export default function AutomationPage() {
                           </option>
 
                           {priceRanges.map(
-                            (item) => (
+                            (
+                              range
+                            ) => (
                               <option
-                                key={item}
-                                value={item}
+                                key={
+                                  range
+                                }
+                                value={
+                                  range
+                                }
                               >
-                                {item}
+                                {
+                                  range
+                                }
                               </option>
                             )
                           )}
@@ -1095,22 +2037,36 @@ export default function AutomationPage() {
                       <textarea
                         className="premiumInput !h-[52px] !py-3 resize-none"
                         placeholder="Briefly describe your products or services..."
-                        maxLength={120}
+                        maxLength={
+                          120
+                        }
                         value={
                           form.serviceDescription
                         }
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            serviceDescription:
-                              e.target.value
-                          })
+                        onChange={(
+                          event
+                        ) =>
+                          setForm(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+
+                              serviceDescription:
+                                event
+                                  .target
+                                  .value,
+                            })
+                          )
                         }
                       />
                     </Field>
                   </div>
 
-                  {/* CONTACT */}
+                  {/* =========================================================
+                      CONTACT
+                      ========================================================= */}
+
                   <div className="mt-10">
                     <SectionTitle
                       number="02"
@@ -1120,64 +2076,137 @@ export default function AutomationPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <Field
-                        label="AI WhatsApp number"
+                        label="Business WhatsApp number"
                         required
                         error={invalidFields.includes(
                           "aiNumber"
                         )}
                       >
                         <PhoneInput
-                          countries={countries}
-                          valueCode={form.aiCode}
-                          valueNumber={form.aiNumber}
+                          countries={
+                            countries
+                          }
+                          valueCountry={
+                            form.aiCountry
+                          }
+                          valueCode={
+                            form.aiCode
+                          }
+                          valueNumber={
+                            form.aiNumber
+                          }
                           placeholder="WhatsApp number"
                           invalid={invalidFields.includes(
                             "aiNumber"
                           )}
-                          onCodeChange={(code) =>
-                            setForm({
-                              ...form,
-                              aiCode: code
-                            })
+                          onCountryChange={(
+                            country
+                          ) =>
+                            setForm(
+                              (
+                                previous
+                              ) => ({
+                                ...previous,
+
+                                aiCountry:
+                                  country.id,
+
+                                aiCode:
+                                  country.code,
+                              })
+                            )
                           }
-                          onNumberChange={(number) =>
-                            setForm({
-                              ...form,
-                              aiNumber: number
-                            })
+                          onNumberChange={(
+                            number
+                          ) =>
+                            setForm(
+                              (
+                                previous
+                              ) => ({
+                                ...previous,
+
+                                aiNumber:
+                                  number,
+                              })
+                            )
                           }
                         />
                       </Field>
 
                       <Field
                         label="Support number"
-                        hint="Optional"
+                        hint="Optional — defaults to the business WhatsApp number"
+                        error={invalidFields.includes(
+                          "supportNumber"
+                        )}
                       >
                         <PhoneInput
-                          countries={countries}
-                          valueCode={form.supportCode}
+                          countries={
+                            countries
+                          }
+                          valueCountry={
+                            form.supportCountry
+                          }
+                          valueCode={
+                            form.supportCode
+                          }
                           valueNumber={
                             form.supportNumber
                           }
                           placeholder="Support number"
-                          onCodeChange={(code) =>
-                            setForm({
-                              ...form,
-                              supportCode: code
-                            })
+                          invalid={invalidFields.includes(
+                            "supportNumber"
+                          )}
+                          onCountryChange={(
+                            country
+                          ) =>
+                            setForm(
+                              (
+                                previous
+                              ) => ({
+                                ...previous,
+
+                                supportCountry:
+                                  country.id,
+
+                                supportCode:
+                                  country.code,
+                              })
+                            )
                           }
-                          onNumberChange={(number) =>
-                            setForm({
-                              ...form,
-                              supportNumber: number
-                            })
+                          onNumberChange={(
+                            number
+                          ) =>
+                            setForm(
+                              (
+                                previous
+                              ) => ({
+                                ...previous,
+
+                                supportNumber:
+                                  number,
+                              })
+                            )
                           }
                         />
                       </Field>
                     </div>
+
+                    <div className="mt-4 rounded-2xl border border-green-400/10 bg-green-500/[0.035] px-4 py-3">
+                      <p className="text-xs text-white/45 leading-relaxed">
+                        Your business WhatsApp number will
+                        be used by Sodah for automation and,
+                        unless another support number is
+                        provided, as the support number for
+                        your AI.
+                      </p>
+                    </div>
                   </div>
 
-                  {/* SCHEDULE */}
+                  {/* =========================================================
+                      SCHEDULE
+                      ========================================================= */}
+
                   <div className="mt-10">
                     <SectionTitle
                       number="03"
@@ -1189,18 +2218,19 @@ export default function AutomationPage() {
                       <Field label="Working days">
                         <div
                           className="relative"
-                          ref={daysRef}
+                          ref={
+                            daysRef
+                          }
                         >
                           <button
                             type="button"
                             className="premiumInput text-left flex items-center justify-between"
                             onClick={() => {
                               setShowDaysDropdown(
-                                !showDaysDropdown
-                              );
-
-                              setShowCapabilitiesDropdown(
-                                false
+                                (
+                                  current
+                                ) =>
+                                  !current
                               );
                             }}
                           >
@@ -1219,9 +2249,13 @@ export default function AutomationPage() {
                           {showDaysDropdown && (
                             <MultiDropdown>
                               {workingDaysList.map(
-                                (day) => (
+                                (
+                                  day
+                                ) => (
                                   <label
-                                    key={day}
+                                    key={
+                                      day
+                                    }
                                     className="dropdownItem"
                                   >
                                     <input
@@ -1238,7 +2272,9 @@ export default function AutomationPage() {
                                     />
 
                                     <span>
-                                      {day}
+                                      {
+                                        day
+                                      }
                                     </span>
                                   </label>
                                 )
@@ -1258,50 +2294,71 @@ export default function AutomationPage() {
                             value={
                               form.customHours
                             }
-                            onChange={(e) =>
-                              setForm({
-                                ...form,
-                                customHours:
-                                  e.target.value
-                              })
+                            onChange={(
+                              event
+                            ) =>
+                              setForm(
+                                (
+                                  previous
+                                ) => ({
+                                  ...previous,
+
+                                  customHours:
+                                    event
+                                      .target
+                                      .value,
+                                })
+                              )
                             }
                           />
                         ) : (
                           <select
                             className="premiumInput"
-                            value={form.hours}
-                            onChange={(e) =>
-                              setForm({
-                                ...form,
-                                hours: e.target.value
-                              })
+                            value={
+                              form.hours
+                            }
+                            onChange={(
+                              event
+                            ) =>
+                              setForm(
+                                (
+                                  previous
+                                ) => ({
+                                  ...previous,
+
+                                  hours:
+                                    event
+                                      .target
+                                      .value,
+                                })
+                              )
                             }
                           >
                             <option value="">
                               Choose working hours
                             </option>
 
-                            <option>
+                            <option value="24 Hours">
                               24 Hours
                             </option>
 
-                            <option>
+                            <option value="8 AM - 4 PM">
                               8 AM - 4 PM
                             </option>
 
-                            <option>
+                            <option value="9 AM - 5 PM">
                               9 AM - 5 PM
                             </option>
 
-                            <option>
+                            <option value="9 AM - 6 PM">
                               9 AM - 6 PM
                             </option>
 
-                            <option>
+                            <option value="10 AM - 7 PM">
                               10 AM - 7 PM
                             </option>
 
-                            <option>
+                            <option value="Custom Hours">
                               Custom Hours
                             </option>
                           </select>
@@ -1310,77 +2367,49 @@ export default function AutomationPage() {
                     </div>
                   </div>
 
-                  {/* AI CAPABILITIES */}
+                  {/* =========================================================
+                      AUTOMATION NOTICE
+                      ========================================================= */}
+
                   <div className="mt-10">
                     <SectionTitle
                       number="04"
-                      title="AI capabilities"
-                      subtitle="Select what you want your automation to handle."
+                      title="AI automation"
+                      subtitle="Sodah automatically configures the AI capabilities for your business."
                     />
 
-                    <div
-                      className="relative"
-                      ref={capabilitiesRef}
-                    >
-                      <button
-                        type="button"
-                        className="premiumInput text-left flex items-center justify-between"
-                        onClick={() => {
-                          setShowCapabilitiesDropdown(
-                            !showCapabilitiesDropdown
-                          );
+                    <div className="rounded-2xl border border-green-400/10 bg-green-500/[0.035] p-5">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 shrink-0 rounded-xl bg-green-500/10 border border-green-400/20 flex items-center justify-center">
+                          <span className="text-lg">
+                            ✨
+                          </span>
+                        </div>
 
-                          setShowDaysDropdown(false);
-                        }}
-                      >
-                        <span className="truncate">
-                          {displaySelected(
-                            form.capabilities,
-                            "Choose AI capabilities"
-                          )}
-                        </span>
+                        <div>
+                          <p className="text-sm font-semibold text-white">
+                            Automatic AI configuration
+                          </p>
 
-                        <span className="text-white/40">
-                          ▾
-                        </span>
-                      </button>
-
-                      {showCapabilitiesDropdown && (
-                        <MultiDropdown>
-                          {capabilityList.map(
-                            (item) => (
-                              <label
-                                key={item}
-                                className="dropdownItem"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={form.capabilities.includes(
-                                    item
-                                  )}
-                                  onChange={() =>
-                                    toggleSelection(
-                                      "capabilities",
-                                      item
-                                    )
-                                  }
-                                />
-
-                                <span>
-                                  {item}
-                                </span>
-                              </label>
-                            )
-                          )}
-                        </MultiDropdown>
-                      )}
+                          <p className="text-xs text-white/45 leading-relaxed mt-1">
+                            Sodah automatically enables the
+                            appropriate automation capabilities
+                            for your setup. You do not need to
+                            manually select them.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </>
               )}
 
-              {/* PERSONAL */}
-              {form.setupType === "personal" && (
+              {/* =============================================================
+                  PERSONAL
+                  ============================================================= */}
+
+              {form.setupType ===
+                "personal" && (
                 <div>
                   <SectionTitle
                     number="01"
@@ -1398,12 +2427,24 @@ export default function AutomationPage() {
                     >
                       <input
                         className="premiumInput"
-                        value={form.fullName}
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            fullName: e.target.value
-                          })
+                        value={
+                          form.fullName
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setForm(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+
+                              fullName:
+                                event
+                                  .target
+                                  .value,
+                            })
+                          )
                         }
                       />
                     </Field>
@@ -1412,49 +2453,26 @@ export default function AutomationPage() {
                       <input
                         className="premiumInput"
                         type="email"
-                        value={form.email}
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            email: e.target.value
-                          })
+                        value={
+                          form.email
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setForm(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+
+                              email:
+                                event
+                                  .target
+                                  .value,
+                            })
+                          )
                         }
                       />
-                    </Field>
-
-                    <Field
-                      label="What would you like Sodah to do?"
-                      required
-                      error={invalidFields.includes(
-                        "personalGoal"
-                      )}
-                    >
-                      <select
-                        className="premiumInput"
-                        value={form.personalGoal}
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            personalGoal:
-                              e.target.value
-                          })
-                        }
-                      >
-                        <option value="">
-                          Choose a goal
-                        </option>
-
-                        {personalUseOptions.map(
-                          (item) => (
-                            <option
-                              key={item}
-                              value={item}
-                            >
-                              {item}
-                            </option>
-                          )
-                        )}
-                      </select>
                     </Field>
 
                     <Field
@@ -1465,96 +2483,97 @@ export default function AutomationPage() {
                       )}
                     >
                       <PhoneInput
-                        countries={countries}
-                        valueCode={form.aiCode}
-                        valueNumber={form.aiNumber}
+                        countries={
+                          countries
+                        }
+                        valueCountry={
+                          form.aiCountry
+                        }
+                        valueCode={
+                          form.aiCode
+                        }
+                        valueNumber={
+                          form.aiNumber
+                        }
                         placeholder="WhatsApp number"
                         invalid={invalidFields.includes(
                           "aiNumber"
                         )}
-                        onCodeChange={(code) =>
-                          setForm({
-                            ...form,
-                            aiCode: code
-                          })
+                        onCountryChange={(
+                          country
+                        ) =>
+                          setForm(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+
+                              aiCountry:
+                                country.id,
+
+                              aiCode:
+                                country.code,
+                            })
+                          )
                         }
-                        onNumberChange={(number) =>
-                          setForm({
-                            ...form,
-                            aiNumber: number
-                          })
+                        onNumberChange={(
+                          number
+                        ) =>
+                          setForm(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+
+                              aiNumber:
+                                number,
+                            })
+                          )
                         }
                       />
                     </Field>
-                  </div>
 
-                  <div className="mt-8">
-                    <Field label="Personal automation capabilities">
-                      <div
-                        className="relative"
-                        ref={capabilitiesRef}
-                      >
-                        <button
-                          type="button"
-                          className="premiumInput text-left flex items-center justify-between"
-                          onClick={() => {
-                            setShowCapabilitiesDropdown(
-                              !showCapabilitiesDropdown
-                            );
-
-                            setShowDaysDropdown(false);
-                          }}
-                        >
-                          <span className="truncate">
-                            {displaySelected(
-                              form.capabilities,
-                              "Choose capabilities"
-                            )}
-                          </span>
-
-                          <span className="text-white/40">
-                            ▾
-                          </span>
-                        </button>
-
-                        {showCapabilitiesDropdown && (
-                          <MultiDropdown>
-                            {personalUseOptions.map(
-                              (item) => (
-                                <label
-                                  key={item}
-                                  className="dropdownItem"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={form.capabilities.includes(
-                                      item
-                                    )}
-                                    onChange={() =>
-                                      toggleSelection(
-                                        "capabilities",
-                                        item
-                                      )
-                                    }
-                                  />
-
-                                  <span>
-                                    {item}
-                                  </span>
-                                </label>
-                              )
-                            )}
-                          </MultiDropdown>
-                        )}
+                    <Field
+                      label="Automation"
+                      hint="Automatically configured"
+                    >
+                      <div className="premiumInput flex items-center">
+                        <span className="inline-flex items-center gap-2 text-white/80 text-sm">
+                          <span className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.7)]" />
+                          Auto Reply
+                        </span>
                       </div>
                     </Field>
+                  </div>
+
+                  <div className="mt-8 rounded-2xl border border-indigo-400/10 bg-indigo-500/[0.035] p-5">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 shrink-0 rounded-xl bg-indigo-500/10 border border-indigo-400/20 flex items-center justify-center">
+                        <span className="text-lg">
+                          ✨
+                        </span>
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-semibold text-white">
+                          Personal AI is configured automatically
+                        </p>
+
+                        <p className="text-xs text-white/45 leading-relaxed mt-1">
+                          Sodah automatically enables the
+                          personal automation capabilities needed
+                          for your account. There is no additional
+                          configuration required.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* ---------------------------------------------------------------- */}
-              {/* FOOTER / ACTION BUTTONS                                         */}
-              {/* ---------------------------------------------------------------- */}
+              {/* =============================================================
+                  FOOTER / ACTIONS
+                  ============================================================= */}
 
               <div className="mt-10 pt-7 border-t border-white/10">
                 <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
@@ -1569,9 +2588,9 @@ export default function AutomationPage() {
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                    {/* -------------------------------------------------------- */}
-                    {/* ALREADY HAVE AN ACCOUNT                                  */}
-                    {/* -------------------------------------------------------- */}
+                    {/* =====================================================
+                        ALREADY HAVE ACCOUNT
+                        ===================================================== */}
 
                     <button
                       type="button"
@@ -1594,13 +2613,15 @@ export default function AutomationPage() {
                       )}
                     </button>
 
-                    {/* -------------------------------------------------------- */}
-                    {/* SAVE & CONTINUE                                          */}
-                    {/* -------------------------------------------------------- */}
+                    {/* =====================================================
+                        SAVE & CONTINUE
+                        ===================================================== */}
 
                     <button
                       type="button"
-                      onClick={handleSubmit}
+                      onClick={
+                        handleSubmit
+                      }
                       disabled={
                         loading ||
                         checkingAccount
@@ -1622,21 +2643,30 @@ export default function AutomationPage() {
             </div>
           </div>
 
-          {/* LOGIN EMAIL */}
+          {/* ===============================================================
+              LOGIN EMAIL
+              =============================================================== */}
+
           {userEmail && (
             <div className="text-center mt-5 text-xs text-white/30">
-              Signed in as {userEmail}
+              Signed in as{" "}
+              {userEmail}
             </div>
           )}
         </div>
       </section>
 
-      {/* ERROR / SUCCESS */}
+      {/* =====================================================================
+          ERROR / SUCCESS MESSAGE
+          ===================================================================== */}
+
       {error && (
         <div className="fixed inset-0 z-[999] pointer-events-none flex items-center justify-center px-5">
           <div
             className={`px-6 py-4 rounded-2xl backdrop-blur-xl shadow-2xl border text-sm font-semibold ${
-              error.includes("successfully")
+              error.includes(
+                "successfully"
+              )
                 ? "bg-green-500/10 border-green-400/30 text-green-300"
                 : "bg-red-500/10 border-red-400/30 text-red-300"
             }`}
@@ -1646,35 +2676,84 @@ export default function AutomationPage() {
         </div>
       )}
 
-      {/* STYLES */}
+      {/* =====================================================================
+          STYLES
+          ===================================================================== */}
+
       <style jsx>{`
         .premiumInput {
           width: 100%;
           height: 52px;
           padding: 0 15px;
           border-radius: 14px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          background: rgba(255, 255, 255, 0.045);
+          border: 1px solid
+            rgba(
+              255,
+              255,
+              255,
+              0.1
+            );
+          background: rgba(
+            255,
+            255,
+            255,
+            0.045
+          );
           color: white;
           outline: none;
           font-size: 14px;
-          transition: all 0.2s ease;
+          transition: all 0.2s
+            ease;
         }
 
         .premiumInput::placeholder {
-          color: rgba(255, 255, 255, 0.28);
+          color: rgba(
+            255,
+            255,
+            255,
+            0.28
+          );
         }
 
         .premiumInput:hover {
-          border-color: rgba(255, 255, 255, 0.18);
-          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(
+            255,
+            255,
+            255,
+            0.18
+          );
+
+          background: rgba(
+            255,
+            255,
+            255,
+            0.06
+          );
         }
 
         .premiumInput:focus {
-          border-color: rgba(34, 197, 94, 0.65);
-          background: rgba(255, 255, 255, 0.07);
+          border-color: rgba(
+            34,
+            197,
+            94,
+            0.65
+          );
+
+          background: rgba(
+            255,
+            255,
+            255,
+            0.07
+          );
+
           box-shadow:
-            0 0 0 4px rgba(34, 197, 94, 0.08);
+            0 0 0 4px
+            rgba(
+              34,
+              197,
+              94,
+              0.08
+            );
         }
 
         select.premiumInput option {
@@ -1683,90 +2762,172 @@ export default function AutomationPage() {
         }
 
         .inputError {
-          border-color: rgba(239, 68, 68, 0.9) !important;
+          border-color: rgba(
+            239,
+            68,
+            68,
+            0.9
+          ) !important;
+
+          border-radius: 14px;
+
           box-shadow:
-            0 0 0 4px rgba(239, 68, 68, 0.08);
+            0 0 0 4px
+            rgba(
+              239,
+              68,
+              68,
+              0.08
+            );
         }
 
         .dropdownBox {
           position: absolute;
           left: 0;
           right: 0;
-          top: calc(100% + 8px);
+          top: calc(
+            100% + 8px
+          );
+
           max-height: 260px;
+
           overflow-y: auto;
+
           padding: 8px;
+
           border-radius: 16px;
+
           background: #111827;
-          border: 1px solid rgba(255, 255, 255, 0.12);
+
+          border: 1px solid
+            rgba(
+              255,
+              255,
+              255,
+              0.12
+            );
+
           box-shadow:
-            0 25px 60px rgba(0, 0, 0, 0.5);
+            0 25px 60px
+            rgba(
+              0,
+              0,
+              0,
+              0.5
+            );
+
           z-index: 100;
         }
 
         .dropdownItem {
           display: flex;
+
           align-items: center;
+
           gap: 10px;
+
           padding: 10px 11px;
+
           border-radius: 10px;
-          color: rgba(255, 255, 255, 0.8);
+
+          color: rgba(
+            255,
+            255,
+            255,
+            0.8
+          );
+
           font-size: 13px;
+
           cursor: pointer;
+
           transition:
-            background 0.15s ease;
+            background 0.15s
+            ease;
         }
 
         .dropdownItem:hover {
-          background: rgba(255, 255, 255, 0.07);
+          background: rgba(
+            255,
+            255,
+            255,
+            0.07
+          );
         }
 
         .dropdownItem input {
           width: 15px;
+
           height: 15px;
+
           accent-color: #22c55e;
-        }
-
-        @keyframes shake {
-          0%,
-          100% {
-            transform: translateX(0);
-          }
-
-          20% {
-            transform: translateX(-6px);
-          }
-
-          40% {
-            transform: translateX(6px);
-          }
-
-          60% {
-            transform: translateX(-4px);
-          }
-
-          80% {
-            transform: translateX(4px);
-          }
-        }
-
-        .shake {
-          animation: shake 0.4s ease;
         }
 
         .loader {
           width: 16px;
           height: 16px;
+
           border-radius: 999px;
-          border: 2px solid rgba(255, 255, 255, 0.3);
+
+          border: 2px solid
+            rgba(
+              255,
+              255,
+              255,
+              0.3
+            );
+
           border-top-color: white;
-          animation: spin 0.7s linear infinite;
+
+          animation:
+            spin 0.7s linear
+            infinite;
         }
 
         @keyframes spin {
           to {
-            transform: rotate(360deg);
+            transform: rotate(
+              360deg
+            );
           }
+        }
+
+        @keyframes shake {
+          0%,
+          100% {
+            transform: translateX(
+              0
+            );
+          }
+
+          20% {
+            transform: translateX(
+              -6px
+            );
+          }
+
+          40% {
+            transform: translateX(
+              6px
+            );
+          }
+
+          60% {
+            transform: translateX(
+              -4px
+            );
+          }
+
+          80% {
+            transform: translateX(
+              4px
+            );
+          }
+        }
+
+        .shake {
+          animation:
+            shake 0.4s ease;
         }
 
         @media (max-width: 640px) {
@@ -1779,14 +2940,14 @@ export default function AutomationPage() {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* SECTION TITLE                                                              */
-/* -------------------------------------------------------------------------- */
+/* ==========================================================================
+   SECTION TITLE
+   ========================================================================== */
 
 function SectionTitle({
   number,
   title,
-  subtitle
+  subtitle,
 }) {
   return (
     <div className="mb-5">
@@ -1807,16 +2968,16 @@ function SectionTitle({
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* FIELD                                                                      */
-/* -------------------------------------------------------------------------- */
+/* ==========================================================================
+   FIELD
+   ========================================================================== */
 
 function Field({
   label,
   children,
   required = false,
   hint = "",
-  error = false
+  error = false,
 }) {
   return (
     <div>
@@ -1838,18 +2999,26 @@ function Field({
         )}
       </div>
 
-      <div className={error ? "inputError" : ""}>
+      <div
+        className={
+          error
+            ? "inputError"
+            : ""
+        }
+      >
         {children}
       </div>
     </div>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* MULTI DROPDOWN                                                             */
-/* -------------------------------------------------------------------------- */
+/* ==========================================================================
+   MULTI DROPDOWN
+   ========================================================================== */
 
-function MultiDropdown({ children }) {
+function MultiDropdown({
+  children,
+}) {
   return (
     <div className="dropdownBox">
       {children}
@@ -1857,57 +3026,146 @@ function MultiDropdown({ children }) {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* PHONE INPUT                                                                */
-/* -------------------------------------------------------------------------- */
+/* ==========================================================================
+   PHONE INPUT
+   ========================================================================== */
 
 function PhoneInput({
   countries,
+  valueCountry,
   valueCode,
   valueNumber,
   placeholder,
-  onCodeChange,
+  onCountryChange,
   onNumberChange,
-  invalid = false
+  invalid = false,
 }) {
+  /*
+   * The selected country is identified by its unique ID.
+   *
+   * This is the important Canada / USA fix:
+   *
+   * Canada:
+   *   id = CA
+   *   code = +1
+   *
+   * USA:
+   *   id = US
+   *   code = +1
+   *
+   * Therefore the browser never has to distinguish them by
+   * the duplicated +1 value.
+   */
+
+  const selectedCountry =
+    countries.find(
+      (country) =>
+        country.id ===
+        valueCountry
+    ) ||
+    countries.find(
+      (country) =>
+        country.code ===
+        valueCode
+    ) ||
+    countries.find(
+      (country) =>
+        country.id === "AE"
+    );
+
+  const selectedId =
+    selectedCountry?.id ||
+    "AE";
+
+  const handleCountryChange =
+    (event) => {
+      const id =
+        event.target.value;
+
+      const country =
+        countries.find(
+          (item) =>
+            item.id === id
+        );
+
+      if (!country) {
+        return;
+      }
+
+      onCountryChange(
+        country
+      );
+    };
+
+  const handleNumberChange =
+    (event) => {
+      /*
+       * Only numeric characters are accepted.
+       *
+       * The country code is kept completely separate from
+       * the local number.
+       */
+      const clean =
+        event.target.value.replace(
+          /\D/g,
+          ""
+        );
+
+      onNumberChange(
+        clean
+      );
+    };
+
   return (
     <div className="flex gap-2 w-full">
       <select
-        value={valueCode}
-        onChange={(e) =>
-          onCodeChange(e.target.value)
+        value={selectedId}
+        onChange={
+          handleCountryChange
         }
         className={`w-[125px] sm:w-[150px] h-[52px] px-2 rounded-[14px] bg-white/[0.045] text-white text-xs font-medium outline-none border ${
           invalid
             ? "border-red-500"
             : "border-white/10"
         }`}
+        aria-label="Country code"
       >
-        {countries.map((country, index) => (
-          <option
-            key={`${country.name}-${country.code}-${index}`}
-            value={country.code}
-            className="bg-[#111827] text-white"
-          >
-            {country.flag} {country.code}
-          </option>
-        ))}
+        {countries.map(
+          (country) => (
+            <option
+              key={
+                country.id
+              }
+              value={
+                country.id
+              }
+              className="bg-[#111827] text-white"
+            >
+              {country.flag}{" "}
+              {country.code}{" "}
+              {country.name}
+            </option>
+          )
+        )}
       </select>
 
       <input
         type="tel"
         inputMode="numeric"
-        value={valueNumber}
-        placeholder={placeholder}
+        autoComplete="tel"
+        value={
+          valueNumber || ""
+        }
+        placeholder={
+          placeholder
+        }
         className={`flex-1 h-[52px] px-4 rounded-[14px] bg-white/[0.045] text-white outline-none border transition ${
           invalid
             ? "border-red-500"
             : "border-white/10 focus:border-green-400/60"
         }`}
-        onChange={(e) =>
-          onNumberChange(
-            e.target.value.replace(/\D/g, "")
-          )
+        onChange={
+          handleNumberChange
         }
       />
     </div>
