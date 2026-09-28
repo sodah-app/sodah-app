@@ -112,6 +112,8 @@ module.exports = function createCore(ctx) {
     isoDate,
     jidPhone,
     loadAppointmentDraft,
+    listStaleAppointmentDrafts,
+    listStaleCustomerChats,
     loadBusiness,
     loadBusinessCatalog,
     loadHandoverFile,
@@ -1085,3 +1087,4 @@ const server = app.listen(PORT, HOST, () => {
     server,
   };
 };
+
