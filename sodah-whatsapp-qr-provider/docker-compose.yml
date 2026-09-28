@@ -1,0 +1,10 @@
+services:
+  sodah-whatsapp-qr-provider:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "10000:10000"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data

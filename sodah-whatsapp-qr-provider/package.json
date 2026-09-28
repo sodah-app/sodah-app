@@ -1,0 +1,24 @@
+{
+  "name": "sodah-whatsapp-qr-provider",
+  "version": "4.0.2",
+  "private": true,
+  "description": "Sodah WhatsApp QR provider with business-aware AI, persistent memory, human takeover, appointment availability, booking, reminders and follow-ups.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "check": "node --check src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.18",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "pg": "^8.23.0",
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4"
+  }
+}
