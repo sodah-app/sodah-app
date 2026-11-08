@@ -111,6 +111,7 @@ function GeneralSheetPanel({ onClose, autoSaveEnabled = true }) {
   const [resize, setResize] = useState(null);
   const [palettePosition, setPalettePosition] = useState({ top: 180, left: 700 });
   const gridRef = useRef(null);
+  const cloudReadyRef = useRef(false);
   const autoSaveEnabledRef = useRef(autoSaveEnabled);
   autoSaveEnabledRef.current = autoSaveEnabled;
 
@@ -146,14 +147,60 @@ function GeneralSheetPanel({ onClose, autoSaveEnabled = true }) {
     }
   }, []);
 
+  // Load the server copy after local recovery. The server copy is authoritative
+  // across browsers and deployments; localStorage remains an offline fallback.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch("/api/timesheet-workspace", { cache: "no-store" });
+        if (!response.ok) return;
+        const result = await response.json();
+        const cloud = result?.workspace || {};
+        if (cancelled) return;
+        if (Array.isArray(cloud.generalSheets) && cloud.generalSheets.length) {
+          const list = cloud.generalSheets.slice(0, MAX_SHEETS).map((item, i) => normalizeSheet(item, i + 1));
+          setSheets(list);
+          setActiveId(prev => list.some(item => item.id === prev) ? prev : list[0].id);
+          safeGeneralStorageWrite(STORAGE_KEY, JSON.stringify(list));
+        }
+        if (Array.isArray(cloud.generalTrash)) {
+          setTrash(cloud.generalTrash);
+          safeGeneralStorageWrite("sodah-general-sheet-trash-v1", JSON.stringify(cloud.generalTrash));
+        }
+      } catch (error) { console.warn("Timesheet cloud restore unavailable; keeping local copy", error); }
+      finally {
+        if (!cancelled) {
+          cloudReadyRef.current = true;
+          // If no cloud copy exists yet, upload the recovered local workbook on the next autosave.
+          setSheets(current => [...current]);
+          setTrash(current => [...current]);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     if (!autoSaveEnabledRef.current || !sheets.length) return;
     safeGeneralStorageWrite(STORAGE_KEY, JSON.stringify(sheets));
+    if (!cloudReadyRef.current) return;
+    const timer = window.setTimeout(() => {
+      fetch("/api/timesheet-workspace", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ generalSheets: sheets }) })
+        .catch(error => console.warn("General Sheet cloud save failed", error));
+    }, 650);
+    return () => window.clearTimeout(timer);
   }, [sheets]);
 
   useEffect(() => {
     if (!autoSaveEnabledRef.current) return;
     safeGeneralStorageWrite("sodah-general-sheet-trash-v1", JSON.stringify(trash));
+    if (!cloudReadyRef.current) return;
+    const timer = window.setTimeout(() => {
+      fetch("/api/timesheet-workspace", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ generalTrash: trash }) })
+        .catch(error => console.warn("General Sheet trash cloud save failed", error));
+    }, 650);
+    return () => window.clearTimeout(timer);
   }, [trash]);
 
   useEffect(() => {
@@ -176,6 +223,8 @@ function GeneralSheetPanel({ onClose, autoSaveEnabled = true }) {
       else if (command === "saveNow") {
         safeGeneralStorageWrite(STORAGE_KEY, JSON.stringify(sheets));
         safeGeneralStorageWrite("sodah-general-sheet-trash-v1", JSON.stringify(trash));
+        fetch("/api/timesheet-workspace", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ generalSheets: sheets, generalTrash: trash }) })
+          .catch(error => console.warn("General Sheet cloud save failed", error));
       }
     };
     const refresh = () => {
@@ -259,8 +308,13 @@ function GeneralSheetPanel({ onClose, autoSaveEnabled = true }) {
     if (selectedCell) { setFontSizeValue(Number(selectedCell.fontSize) || 12); setFontFamilyValue(selectedCell.fontFamily || "Arial"); }
   };
 
-  const startRangeSelection = (row, col) => {
+  const startRangeSelection = (row, col, extend = false) => {
     const next = clampCell(row, col);
+    if (extend) {
+      setSelectionEnd(next);
+      setDragSelecting(false);
+      return;
+    }
     setSelected(next);
     setSelectionEnd(next);
     setDragSelecting(true);
@@ -750,8 +804,8 @@ function GeneralSheetPanel({ onClose, autoSaveEnabled = true }) {
                 {ri + 1}
                 <span className="ts-row-resizer" onMouseDown={e => startRowResize(e, ri)} onDoubleClick={() => autoFitRow(ri)} title="Drag to resize • Double-click to AutoFit" />
               </th>
-              {row.map((cell, ci) => <td key={ci} className={isInSelection(ri, ci) ? "selected" : ""} style={{ "--gs-cell-color": cell.color || "transparent", backgroundColor: cell.color || "transparent", height: `${sheet?.rowHeights?.[ri] || DEFAULT_ROW_HEIGHT}px`, padding: 0 }} onMouseDown={() => startRangeSelection(ri, ci)} onMouseEnter={() => extendRangeSelection(ri, ci)} onContextMenu={e => { e.preventDefault(); setSelection(ri, ci); const rect=e.currentTarget.getBoundingClientRect(); setPalettePosition({ top: Math.max(12, Math.min(rect.bottom + 6, window.innerHeight - 190)), left: Math.max(12, Math.min(rect.left, window.innerWidth - 230)) }); setColorOpen(true); setTextColorOpen(false); }} onDoubleClick={e => { const rect=e.currentTarget.getBoundingClientRect(); setPalettePosition({ top: Math.max(12, Math.min(rect.bottom + 6, window.innerHeight - 190)), left: Math.max(12, Math.min(rect.left, window.innerWidth - 230)) }); setColorOpen(true); setTextColorOpen(false); }}>
-                <input value={cell.value} style={{ "--gs-text-color": cell.textColor || "#202a33", "--gs-font-size": `${Number(cell.fontSize) || 12}px`, "--gs-font-family": cell.fontFamily || "Inter, Arial, sans-serif", "--gs-font-weight": Number(cell.fontWeight) || 400, "--gs-font-style": cell.fontStyle || "normal", "--gs-text-decoration": cell.textDecoration || "none", color: cell.textColor || "#202a33", fontSize: `${Number(cell.fontSize) || 12}px`, fontFamily: cell.fontFamily || "Inter, Arial, sans-serif", fontWeight: Number(cell.fontWeight) || 400, fontStyle: cell.fontStyle || "normal", textDecoration: cell.textDecoration || "none", textAlign: cell.textAlign || "left", backgroundColor: "transparent", width: "100%", height: "100%", boxSizing: "border-box", border: 0, outline: "none", padding: "2px 4px", display: "block" }} onChange={e => updateCell(ri, ci, e.target.value)} onFocus={() => { setSelection(ri, ci); setFontSizeValue(Number(cell.fontSize) || 12); setFontFamilyValue(cell.fontFamily || "Arial"); }} onKeyDown={e => handleKeyDown(e, ri, ci)} />
+              {row.map((cell, ci) => <td key={ci} className={isInSelection(ri, ci) ? "selected" : ""} style={{ "--gs-cell-color": cell.color || "transparent", backgroundColor: cell.color || "transparent", height: `${sheet?.rowHeights?.[ri] || DEFAULT_ROW_HEIGHT}px`, padding: 0 }} onMouseDown={e => startRangeSelection(ri, ci, e.shiftKey)} onMouseEnter={() => extendRangeSelection(ri, ci)} onContextMenu={e => { e.preventDefault(); setSelection(ri, ci); const rect=e.currentTarget.getBoundingClientRect(); setPalettePosition({ top: Math.max(12, Math.min(rect.bottom + 6, window.innerHeight - 190)), left: Math.max(12, Math.min(rect.left, window.innerWidth - 230)) }); setColorOpen(true); setTextColorOpen(false); }} onDoubleClick={e => { const rect=e.currentTarget.getBoundingClientRect(); setPalettePosition({ top: Math.max(12, Math.min(rect.bottom + 6, window.innerHeight - 190)), left: Math.max(12, Math.min(rect.left, window.innerWidth - 230)) }); setColorOpen(true); setTextColorOpen(false); }}>
+                <input value={cell.value} style={{ "--gs-text-color": cell.textColor || "#202a33", "--gs-font-size": `${Number(cell.fontSize) || 12}px`, "--gs-font-family": cell.fontFamily || "Inter, Arial, sans-serif", "--gs-font-weight": Number(cell.fontWeight) || 400, "--gs-font-style": cell.fontStyle || "normal", "--gs-text-decoration": cell.textDecoration || "none", color: cell.textColor || "#202a33", fontSize: `${Number(cell.fontSize) || 12}px`, fontFamily: cell.fontFamily || "Inter, Arial, sans-serif", fontWeight: Number(cell.fontWeight) || 400, fontStyle: cell.fontStyle || "normal", textDecoration: cell.textDecoration || "none", textAlign: cell.textAlign || "left", backgroundColor: "transparent", width: "100%", height: "100%", boxSizing: "border-box", border: 0, outline: "none", padding: "2px 4px", display: "block" }} onChange={e => updateCell(ri, ci, e.target.value)} onFocus={() => { setFontSizeValue(Number(cell.fontSize) || 12); setFontFamilyValue(cell.fontFamily || "Arial"); }} onKeyDown={e => handleKeyDown(e, ri, ci)} />
               </td>)}
             </tr>)}
           </tbody>

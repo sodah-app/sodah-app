@@ -20,14 +20,6 @@ function FaceAttendancePanel({ employees, onAttendanceAction, onClose, kioskLock
   const [pinError, setPinError] = useState("");
   const [kioskPinHash, setKioskPinHash] = useState("");
   useEffect(() => { try { setKioskPinHash(localStorage.getItem("sodah-face-kiosk-pin-hash") || ""); } catch {} }, []);
-  useEffect(() => {
-    if (!pinDialog) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKeyDown = (event) => { if (event.key === "Escape") setPinDialog(false); };
-    window.addEventListener("keydown", onKeyDown);
-    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener("keydown", onKeyDown); };
-  }, [pinDialog]);
   const hashPin = async (value) => {
     const bytes = new TextEncoder().encode(value);
     const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -187,7 +179,7 @@ function FaceAttendancePanel({ employees, onAttendanceAction, onClose, kioskLock
         <div className="ts-kiosk-rules"><strong>Attendance protection</strong><span>• Duplicate check-ins are blocked.</span><span>• Check-out follows the current minimum / automatic duty rules.</span><span>• All attendance changes use the existing employee timesheet records.</span></div>
       </aside>
     </div>
-    {pinDialog && <div className="ts-face-pin-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) setPinDialog(false); }}><form className="ts-face-pin-dialog" onSubmit={submitPinDialog} role="dialog" aria-modal="true" aria-labelledby="ts-face-pin-title"><div className="ts-face-pin-icon"><ShieldCheck size={22}/></div><h3 id="ts-face-pin-title">{pinMode === "lock" ? "Lock attendance kiosk" : "Unlock attendance kiosk"}</h3><p>{pinMode === "lock" ? "Enter a 4–12 digit PIN to lock the attendance kiosk. No email or account details are required." : "Enter the PIN to unlock the attendance kiosk. No email or account details are required."}</p><label><span>{pinMode === "lock" ? "Create PIN" : "Administrator PIN"}</span><input autoFocus inputMode="numeric" type="password" maxLength={12} value={pinValue} onChange={e => setPinValue(e.target.value.replace(/\D/g, "").slice(0,12))} placeholder="4–12 digits" /></label>{pinError && <div className="ts-face-pin-error" role="alert">{pinError}</div>}<div className="ts-face-pin-actions"><button type="button" className="secondary" onClick={() => setPinDialog(false)}>Cancel</button><button type="submit" className="primary">{pinMode === "lock" ? "Confirm & Lock" : "Unlock kiosk"}</button></div></form></div>}
+    {pinDialog && <div className="ts-face-pin-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) setPinDialog(false); }}><form className="ts-face-pin-dialog" onSubmit={submitPinDialog} role="dialog" aria-modal="true" aria-labelledby="ts-face-pin-title"><div className="ts-face-pin-icon"><ShieldCheck size={22}/></div><h3 id="ts-face-pin-title">{pinMode === "lock" ? "Lock attendance kiosk" : "Unlock attendance kiosk"}</h3><p>{pinMode === "lock" ? "Create a private PIN. Employees will only be able to use face scanning and attendance actions while the kiosk is locked." : "Enter the administrator PIN to restore the full Sodah worksheet controls."}</p><label><span>{pinMode === "lock" ? "Create PIN" : "Administrator PIN"}</span><input autoFocus inputMode="numeric" type="password" maxLength={12} value={pinValue} onChange={e => setPinValue(e.target.value.replace(/\D/g, "").slice(0,12))} placeholder="4–12 digits" /></label>{pinError && <div className="ts-face-pin-error" role="alert">{pinError}</div>}<div className="ts-face-pin-actions"><button type="button" className="secondary" onClick={() => setPinDialog(false)}>Cancel</button><button type="submit" className="primary">{pinMode === "lock" ? "Confirm & Lock" : "Unlock kiosk"}</button></div></form></div>}
   </section>;
 }
 

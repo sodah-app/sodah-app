@@ -2713,34 +2713,3 @@
 .ts-face-lock-controls{display:flex;align-items:center;justify-content:flex-end}
 .ts-app.ts-dark .ts-autosave-control,.ts-app.ts-dark .ts-kiosk-lock-control{background:var(--palette-surface-2,#17283a);border-color:var(--palette-border,#475569);color:#fff}
 @media(max-width:700px){.ts-autosave-control,.ts-kiosk-lock-control{height:35px;padding-left:8px;gap:7px}.ts-autosave-switch{width:54px;height:26px}.ts-autosave-switch i{width:20px;height:20px}.ts-kiosk-lock-switch{height:26px;min-width:70px}}
-
-/* Face Recognition PIN dialog: true fixed overlay, centered above the kiosk.
-   It does not add content to the page flow or shift the attendance layout. */
-.ts-face-pin-backdrop{
-  position:fixed!important;inset:0!important;z-index:1000000!important;
-  display:flex!important;align-items:center!important;justify-content:center!important;
-  padding:20px!important;background:rgba(10,18,32,.58)!important;
-  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
-}
-.ts-face-pin-dialog{
-  position:relative!important;display:flex!important;flex-direction:column!important;
-  gap:14px!important;width:min(420px,calc(100vw - 32px))!important;
-  max-height:calc(100dvh - 40px)!important;overflow-y:auto!important;
-  margin:0!important;padding:26px!important;border:1px solid #dbe4ef!important;
-  border-radius:18px!important;background:#fff!important;color:#17243a!important;
-  box-shadow:0 24px 80px rgba(0,0,0,.32)!important;
-}
-.ts-face-pin-icon{width:44px;height:44px;display:grid;place-items:center;border-radius:13px;background:#e8f5ff;color:#0875bd}
-.ts-face-pin-dialog h3{margin:0!important;font-size:20px!important;line-height:1.25!important;font-weight:800!important;color:#17243a!important}
-.ts-face-pin-dialog p{margin:0!important;color:#64748b!important;font-size:13px!important;line-height:1.55!important}
-.ts-face-pin-dialog label{display:flex!important;flex-direction:column!important;gap:7px!important;margin:0!important;color:#334155!important;font-size:12px!important;font-weight:750!important}
-.ts-face-pin-dialog input{width:100%!important;height:46px!important;box-sizing:border-box!important;padding:0 13px!important;border:1px solid #cbd5e1!important;border-radius:9px!important;background:#fff!important;color:#111827!important;font-size:18px!important;letter-spacing:.22em!important;outline:none!important}
-.ts-face-pin-dialog input:focus{border-color:#0ea5e9!important;box-shadow:0 0 0 3px rgba(14,165,233,.15)!important}
-.ts-face-pin-error{padding:9px 11px!important;border-radius:8px!important;background:#fff1f2!important;color:#be123c!important;font-size:12px!important;font-weight:650!important}
-.ts-face-pin-actions{display:flex!important;justify-content:flex-end!important;gap:9px!important;margin-top:2px!important}
-.ts-face-pin-actions button{min-height:40px!important;padding:0 16px!important;border-radius:9px!important;font-size:12px!important;font-weight:750!important;cursor:pointer!important}
-.ts-face-pin-actions button.secondary{border:1px solid #cbd5e1!important;background:#fff!important;color:#334155!important}
-.ts-face-pin-actions button.primary{border:1px solid #059669!important;background:#059669!important;color:#fff!important}
-.ts-face-pin-actions button:focus-visible{outline:3px solid rgba(14,165,233,.3)!important;outline-offset:2px!important}
-.ts-face-pin-backdrop[hidden]{display:none!important}
-@media(max-width:520px){.ts-face-pin-backdrop{padding:12px!important}.ts-face-pin-dialog{padding:20px!important;border-radius:14px!important}}

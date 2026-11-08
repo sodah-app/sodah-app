@@ -1,14 +1,10 @@
-Sodah Face Recognition PIN Dialog and Stable Layout Update
+Sodah Timesheet UI update
 
-Included:
-- FaceRecognitionPanel.jsx
-- timesheet.css
+Files:
+- TimeSheetMain.jsx: Auto Save control restyled to match the supplied compact pill/switch reference and remains visible while the kiosk is locked.
+- FaceRecognitionPanel.jsx: Kiosk lock control restyled to match the Auto Save control family. It displays only “Lock” while unlocked and only “Unlock” while locked; selecting it opens the existing PIN dialog.
+- timesheet.css: styles for the matching controls, responsive sizing and dark theme.
 
-Changes:
-- Lock/Unlock opens a centered, fixed-position PIN popup overlay.
-- The popup asks only for a 4-12 digit numeric PIN. No email, Gmail, or account field is shown or requested.
-- Clicking the backdrop or pressing Escape closes the popup without changing the lock state.
-- The popup locks background page scrolling while open and does not occupy page layout space, preventing the kiosk page from shifting.
-- The reference images are not included in the application bundle; no extra image is rendered by this update.
+Replace the corresponding files in the project. Keep the FaceRecognitionPanel import/path consistent with the existing project.
 
-Replace the matching files in your project. The PIN remains browser-local in this implementation; this is not server-side authentication or a secure multi-device lock.
+Note: the PIN/kiosk lock remains client-side only and is not a substitute for server-side authorization. No production build or deployment test was run in this environment.

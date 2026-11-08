@@ -1,16 +1,17 @@
 "use client";
 import "./timesheet.css";
-import { GeneralSheetPanel } from "./GeneralSheet";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BarChart3, CalendarDays, FileText, Settings2, Search, CheckCircle2,
   Clock3, Users, TimerReset, DollarSign, Plus, Minus, Upload, Download,
-  Printer, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Save,
+  Printer, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Camera, ShieldCheck, ScanFace,
   CircleDollarSign, Sparkles, Share2, MessageCircle, Mail, SlidersHorizontal, Package, RotateCcw, Copy, Clipboard, Trash2, Rows3, Columns3, Bold, Italic, Type, Palette, Paintbrush, Undo2, ChevronsUpDown
 } from "lucide-react";
 import { Building2, FilePlus2, Maximize2, Minimize2, MoreHorizontal, WalletCards, Minus as MinusIcon } from "lucide-react";
 import { hrs, money, todayISO } from "@/lib/time";
+import FaceAttendancePanel from "./FaceRecognitionPanel";
+import { GeneralSheetPanel } from "./GeneralSheet";
 
 const WEEK = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const MAX_SHEETS = 20;
@@ -93,19 +94,16 @@ export function minutesSince(a, b) {
 }
 
 export function workedFor(row, settings) {
-  if (!["Present", "Working", "Waiting", "Pending"].includes(row.status)) return 0;
-  if (row.status === "Waiting") return 0;
+  if (row.status !== "Present") return 0;
   if (settings.mode === "manual") return Number(row.hours || 0);
   return hrs(row.checkIn, row.checkOut);
 }
 
 export function actualWorkedFor(row) {
-  if (!["Present", "Working", "Waiting", "Pending"].includes(row.status)) return 0;
+  if (row.status !== "Present") return 0;
   const accumulated = Number(row.workedHours || 0);
-  if (row.status === "Waiting") return accumulated;
   if (!row.checkIn) return accumulated;
-  if (row.checkOut) return accumulated;
-  return accumulated + hrs(row.earningStartAt || row.checkIn, localTime());
+  return accumulated + hrs(row.checkIn, row.checkOut || localTime());
 }
 
 export function earningFor(row, settings) {
@@ -154,7 +152,7 @@ export function monthEndISO(iso) {
 }
 
 export function hourShortFor(row, settings) {
-  if (row.status !== "Present" && row.status !== "Working") return 0;
+  if (row.status !== "Present") return 0;
   if (settings.mode !== "automatic") return 0;
   return Math.max(0, Number(row.hours || 0) - workedFor(row, settings));
 }
@@ -199,8 +197,6 @@ const DEFAULT_SETTINGS = {
   minimumCheckoutMinutes: 30,
   mode: "manual",
   autoRule: "hour-to-hour",
-  lateCheckInTime: "08:15",
-  latePendingMinutes: 30,
   workStart: "08:00",
   workEnd: "16:00",
   offDayEarning: 0,
@@ -342,41 +338,27 @@ function EquipmentPanel({rows,sheets,equipmentSheets,activeEquipmentSheetId,onSe
 return { EquipmentPanel };
 })();
 
-const safeLocalStorageWrite = (key, value) => {
-  try {
-    if (typeof window !== "undefined" && window.localStorage) {
-      window.localStorage.setItem(key, value);
-      return true;
-    }
-  } catch (error) {
-    console.warn(`Unable to save ${key} locally`, error);
-  }
-  return false;
-};
+
+
+
 
 export default function TimeSheetMain() {
   // General Sheet now provides range selection, cell formatting and a persistent trash bin.
 
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  // Preserve the last payroll settings target while the Settings panel is closed.
-  const [paySettingsSelection, setPaySettingsSelection] = useState({ scope: "all", selectedSheetId: "" });
-  const [workSettingsSelection, setWorkSettingsSelection] = useState({ scope: "all", selectedSheetId: "" });
   const [sheets, setSheets] = useState([]);
   const [activeId, setActiveId] = useState("");
   const [openPanel, setOpenPanel] = useState("general");
   const [sheetMenuOpen, setSheetMenuOpen] = useState(false);
   const [sodaToolsOpen, setSodaToolsOpen] = useState(false);
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState(() => {
-    try {
-      return localStorage.getItem("sodah-timesheet-autosave") !== "false";
-    } catch { return true; }
-  });
+  const [faceKioskLocked, setFaceKioskLocked] = useState(() => { try { return localStorage.getItem("sodah-face-kiosk-locked") === "1"; } catch { return false; } });
+  useEffect(() => { try { localStorage.setItem("sodah-face-kiosk-locked", faceKioskLocked ? "1" : "0"); } catch {} }, [faceKioskLocked]);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const sodaToolsRef = useRef(null);
   const [sheetTabMenu, setSheetTabMenu] = useState(null);
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState(null);
   const [celebrate, setCelebrate] = useState(null);
-  const [lateCheckoutPrompt, setLateCheckoutPrompt] = useState(null);
   const [clock, setClock] = useState(null);
   const [clockReady, setClockReady] = useState(false);
   const [selectedDate, setSelectedDate] = useState(todayISO());
@@ -387,17 +369,19 @@ export default function TimeSheetMain() {
   const [reportEmployee, setReportEmployee] = useState("all");
   const [reportMore, setReportMore] = useState(false);
   const [reportText, setReportText] = useState("");
+  useEffect(() => {
+    const closeMenu = (event) => { if (sodaToolsRef.current && !sodaToolsRef.current.contains(event.target)) setSodaToolsOpen(false); };
+    const closeOnEscape = (event) => { if (event.key === "Escape") setSodaToolsOpen(false); };
+    document.addEventListener("pointerdown", closeMenu, true);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => { document.removeEventListener("pointerdown", closeMenu, true); document.removeEventListener("keydown", closeOnEscape); };
+  }, []);
   const [calendarCursor, setCalendarCursor] = useState(new Date());
   const [attendanceTrash, setAttendanceTrash] = useState([]);
   const [binOpen, setBinOpen] = useState(false);
   const [attendanceSelection, setAttendanceSelection] = useState({ start: { row: 0, col: 0 }, end: { row: 0, col: 0 } });
   const [attendanceDragging, setAttendanceDragging] = useState(false);
   const [attendanceClipboard, setAttendanceClipboard] = useState(null);
-  // Employee-sheet history is local to this workspace. These state stores are
-  // required by updateSheet/updateCell so editing and structural changes commit
-  // without throwing a runtime ReferenceError.
-  const [undoStack, setUndoStack] = useState([]);
-  const [redoStack, setRedoStack] = useState([]);
   const [toolbarFontSize, setToolbarFontSize] = useState(12);
   const [toolbarFont, setToolbarFont] = useState("Inter, Arial, sans-serif");
   const [toolbarTextColor, setToolbarTextColor] = useState("");
@@ -405,29 +389,6 @@ export default function TimeSheetMain() {
   const [freezeHeader, setFreezeHeader] = useState(true);
   const [pageScrolled, setPageScrolled] = useState(false);
   const importRef = useRef(null);
-  const autoSaveEnabledRef = useRef(autoSaveEnabled);
-  autoSaveEnabledRef.current = autoSaveEnabled;
-
-  useEffect(() => {
-    const closeSodaMenu = event => {
-      if (sodaToolsRef.current && !sodaToolsRef.current.contains(event.target)) {
-        setSodaToolsOpen(false);
-      }
-    };
-    const closeOnEscape = event => {
-      if (event.key === "Escape") setSodaToolsOpen(false);
-    };
-    document.addEventListener("pointerdown", closeSodaMenu);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeSodaMenu);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, []);
-
-  useEffect(() => {
-    safeLocalStorageWrite("sodah-timesheet-autosave", String(autoSaveEnabled));
-  }, [autoSaveEnabled]);
 
   useEffect(() => {
     const onScroll = () => setPageScrolled(window.scrollY > 34);
@@ -503,26 +464,23 @@ export default function TimeSheetMain() {
   }, []);
 
   useEffect(() => {
-    if (!autoSaveEnabledRef.current || !sheets.length) return;
-    safeLocalStorageWrite("sodah-timesheet-sheets", JSON.stringify(sheets));
+    if (sheets.length) localStorage.setItem("sodah-timesheet-sheets", JSON.stringify(sheets));
   }, [sheets]);
 
   useEffect(() => {
-    if (!autoSaveEnabledRef.current) return;
-    safeLocalStorageWrite("sodah-timesheet-sheet-trash-v1", JSON.stringify(attendanceTrash));
+    localStorage.setItem("sodah-timesheet-sheet-trash-v1", JSON.stringify(attendanceTrash));
   }, [attendanceTrash]);
 
   const activeEquipmentSheet = equipmentSheets.find(s => s.id === activeEquipmentSheetId) || equipmentSheets[0];
   const equipmentRows = activeEquipmentSheet?.rows || [];
 
   useEffect(() => {
-    if (!autoSaveEnabledRef.current) return;
-    safeLocalStorageWrite("sodah-timesheet-equipment-sheets", JSON.stringify(equipmentSheets));
-    safeLocalStorageWrite("sodah-timesheet-equipment", JSON.stringify(equipmentRows));
+    localStorage.setItem("sodah-timesheet-equipment-sheets", JSON.stringify(equipmentSheets));
+    localStorage.setItem("sodah-timesheet-equipment", JSON.stringify(equipmentRows));
   }, [equipmentSheets, equipmentRows]);
 
   useEffect(() => {
-    if (autoSaveEnabledRef.current) safeLocalStorageWrite("sodah-timesheet-settings", JSON.stringify(settings));
+    localStorage.setItem("sodah-timesheet-settings", JSON.stringify(settings));
     document.documentElement.style.setProperty("--ts-accent", settings.accent);
     document.documentElement.style.setProperty("--ts-accent-2", settings.accent2);
   }, [settings]);
@@ -537,64 +495,23 @@ export default function TimeSheetMain() {
     };
   }, [settings.theme]);
 
-  // Working hours are stored per sheet; do not propagate one sheet's duty
-  // hours across every sheet when its settings change.
+  useEffect(() => {
+    if (settings.mode !== "automatic") return;
+    const nextEnd = shiftEndFromStart(settings.workStart, settings.defaultHours);
+    if (settings.workEnd !== nextEnd) {
+      setSettings(s => ({ ...s, workEnd: nextEnd }));
+    }
+    setSheets(prev => prev.map(s => ({
+      ...s,
+      rows: s.rows.map(r => ({ ...r, hours: Number(settings.defaultHours || r.hours || 8) }))
+    })));
+  }, [settings.mode, settings.defaultHours, settings.workStart]);
 
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 2800);
     return () => clearTimeout(t);
   }, [toast]);
-
-  // Automatic attendance clock: each sheet uses its own saved working-hour rules.
-  useEffect(() => {
-    if (!clockReady) return;
-    const now = localTime();
-    let nextPrompt = null;
-    setSheets(previous => previous.map(sh => {
-      const work = { ...settings, ...(sh.workSettings || {}) };
-      if (work.mode !== "automatic" || work.autoRule !== "hour-to-hour") return sh;
-      const start = work.workStart || "08:00";
-      const end = work.workEnd || shiftEndFromStart(start, work.defaultHours || 8);
-      const lateCutoff = work.lateCheckInTime || start;
-      const grace = Math.max(1, Number(work.latePendingMinutes || 30));
-      let changed = false;
-      const rows = sh.rows.map(row => {
-        if (!row.checkIn || row.checkOut || row.date !== todayISO()) return row;
-        const late = String(row.checkIn) > lateCutoff;
-        const effectiveStart = row.earningStartAt || (String(row.checkIn) < start
-          ? (late ? row.checkIn : start)
-          : (late ? row.checkIn : start));
-        let next = row;
-        if (row.status === "Waiting" && now >= start) {
-          next = { ...next, status: "Working", earningStartAt: effectiveStart };
-          changed = true;
-        }
-        if (row.pendingCheckoutAt && now >= row.pendingCheckoutAt) {
-          const worked = Number(next.workedHours || 0) + hrs(next.earningStartAt || next.checkIn, row.pendingCheckoutAt);
-          next = { ...next, checkOut: row.pendingCheckoutAt, workedHours: worked, status: "Present", pendingCheckoutAt: "" };
-          changed = true;
-          return next;
-        }
-        if (work.autoCheckout && now >= end && !row.pendingCheckoutAt) {
-          if (late) {
-            if (next.status !== "Pending") {
-              next = { ...next, status: "Pending", pendingAt: end };
-              changed = true;
-              if (!lateCheckoutPrompt && !nextPrompt) nextPrompt = { sheetId: sh.id, rowId: row.id, name: row.name || row.employeeId, pendingMinutes: grace, workEnd: end };
-            }
-          } else {
-            const worked = Number(next.workedHours || 0) + hrs(next.earningStartAt || next.checkIn, end);
-            next = { ...next, checkOut: end, workedHours: worked, status: "Present", pendingAt: "" };
-            changed = true;
-          }
-        }
-        return next;
-      });
-      return changed ? { ...sh, rows } : sh;
-    }));
-    if (nextPrompt) setLateCheckoutPrompt(current => current || nextPrompt);
-  }, [clock, clockReady, settings, lateCheckoutPrompt]);
 
   useEffect(() => {
     if (!celebrate) return;
@@ -603,61 +520,10 @@ export default function TimeSheetMain() {
   }, [celebrate]);
 
   const sheet = sheets.find(s => s.id === activeId) || sheets[0];
-  const activeSettings = { ...settings, ...(sheet?.workSettings || {}), ...(sheet?.paySettings || {}) };
-  const applySheetPaySetting = (scope, ids, values) => {
-    const nextSheets = sheets.map(item => {
-      if (scope === "all" || ids.includes(item.id)) {
-        return { ...item, paySettings: { ...(item.paySettings || {}), ...values } };
-      }
-      return item;
-    });
-    setSheets(nextSheets);
-    // A deliberate Save Pay Settings action always commits, even if Auto Save is off.
-    localStorage.setItem("sodah-timesheet-sheets", JSON.stringify(nextSheets));
-    return true;
-  };
-  const applySheetWorkSetting = (scope, ids, values) => {
-    const nextSettings = scope === "all" ? { ...settings, ...values } : settings;
-    const nextSheets = sheets.map(item => {
-      if (scope === "all" || ids.includes(item.id)) {
-        return {
-          ...item,
-          workSettings: { ...(item.workSettings || {}), ...values },
-          ...(values.mode === "automatic"
-            ? { rows: item.rows.map(row => ({ ...row, hours: Number(values.defaultHours || row.hours || 8) })) }
-            : {})
-        };
-      }
-      return item;
-    });
-    if (scope === "all") setSettings(nextSettings);
-    setSheets(nextSheets);
-    safeLocalStorageWrite("sodah-timesheet-sheets", JSON.stringify(nextSheets));
-    if (scope === "all") safeLocalStorageWrite("sodah-timesheet-settings", JSON.stringify(nextSettings));
-    return true;
-  };
 
   const updateSheet = (fn) => {
     if (!sheet) return;
-    setUndoStack(prev => [...prev.slice(-49), JSON.parse(JSON.stringify(sheets))]);
-    setRedoStack([]);
     setSheets(prev => prev.map(s => s.id === sheet.id ? fn(s) : s));
-  };
-  const undoSheet = () => {
-    if (!undoStack.length) return;
-    setRedoStack(prev => [...prev, JSON.parse(JSON.stringify(sheets))]);
-    const previous = undoStack[undoStack.length - 1];
-    setUndoStack(prev => prev.slice(0, -1));
-    setSheets(previous);
-    setActiveId(previous.some(x => x.id === activeId) ? activeId : previous[0]?.id || "");
-  };
-  const redoSheet = () => {
-    if (!redoStack.length) return;
-    setUndoStack(prev => [...prev, JSON.parse(JSON.stringify(sheets))]);
-    const next = redoStack[redoStack.length - 1];
-    setRedoStack(prev => prev.slice(0, -1));
-    setSheets(next);
-    setActiveId(next.some(x => x.id === activeId) ? activeId : next[0]?.id || "");
   };
 
   const employees = useMemo(() => {
@@ -683,22 +549,14 @@ export default function TimeSheetMain() {
   const totals = useMemo(() => {
     const rows = sheets.flatMap(s => s.rows);
     const namedRows = rows.filter(r => r.name || r.employeeId);
-    const earning = sheets.reduce((sum, item) => {
-      const rules = { ...settings, ...(item.paySettings || {}) };
-      return sum + item.rows.reduce((subtotal, row) => subtotal + earningFor(row, rules), 0);
-    }, 0);
-    const expectedEarning = sheets.reduce((sum, item) => {
-      const rules = { ...settings, ...(item.paySettings || {}) };
-      return sum + item.rows.filter(r => r.name || r.employeeId).reduce((subtotal, row) => subtotal + expectedEarningFor(row, rules), 0);
-    }, 0);
     return {
       employees: new Set(rows.map(r => r.employeeId || r.name).filter(Boolean)).size,
       worked: rows.reduce((a,r) => a + actualWorkedFor(r), 0),
-      scheduled: namedRows.filter(r => r.status !== "Absent").reduce((a,r) => a + Number(r.hours || activeSettings.defaultHours || 0), 0),
+      scheduled: namedRows.filter(r => r.status !== "Absent").reduce((a,r) => a + Number(r.hours || settings.defaultHours || 0), 0),
       ot: rows.reduce((a,r) => a + Number(r.ot || 0), 0),
       absents: rows.filter(r => r.status === "Absent").length,
-      earning,
-      expectedEarning
+      earning: rows.reduce((a,r) => a + earningFor(r, settings), 0),
+      expectedEarning: namedRows.reduce((a,r) => a + expectedEarningFor(r, settings), 0)
     };
   }, [sheets, settings]);
 
@@ -828,10 +686,11 @@ export default function TimeSheetMain() {
     notify("Names imported", `${imported.length} employee(s) added from ${source.name}.`);
   };
 
-  const checkAction = (row) => {
+  const checkAction = (row, targetSheetId = activeId) => {
+    const updateTargetSheet = (fn) => setSheets(prev => prev.map(item => item.id === targetSheetId ? fn(item) : item));
     if (!row.name && !row.employeeId) {
       notify("Employee required", "Enter the employee name or employee ID before checking in.", "error");
-      return;
+      return false;
     }
 
     const now = localTime();
@@ -839,60 +698,52 @@ export default function TimeSheetMain() {
     // A completed shift is ready to start another check-in. The previous
     // worked time remains stored on the same day and is accumulated.
     if (row.checkOut) {
-      updateSheet(s => ({
+      updateTargetSheet(s => ({
         ...s,
         rows: s.rows.map(r => r.id === row.id ? {
           ...r,
           checkIn: now,
           checkOut: "",
-          earningStartAt: (activeSettings.autoRule === "hour-to-hour" && now < (activeSettings.lateCheckInTime || activeSettings.workStart || "08:00"))
-            ? (activeSettings.workStart || "08:00") : now,
-          pendingCheckoutAt: "",
-          status: activeSettings.mode === "automatic" && activeSettings.autoRule === "hour-to-hour" && now < (activeSettings.workStart || "08:00") ? "Waiting" : "Working"
+          status: "Present"
         } : r)
       }));
       notify("Check-in successful", `${row.name || row.employeeId} checked in again at ${now}. Previous hours remain recorded for ${row.date}.`);
-      return;
+      return true;
     }
 
     if (!row.checkIn) {
-      updateSheet(s => ({
+      updateTargetSheet(s => ({
         ...s,
         rows: s.rows.map(r => r.id === row.id ? {
           ...r,
           checkIn: now,
           checkOut: "",
-          earningStartAt: (activeSettings.mode === "automatic" && activeSettings.autoRule === "hour-to-hour" && now < (activeSettings.lateCheckInTime || activeSettings.workStart || "08:00"))
-            ? (activeSettings.workStart || "08:00") : now,
-          pendingCheckoutAt: "",
-          status: activeSettings.mode === "automatic" && activeSettings.autoRule === "hour-to-hour" && now < (activeSettings.workStart || "08:00") ? "Waiting" : "Working"
+          status: "Present"
         } : r)
       }));
       notify("Check-in successful", `${row.name || row.employeeId} checked in at ${now}.`);
-      return;
+      return true;
     }
 
     const elapsed = minutesSince(row.checkIn, now);
-    const required = activeSettings.mode === "automatic" && activeSettings.autoRule === "hour-to-any"
-      ? 0
-      : activeSettings.mode === "manual"
-        ? Number(activeSettings.minimumCheckoutMinutes || 30)
-        : Number(activeSettings.defaultHours || row.hours || 8) * 60;
+    const required = settings.mode === "manual"
+      ? Number(settings.minimumCheckoutMinutes || 30)
+      : Number(settings.defaultHours || row.hours || 8) * 60;
 
     if (elapsed < required) {
       const remaining = required - elapsed;
       notify(
         "Check-out not available",
-        activeSettings.mode === "automatic"
-          ? `Automatic mode requires the full ${row.hours || activeSettings.defaultHours} hour duty period. ${Math.ceil(remaining / 60)} hour(s) remaining.`
+        settings.mode === "automatic"
+          ? `Automatic mode requires the full ${row.hours || settings.defaultHours} hour duty period. ${Math.ceil(remaining / 60)} hour(s) remaining.`
           : `You cannot check out yet. Please wait ${remaining} minute(s).`,
         "error"
       );
-      return;
+      return false;
     }
 
     const previousWorked = Number(row.workedHours || 0);
-    const shiftWorked = hrs(row.earningStartAt || row.checkIn, now);
+    const shiftWorked = hrs(row.checkIn, now);
     const totalWorked = previousWorked + shiftWorked;
     const checked = { ...row, checkOut: now, workedHours: totalWorked, status: "Present" };
     const nextDate = nextDutyDate(row.date || todayISO());
@@ -900,7 +751,7 @@ export default function TimeSheetMain() {
     // Keep today's completed record and create the next-duty row. The completed
     // row's action immediately becomes Check In again if another shift is needed.
     setSheets(prev => prev.map(s => {
-      if (s.id !== activeId) return s;
+      if (s.id !== targetSheetId) return s;
       const completedRows = s.rows.map(r => r.id === row.id ? { ...r, checkOut: now, workedHours: totalWorked, status: "Present" } : r);
       const alreadyExists = completedRows.some(r =>
         r.date === nextDate &&
@@ -911,14 +762,14 @@ export default function TimeSheetMain() {
       return {
         ...s,
         rows: [...completedRows, {
-          ...blankRow(activeSettings, completedRows.length),
+          ...blankRow(settings, completedRows.length),
           name: row.name,
           employeeId: row.employeeId,
           date: nextDate,
           checkIn: "",
           checkOut: "",
           workedHours: 0,
-          hours: Number(activeSettings.defaultHours || row.hours || 8),
+          hours: Number(settings.defaultHours || row.hours || 8),
           status: "Present",
           ot: 0
         }]
@@ -927,12 +778,37 @@ export default function TimeSheetMain() {
 
     setCelebrate({
       name: row.name || row.employeeId,
-      earning: earningFor(checked, activeSettings),
+      earning: earningFor(checked, settings),
       worked: totalWorked,
       ot: Number(row.ot || 0),
       nextDate
     });
     notify("Shift completed", `${row.name || row.employeeId} checked out at ${now}. The day is recorded as Present with ${totalWorked.toFixed(2)} hour(s) worked.`);
+    return true;
+  };
+
+  const handleFaceRecognized = (person, action) => {
+    const employeeId = String(person?.employeeId || "").trim().toLowerCase();
+    const name = String(person?.name || "").trim().toLowerCase();
+    if (!employeeId && !name) return { success: false, message: "The recognition service did not return an employee ID or registered name." };
+    const today = todayISO();
+    const candidates = sheets.flatMap(source => source.rows.map(row => ({ row, sheetId: source.id }))).filter(item =>
+      (employeeId && String(item.row.employeeId || "").trim().toLowerCase() === employeeId) ||
+      (name && String(item.row.name || "").trim().toLowerCase() === name)
+    );
+    const match = candidates.find(item => item.row.checkIn && !item.row.checkOut) || candidates.find(item => item.row.date === today) || candidates.find(item => !item.row.checkOut) || candidates[0];
+    if (!match) return { success: false, message: "No employee timesheet row was found. Ask an administrator to add this employee to the attendance sheet." };
+    const row = match.row;
+    if (action === "check-in" && row.checkIn && !row.checkOut) {
+      return { success: false, message: `${row.name || row.employeeId} is already checked in at ${row.checkIn}. A second check-in is not allowed.` };
+    }
+    if (action === "check-out" && (!row.checkIn || row.checkOut)) {
+      return { success: false, message: row.checkOut ? `This employee already checked out at ${row.checkOut}.` : "This employee has not checked in yet, so check-out is not available." };
+    }
+    setActiveId(match.sheetId);
+    const recorded = checkAction(row, match.sheetId);
+    if (!recorded) return { success: false, message: "The existing attendance rules did not allow this action. Check the timesheet notification for the reason." };
+    return { success: true, time: localTime(), message: `${row.name || row.employeeId} ${action === "check-in" ? "checked in" : "checked out"}. The existing employee timesheet has been updated.` };
   };
 
   const findSearchMatch = () => {
@@ -1083,28 +959,21 @@ export default function TimeSheetMain() {
     setSheetTabMenu(null);
   };
 
-  // Attendance cell edits use the active sheet id directly. This avoids a stale
-  // sheet closure during rapid keystrokes and keeps controlled inputs editable.
-  const updateCell = (id, key, value) => {
-    setUndoStack(prev => [...prev.slice(-49), JSON.parse(JSON.stringify(sheets))]);
-    setRedoStack([]);
-    setSheets(prev => prev.map(current => {
-      if (current.id !== activeId) return current;
-      let rows = current.rows.map(r => r.id === id ? { ...r, [key]: value } : r);
-      const edited = rows.find(r => r.id === id);
-      const isDataEntry = ["name", "employeeId", "date", "checkIn", "checkOut", "hours", "ot", "status", "note"].includes(key);
-      const last = rows[rows.length - 1];
-      const lastHasData = last && (
-        last.name || last.employeeId || last.checkIn || last.checkOut ||
-        Number(last.ot || 0) > 0 || (key === "status" && last.status !== "Present")
-      );
-      if (isDataEntry && edited && id === last.id && lastHasData && rows.length < MAX_ROWS) {
-        const count = Math.min(ROW_GROWTH, MAX_ROWS - rows.length);
-        rows = [...rows, ...Array.from({ length: count }, (_, i) => blankRow(settings, rows.length + i))];
-      }
-      return { ...current, rows };
-    }));
-  };
+  const updateCell = (id, key, value) => updateSheet(s => {
+    let rows = s.rows.map(r => r.id === id ? { ...r, [key]: value } : r);
+    const edited = rows.find(r => r.id === id);
+    const isDataEntry = ["name", "employeeId", "date", "checkIn", "checkOut", "hours", "ot", "status", "note"].includes(key);
+    const last = rows[rows.length - 1];
+    const lastHasData = last && (
+      last.name || last.employeeId || last.checkIn || last.checkOut ||
+      Number(last.ot || 0) > 0 || key === "status" && last.status !== "Present"
+    );
+    if (isDataEntry && edited && id === last.id && lastHasData && rows.length < MAX_ROWS) {
+      const count = Math.min(ROW_GROWTH, MAX_ROWS - rows.length);
+      rows = [...rows, ...Array.from({ length: count }, (_, i) => blankRow(settings, rows.length + i))];
+    }
+    return { ...s, rows };
+  });
 
   const updateSheetName = (name) => updateSheet(s => ({ ...s, name }));
 
@@ -1207,7 +1076,7 @@ export default function TimeSheetMain() {
         if (def.customId) return r.custom?.[def.customId] ?? "";
         if (def.field) return r[def.field] ?? "";
         if (def.key === "day") return dayName(r.date);
-        if (def.key === "rate") return money(activeSettings.defaultHourlyRate, activeSettings.currency);
+        if (def.key === "rate") return money(settings.defaultHourlyRate, settings.currency);
         return "";
       });
     });
@@ -1224,7 +1093,7 @@ export default function TimeSheetMain() {
       for (let ci = attendanceRange.minCol; ci <= attendanceRange.maxCol; ci += 1) {
         const def = defs[ci];
         if (def?.customId) next.custom[def.customId] = "";
-        else if (def?.field && ["name", "employeeId", "hours", "ot", "status"].includes(def.field)) next[def.field] = def.field === "hours" ? activeSettings.defaultHours : def.field === "ot" ? 0 : def.field === "status" ? "Present" : "";
+        else if (def?.field && ["name", "employeeId", "hours", "ot", "status"].includes(def.field)) next[def.field] = def.field === "hours" ? settings.defaultHours : def.field === "ot" ? 0 : def.field === "status" ? "Present" : "";
       }
       return next;
     }) }));
@@ -1331,14 +1200,14 @@ export default function TimeSheetMain() {
       Day: dayName(r.date),
       "Check In": r.checkIn,
       "Check Out": r.checkOut,
-      "Scheduled Hours": Number(r.hours || activeSettings.defaultHours || 0),
+      "Scheduled Hours": Number(r.hours || settings.defaultHours || 0),
       "Actual Hours": actualWorkedFor(r),
       "O.T": Number(r.ot || 0),
-      "Hourly Earning": activeSettings.defaultHourlyRate,
-      "O.T Earning": Number(r.ot || 0) * Number(activeSettings.otRate || 0),
-      "Actual Earning": earningFor(r, activeSettings),
-      "Expected Earning": expectedEarningFor(r, activeSettings),
-      "Earning Cut": Math.max(0, expectedEarningFor(r, activeSettings) - earningFor(r, activeSettings)),
+      "Hourly Earning": settings.defaultHourlyRate,
+      "O.T Earning": Number(r.ot || 0) * Number(settings.otRate || 0),
+      "Actual Earning": earningFor(r, settings),
+      "Expected Earning": expectedEarningFor(r, settings),
+      "Earning Cut": Math.max(0, expectedEarningFor(r, settings) - earningFor(r, settings)),
       Status: r.status,
       Note: r.note || ""
     };
@@ -1348,9 +1217,9 @@ export default function TimeSheetMain() {
   const exactRecordHtml = (date, rows, title = "Attendance Record") => {
     const cols = ["Employee","ID","Check In","Check Out","Scheduled","Actual","O.T","Hourly Earning","O.T Earning","Actual Earning","Expected Earning","Earning Cut","Status","Note"];
     const esc = v => String(v ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
-    const body = rows.map(r => `<tr><td>${esc(r.name || "—")}</td><td>${esc(r.employeeId || "—")}</td><td>${esc(r.checkIn || "—")}</td><td>${esc(r.checkOut || "—")}</td><td>${Number(r.hours || activeSettings.defaultHours || 0).toFixed(2)}</td><td>${actualWorkedFor(r).toFixed(2)}</td><td>${Number(r.ot || 0).toFixed(2)}</td><td>${esc(money(activeSettings.defaultHourlyRate, activeSettings.currency))}</td><td>${esc(money(Number(r.ot || 0) * Number(activeSettings.otRate || 0), settings.currency))}</td><td>${esc(money(earningFor(r,activeSettings), settings.currency))}</td><td>${esc(money(expectedEarningFor(r,activeSettings), settings.currency))}</td><td>${esc(money(Math.max(0, expectedEarningFor(r,activeSettings)-earningFor(r,activeSettings)), settings.currency))}</td><td>${esc(r.status)}</td><td>${esc(r.note || "")}</td></tr>`).join("");
-    const total = rows.reduce((a,r)=>a+earningFor(r,activeSettings),0), expected=rows.reduce((a,r)=>a+expectedEarningFor(r,activeSettings),0);
-    return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>body{font-family:Arial,sans-serif;margin:28px;color:#172033}h1{margin:0 0 5px}p{color:#64748b;margin:0 0 18px}.summary{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px}.summary span{border:1px solid #cbd5e1;padding:8px 12px;border-radius:8px;background:#f8fafc}table{border-collapse:collapse;width:100%;min-width:1100px}th,td{border:1px solid #8f9dad;padding:9px 10px;text-align:left;white-space:nowrap}th{background:#e8eef5;font-weight:800}tfoot td{background:#e8f7f1;font-weight:800}@media print{body{margin:10mm}table{font-size:9px}}</style></head><body><h1>${esc(settings.companyName)} — ${esc(title)}</h1><p>${esc(settings.agencyName)} • ${esc(date)} • ${esc(dayName(date))}</p><div class="summary"><span>Employees: <b>${rows.filter(r=>r.name||r.employeeId).length}</b></span><span>Actual Earning: <b>${esc(money(total,activeSettings.currency))}</b></span><span>Expected Earning: <b>${esc(money(expected,activeSettings.currency))}</b></span><span>Earning Cut: <b>${esc(money(Math.max(0,expected-total),activeSettings.currency))}</b></span></div><table><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${body || `<tr><td colspan="14">No records for this day.</td></tr>`}</tbody></table></body></html>`;
+    const body = rows.map(r => `<tr><td>${esc(r.name || "—")}</td><td>${esc(r.employeeId || "—")}</td><td>${esc(r.checkIn || "—")}</td><td>${esc(r.checkOut || "—")}</td><td>${Number(r.hours || settings.defaultHours || 0).toFixed(2)}</td><td>${actualWorkedFor(r).toFixed(2)}</td><td>${Number(r.ot || 0).toFixed(2)}</td><td>${esc(money(settings.defaultHourlyRate, settings.currency))}</td><td>${esc(money(Number(r.ot || 0) * Number(settings.otRate || 0), settings.currency))}</td><td>${esc(money(earningFor(r,settings), settings.currency))}</td><td>${esc(money(expectedEarningFor(r,settings), settings.currency))}</td><td>${esc(money(Math.max(0, expectedEarningFor(r,settings)-earningFor(r,settings)), settings.currency))}</td><td>${esc(r.status)}</td><td>${esc(r.note || "")}</td></tr>`).join("");
+    const total = rows.reduce((a,r)=>a+earningFor(r,settings),0), expected=rows.reduce((a,r)=>a+expectedEarningFor(r,settings),0);
+    return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>body{font-family:Arial,sans-serif;margin:28px;color:#172033}h1{margin:0 0 5px}p{color:#64748b;margin:0 0 18px}.summary{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px}.summary span{border:1px solid #cbd5e1;padding:8px 12px;border-radius:8px;background:#f8fafc}table{border-collapse:collapse;width:100%;min-width:1100px}th,td{border:1px solid #8f9dad;padding:9px 10px;text-align:left;white-space:nowrap}th{background:#e8eef5;font-weight:800}tfoot td{background:#e8f7f1;font-weight:800}@media print{body{margin:10mm}table{font-size:9px}}</style></head><body><h1>${esc(settings.companyName)} — ${esc(title)}</h1><p>${esc(settings.agencyName)} • ${esc(date)} • ${esc(dayName(date))}</p><div class="summary"><span>Employees: <b>${rows.filter(r=>r.name||r.employeeId).length}</b></span><span>Actual Earning: <b>${esc(money(total,settings.currency))}</b></span><span>Expected Earning: <b>${esc(money(expected,settings.currency))}</b></span><span>Earning Cut: <b>${esc(money(Math.max(0,expected-total),settings.currency))}</b></span></div><table><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${body || `<tr><td colspan="14">No records for this day.</td></tr>`}</tbody></table></body></html>`;
   };
 
   const downloadExactRecord = (date, rows) => {
@@ -1384,7 +1253,7 @@ export default function TimeSheetMain() {
     base["Check Out"] = r.checkOut || "";
     (sheet?.columns || []).forEach(c => { base[c.label] = r.custom?.[c.id] ?? ""; });
     base["Day"] = dayName(r.date);
-    base["Hours"] = Number(r.hours || activeSettings.defaultHours || 0);
+    base["Hours"] = Number(r.hours || settings.defaultHours || 0);
     base["O.T"] = Number(r.ot || 0);
     base["Hourly Earning"] = Number(settings.defaultHourlyRate || 0);
     base["Status"] = r.status || "";
@@ -1410,14 +1279,14 @@ export default function TimeSheetMain() {
       "Employee ID": r.employeeId,
       "Check In": r.checkIn,
       "Check Out": r.checkOut,
-      "Scheduled Hours": Number(r.hours || activeSettings.defaultHours || 0),
+      "Scheduled Hours": Number(r.hours || settings.defaultHours || 0),
       "Actual Hours": actualWorkedFor(r),
       "O.T": Number(r.ot || 0),
-      "Hourly Earning": activeSettings.defaultHourlyRate,
-      "O.T Earning": Number(r.ot || 0) * Number(activeSettings.otRate || 0),
-      "Actual Earning": earningFor(r, activeSettings),
-      "Expected Earning": expectedEarningFor(r, activeSettings),
-      "Earning Cut": Math.max(0, expectedEarningFor(r, activeSettings) - earningFor(r, activeSettings)),
+      "Hourly Earning": settings.defaultHourlyRate,
+      "O.T Earning": Number(r.ot || 0) * Number(settings.otRate || 0),
+      "Actual Earning": earningFor(r, settings),
+      "Expected Earning": expectedEarningFor(r, settings),
+      "Earning Cut": Math.max(0, expectedEarningFor(r, settings) - earningFor(r, settings)),
       Status: r.status,
       Note: r.note || ""
     }));
@@ -1431,11 +1300,11 @@ export default function TimeSheetMain() {
     const data = rows.map(r => ({
       Date: r.date, Day: dayName(r.date), "Employee Name": r.name, "Employee ID": r.employeeId,
       "Check In": r.checkIn, "Check Out": r.checkOut,
-      "Scheduled Hours": Number(r.hours || activeSettings.defaultHours || 0),
+      "Scheduled Hours": Number(r.hours || settings.defaultHours || 0),
       "Actual Hours": actualWorkedFor(r), "O.T": Number(r.ot || 0),
-      "Hourly Earning": activeSettings.defaultHourlyRate,
-      "O.T Earning": Number(r.ot || 0) * Number(activeSettings.otRate || 0),
-      "Total Earning": earningFor(r, activeSettings), Status: r.status, Note: r.note || ""
+      "Hourly Earning": settings.defaultHourlyRate,
+      "O.T Earning": Number(r.ot || 0) * Number(settings.otRate || 0),
+      "Total Earning": earningFor(r, settings), Status: r.status, Note: r.note || ""
     }));
     if (!data.length) return;
     const headers = Object.keys(data[0]);
@@ -1491,7 +1360,48 @@ export default function TimeSheetMain() {
 
   return (
     <>
+
       <style>{`
+        .ts-face-panel{overflow:hidden}
+        .ts-kiosk-panel{background:linear-gradient(135deg,#f8fbff,#eef4ff);border:1px solid #cbdcf8;border-radius:18px}
+        .ts-kiosk-panel>.ts-panel-header{padding:17px 20px;background:linear-gradient(100deg,#102b68,#1d3da0);color:#fff}
+        .ts-kiosk-panel>.ts-panel-header h2,.ts-kiosk-panel>.ts-panel-header p{color:#fff}
+        .ts-kiosk-lock,.ts-kiosk-connected{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border-radius:999px;background:#dcfce7;color:#166534;font-size:11px;font-weight:900;white-space:nowrap}
+        .ts-kiosk-layout{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(330px,.95fr);gap:14px;padding:16px}
+        .ts-kiosk-camera-card{padding:13px;background:#fff;border-radius:16px}
+        .ts-kiosk-camera-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:11px}
+        .ts-kiosk-connected{background:#e0f2fe;color:#075985}
+        .ts-kiosk-camera-card .ts-face-video-wrap{min-height:340px;aspect-ratio:4/3;background:radial-gradient(circle at 50% 40%,#334e80,#0c1c3c 75%)}
+        .ts-kiosk-camera-actions{margin-top:13px}.ts-kiosk-camera-actions .primary{background:linear-gradient(135deg,#16a34a,#059669)}
+        .ts-kiosk-employee-card{display:flex;flex-direction:column;gap:12px;padding:14px;border:1px solid #d5e2f5;border-radius:16px;background:#fff;box-shadow:0 5px 20px rgba(30,64,175,.07);min-width:0}
+        .ts-kiosk-result-banner{display:flex;align-items:center;gap:11px;padding:14px;border:1px solid #86efac;border-radius:13px;background:linear-gradient(100deg,#dcfce7,#f0fdf4);color:#15803d}.ts-kiosk-result-banner>div{display:grid;gap:3px}.ts-kiosk-result-banner strong{font-size:18px}.ts-kiosk-result-banner span{font-size:11px;color:#166534;line-height:1.45}
+        .ts-kiosk-person{display:flex;align-items:center;gap:13px;padding:14px;border:1px solid #dbeafe;border-radius:13px;background:#f8fbff}.ts-kiosk-avatar{width:58px;height:58px;display:grid;place-items:center;border-radius:50%;background:#dbeafe;color:#1d4ed8;flex-shrink:0}.ts-kiosk-person>div:last-child{display:grid;gap:5px;min-width:0}.ts-kiosk-person strong{font-size:18px;color:#0f172a}.ts-kiosk-person span{font-size:12px;color:#334155}
+        .ts-kiosk-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ts-kiosk-meta span{display:grid;gap:4px;padding:11px;border-radius:10px;background:#eff6ff}.ts-kiosk-meta small{font-size:10px;color:#64748b}.ts-kiosk-meta b{font-size:13px;color:#0f172a}
+        .ts-kiosk-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.ts-kiosk-actions button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;border:0;border-radius:11px;font-weight:900;cursor:pointer}.ts-kiosk-actions button:disabled{opacity:.5;cursor:not-allowed}.ts-kiosk-checkin{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff}.ts-kiosk-checkout{border:1px solid #4f46e5!important;background:#eef2ff;color:#3730a3}
+        .ts-kiosk-locked-note{padding:10px;border-radius:9px;background:#dcfce7;color:#166534;font-size:11px;font-weight:800;text-align:center}.ts-kiosk-empty{display:grid;justify-items:center;gap:8px;padding:30px 18px;text-align:center;color:#64748b;border:1px dashed #cbd5e1;border-radius:12px}.ts-kiosk-empty svg{color:#6366f1}.ts-kiosk-empty strong{color:#1e293b}.ts-kiosk-empty span{font-size:11px;line-height:1.5}.ts-kiosk-rules{display:grid;gap:6px;margin-top:auto;padding:12px;border-radius:11px;background:#f8fafc;color:#475569;font-size:10px;line-height:1.5}.ts-kiosk-rules strong{color:#1e3a8a;font-size:12px}
+        @media(max-width:900px){.ts-kiosk-layout{grid-template-columns:1fr}.ts-kiosk-camera-card .ts-face-video-wrap{min-height:260px}}
+        @media(max-width:520px){.ts-kiosk-meta,.ts-kiosk-actions{grid-template-columns:1fr}.ts-kiosk-camera-head{align-items:flex-start;flex-direction:column}.ts-kiosk-panel>.ts-panel-header{align-items:flex-start;gap:8px;flex-direction:column}}
+        .ts-face-intro{display:flex;align-items:center;gap:12px;margin:14px 16px;padding:13px 15px;border:1px solid #c7d2fe;border-radius:13px;background:linear-gradient(100deg,#f5f3ff,#eff6ff)}
+        .ts-face-intro>span{display:grid;place-items:center;width:48px;height:48px;border-radius:13px;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff}
+        .ts-face-intro>div{display:grid;gap:3px;flex:1}.ts-face-intro strong{font-size:15px;color:#172554}.ts-face-intro small{font-size:12px;color:#64748b}
+        .ts-face-status{display:flex;align-items:center;gap:7px;padding:8px 11px;border-radius:999px;background:#dcfce7;color:#166534;font-size:11px;white-space:nowrap}.ts-face-status i,.ts-face-live-pill i{width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block}
+        .ts-face-layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(260px,.75fr);gap:14px;padding:0 16px 16px}
+        .ts-face-camera-card,.ts-face-info-card{min-width:0;border:1px solid #dbe4f0;border-radius:14px;background:#fff;padding:14px;box-shadow:0 4px 16px rgba(15,23,42,.05)}
+        .ts-face-mode-tabs{display:flex;gap:8px;margin-bottom:12px}.ts-face-mode-tabs button{border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:9px;padding:10px 13px;font-weight:800;cursor:pointer}.ts-face-mode-tabs button.active{background:#ede9fe;border-color:#8b5cf6;color:#5b21b6}
+        .ts-face-field{display:grid;gap:6px;margin-bottom:12px;color:#334155;font-size:12px;font-weight:800}.ts-face-field select{height:40px;border:1px solid #cbd5e1;border-radius:9px;padding:0 10px;background:#fff;color:#0f172a}
+        .ts-face-video-wrap{position:relative;min-height:300px;aspect-ratio:16/9;overflow:hidden;border-radius:13px;background:radial-gradient(circle at 50% 40%,#334155,#0f172a 70%);display:grid;place-items:center}
+        .ts-face-video-wrap video{width:100%;height:100%;position:absolute;inset:0;object-fit:cover;transform:scaleX(-1)}
+        .ts-face-camera-placeholder{display:grid;justify-items:center;gap:9px;color:#cbd5e1;text-align:center}.ts-face-camera-placeholder strong{color:#fff;font-size:17px}.ts-face-camera-placeholder span{font-size:12px}
+        .ts-face-corners{position:absolute;inset:15% 29%;pointer-events:none}.ts-face-corners i{position:absolute;width:34px;height:34px;border-color:#4ade80;border-style:solid}.ts-face-corners i:nth-child(1){top:0;left:0;border-width:4px 0 0 4px;border-radius:8px 0 0}.ts-face-corners i:nth-child(2){top:0;right:0;border-width:4px 4px 0 0;border-radius:0 8px 0 0}.ts-face-corners i:nth-child(3){bottom:0;left:0;border-width:0 0 4px 4px;border-radius:0 0 0 8px}.ts-face-corners i:nth-child(4){bottom:0;right:0;border-width:0 4px 4px 0;border-radius:0 0 8px}
+        .ts-face-live-pill{position:absolute;top:12px;left:12px;display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:999px;background:rgba(15,23,42,.8);color:#fff;font-size:10px;font-weight:900;letter-spacing:.04em}.ts-face-live-pill i{background:#4ade80}
+        .ts-face-consent{display:flex;align-items:flex-start;gap:9px;margin:12px 0;padding:11px;border-radius:9px;background:#fffbeb;color:#854d0e;font-size:11px;line-height:1.5}.ts-face-consent input{margin-top:2px}
+        .ts-face-actions{display:flex;gap:9px;margin-top:12px}.ts-face-actions button{min-height:42px;border-radius:9px;padding:0 14px;font-weight:900;cursor:pointer}.ts-face-actions .secondary{border:1px solid #cbd5e1;background:#fff;color:#334155}.ts-face-actions .primary{flex:1;border:0;background:linear-gradient(135deg,#16a34a,#059669);color:#fff}.ts-face-actions button:disabled{opacity:.5;cursor:not-allowed}
+        .ts-face-message{display:flex;align-items:flex-start;gap:8px;margin-top:12px;padding:10px 12px;border-radius:9px;font-size:12px;line-height:1.45}.ts-face-message.success{background:#dcfce7;color:#166534}.ts-face-message.error{background:#fee2e2;color:#991b1b}
+        .ts-face-info-card h3{display:flex;align-items:center;gap:9px;margin:2px 0 13px;color:#312e81;font-size:15px}.ts-face-info-card ul{display:grid;gap:11px;padding-left:19px;margin:0;color:#334155;font-size:12px;line-height:1.5}.ts-face-note{display:grid;gap:6px;margin-top:18px;padding:12px;border:1px solid #c4b5fd;border-radius:10px;background:#f5f3ff;color:#4c1d95;font-size:11px;line-height:1.5}.ts-face-note strong{font-size:12px}
+        @media(max-width:850px){.ts-face-layout{grid-template-columns:1fr}.ts-face-status{display:none}}
+        @media(max-width:560px){.ts-face-intro{align-items:flex-start}.ts-face-layout{padding:0 9px 12px}.ts-face-camera-card,.ts-face-info-card{padding:10px}.ts-face-mode-tabs{flex-direction:column}.ts-face-video-wrap{min-height:230px}.ts-face-actions{flex-direction:column}.ts-face-actions button{width:100%}}
+
+
         .ts-app.ts-dark {
           --ts-bg: #07111f;
           --ts-surface: #0c1726;
@@ -2793,13 +2703,14 @@ export default function TimeSheetMain() {
         <p className="ts-page-subtitle">{openPanel === "general" ? "Business data sheets and spreadsheet workspace" : "Employee timesheets, attendance, hours and earnings workspace"}</p>
       </div>
       <nav className="ts-soda-commandbar" aria-label="Sodah worksheet tools">
-        <div className="ts-soda-tools-menu-wrap" ref={sodaToolsRef}>
+        {!faceKioskLocked && <div className="ts-soda-tools-menu-wrap" ref={sodaToolsRef}>
           <button type="button" className={`ts-soda-tools-trigger ${sodaToolsOpen ? "active" : ""}`} onClick={() => setSodaToolsOpen(v => !v)} aria-expanded={sodaToolsOpen}>
             <Package size={16}/><span>Soda Tools</span><ChevronDown size={13}/>
           </button>
           {sodaToolsOpen && <div className="ts-soda-tools-menu">
             <button type="button" onClick={() => { setOpenPanel(null); setSodaToolsOpen(false); }}><FileText size={15}/> Employee Timesheet</button>
             <button type="button" onClick={() => { setOpenPanel("general"); setSodaToolsOpen(false); }}><SlidersHorizontal size={15}/> General Sheets</button>
+            <button type="button" onClick={() => { setOpenPanel("face"); setSodaToolsOpen(false); }}><ScanFace size={15}/> Face Recognition</button>
             <button type="button" onClick={() => { setOpenPanel("analytics"); setSodaToolsOpen(false); }}><BarChart3 size={15}/> Analytics</button>
             <button type="button" onClick={() => { setOpenPanel("calendar"); setSodaToolsOpen(false); }}><CalendarDays size={15}/> Calendar</button>
             <button type="button" onClick={() => { setOpenPanel("reports"); setSodaToolsOpen(false); }}><FileText size={15}/> Reports</button>
@@ -2807,60 +2718,24 @@ export default function TimeSheetMain() {
             <button type="button" onClick={() => { setOpenPanel("equipment"); setSodaToolsOpen(false); }}><Package size={15}/> Tools</button>
             <button type="button" onClick={() => { addAttendanceSheet(); setOpenPanel(null); setSodaToolsOpen(false); }}><Plus size={15}/> Add Employee Timesheet</button>
           </div>}
-        </div>
-        <div className="ts-soda-command-title"><strong>Sodah Worksheet</strong><span>{openPanel === "general" ? "General Sheets" : openPanel === null ? (sheet?.name || "Employee Timesheet") : ({analytics:"Analytics",calendar:"Calendar",reports:"Reports",settings:"Settings",equipment:"Tools"}[openPanel] || "Workspace")}</span></div>
-        <div className="ts-soda-employee-search">
-          <div className={`ts-autosave-control ${autoSaveEnabled ? "is-on" : "is-off"}`}>
-            <span className="ts-autosave-label">Auto save</span>
-            <button type="button" role="switch" aria-checked={autoSaveEnabled}
-              className="ts-autosave-switch" onClick={() => setAutoSaveEnabled(value => !value)}
-              title={autoSaveEnabled ? "Turn automatic saving off" : "Turn automatic saving on"}>
-              <span className="ts-autosave-switch-knob"/>
-              <span className="ts-autosave-switch-state">{autoSaveEnabled ? "ON" : "OFF"}</span>
-            </button>
-          </div>
-          {!autoSaveEnabled && <button type="button" className="ts-manual-save" onClick={() => {
-            safeLocalStorageWrite("sodah-timesheet-sheets", JSON.stringify(sheets));
-            safeLocalStorageWrite("sodah-timesheet-settings", JSON.stringify(settings));
-            safeLocalStorageWrite("sodah-timesheet-equipment-sheets", JSON.stringify(equipmentSheets));
-            safeLocalStorageWrite("sodah-timesheet-equipment", JSON.stringify(equipmentRows));
-            safeLocalStorageWrite("sodah-timesheet-sheet-trash-v1", JSON.stringify(attendanceTrash));
-            window.dispatchEvent(new CustomEvent("sodah-general-sheet-command", { detail: { command: "saveNow" } }));
-            setToast("Workspace saved successfully.");
-          }}><Save size={14}/> Save now</button>}
-          <div className="ts-employee-search-input">
-            <Search size={16}/>
-            <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && checkSearch()} placeholder="Search employee name or ID" aria-label="Search employee name or ID" />
-          </div>
+        </div>}
+        <div className="ts-soda-command-title"><strong>Sodah Worksheet</strong><span>{openPanel === "general" ? "General Sheets" : openPanel === null ? (sheet?.name || "Employee Timesheet") : ({face:"Face Recognition",analytics:"Analytics",calendar:"Calendar",reports:"Reports",settings:"Settings",equipment:"Tools"}[openPanel] || "Workspace")}</span></div>
+        <label className="ts-autosave-control"><span className="ts-autosave-label">Auto save</span><input className="ts-autosave-input" type="checkbox" checked={autoSaveEnabled} onChange={e => setAutoSaveEnabled(e.target.checked)} aria-label="Toggle auto save" /><span className="ts-autosave-switch" aria-hidden="true"><b>{autoSaveEnabled ? "ON" : "OFF"}</b><i /></span></label>
+        {!faceKioskLocked && <div className="ts-soda-employee-search">
+          <Search size={16}/>
+          <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && checkSearch()} placeholder="Search employee name or ID" aria-label="Search employee name or ID" />
           <button type="button" onClick={checkSearch} className="ts-search-check">{search.trim() ? searchActionLabel : "Check In"}</button>
-        </div>
+        </div>}
       </nav>
-      <style>{`
-        .ts-soda-tools-menu-wrap{position:relative}
-        /* Header actions: keep Auto Save separate from employee search/check-in. */
-        .ts-app .ts-soda-employee-search{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex:0 1 auto;width:auto;max-width:100%;min-width:0;height:auto;padding:0;border:0;border-radius:0;background:transparent;color:#64748b;box-sizing:border-box;overflow:visible}
-        .ts-app .ts-autosave-control{display:flex;align-items:center;justify-content:center;gap:8px;flex:0 0 auto;white-space:nowrap;padding:6px 10px;border:1px solid #dbe3ec;border-radius:10px;background:#fff}
-        .ts-app .ts-autosave-label{font-size:11px;font-weight:800;color:#475569}
-        .ts-app .ts-autosave-switch{position:relative;display:inline-flex;align-items:center;justify-content:flex-start;flex:0 0 58px;width:58px;min-width:58px;height:28px;padding:3px;border:0;border-radius:999px;background:#64748b;color:#fff;font-size:9px;font-weight:900;cursor:pointer;transition:background .18s ease}
-        .ts-app .ts-autosave-switch-knob{position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0002;transition:transform .18s ease}
-        .ts-app .ts-autosave-switch-state{position:absolute;right:7px;top:50%;transform:translateY(-50%)}
-        .ts-app .ts-autosave-control.is-on .ts-autosave-switch{background:#0ca678}
-        .ts-app .ts-autosave-control.is-on .ts-autosave-switch-knob{transform:translateX(30px)}
-        .ts-app .ts-autosave-control.is-on .ts-autosave-switch-state{left:7px;right:auto}
-        .ts-app .ts-autosave-control.is-off .ts-autosave-switch{background:#64748b}
-        .ts-app .ts-manual-save{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:0 0 auto;height:36px;padding:0 13px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#334155;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
-        .ts-app .ts-employee-search-input{display:flex;align-items:center;gap:8px;flex:0 1 205px;width:205px;min-width:150px;padding:0 10px;height:36px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;box-sizing:border-box}
-        .ts-app .ts-employee-search-input input{width:100%;min-width:0;flex:1 1 auto;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important}
-        .ts-app .ts-soda-employee-search .ts-search-check{display:inline-flex;align-items:center;justify-content:center;flex:0 0 106px;width:106px;min-width:106px;height:36px;padding:0 12px;border-radius:8px;white-space:nowrap}
-        @media(max-width:1100px){.ts-app .ts-soda-employee-search{gap:8px}.ts-app .ts-employee-search-input{flex-basis:175px;width:175px}}
-        @media(max-width:850px){.ts-app .ts-soda-commandbar{flex-wrap:wrap;gap:8px;padding:7px}.ts-app .ts-soda-command-title{min-width:100px}.ts-app .ts-soda-employee-search{order:3;flex:1 1 100%;width:100%;justify-content:flex-start;min-width:0;flex-wrap:wrap}.ts-app .ts-employee-search-input{order:3;flex:1 1 220px;width:auto;min-width:160px}.ts-app .ts-soda-employee-search .ts-search-check{flex:0 0 106px}}
-        @media(max-width:480px){.ts-app .ts-soda-employee-search{gap:7px}.ts-app .ts-autosave-control{padding:5px 8px}.ts-app .ts-employee-search-input{order:4;flex-basis:100%;width:100%}.ts-app .ts-soda-employee-search .ts-search-check{margin-left:auto}}
-      `}</style>
 
 
       <div className="ts-main">
         {openPanel === "general" && (
-          <GeneralSheetPanel autoSaveEnabled={autoSaveEnabled} onClose={() => setOpenPanel(null)} />
+          <GeneralSheetPanel onClose={() => setOpenPanel(null)} autoSaveEnabled={autoSaveEnabled} />
+        )}
+
+        {openPanel === "face" && (
+          <FaceAttendancePanel employees={employees.map(r => ({ key: r.employeeId || r.name, name: r.name || r.employeeId, employeeId: r.employeeId || "" }))} onAttendanceAction={handleFaceRecognized} onClose={() => setOpenPanel(null)} kioskLocked={faceKioskLocked} onKioskLockChange={setFaceKioskLocked} />
         )}
 
         {openPanel === "analytics" && (
@@ -2878,7 +2753,7 @@ export default function TimeSheetMain() {
         )}
 
         {openPanel === "settings" && (
-          <SettingsPanel settings={settings} setSettings={setSettings} sheets={sheets} onApplySheetSettings={applySheetPaySetting} paySettingsSelection={paySettingsSelection} setPaySettingsSelection={setPaySettingsSelection} workSettingsSelection={workSettingsSelection} setWorkSettingsSelection={setWorkSettingsSelection} onApplySheetWorkSettings={applySheetWorkSetting} onClose={() => setOpenPanel(null)} />
+          <SettingsPanel settings={settings} setSettings={setSettings} onClose={() => setOpenPanel(null)} />
         )}
 
         {openPanel === "equipment" && (
@@ -2944,7 +2819,7 @@ export default function TimeSheetMain() {
           <div className="ts-sheet-settings">
             <span>Sheet hours</span>
             <select
-              value={sheet?.rows?.[0]?.hours ?? activeSettings.defaultHours}
+              value={sheet?.rows?.[0]?.hours ?? settings.defaultHours}
               onChange={e => updateSheet(s => ({...s, rows:s.rows.map(r => ({...r, hours:Number(e.target.value)}))}))}
             >
               {Array.from({length:24},(_,i)=><option key={i+1} value={i+1}>{i+1} H</option>)}
@@ -3005,41 +2880,27 @@ export default function TimeSheetMain() {
             <tbody>
               {filteredRows.map((r, i) => {
                 const canCheckout = r.checkIn && !r.checkOut &&
-                  (activeSettings.mode === "automatic" && activeSettings.autoRule === "hour-to-any"
-                    ? true
-                    : activeSettings.mode === "automatic" && activeSettings.autoRule === "hour-to-hour"
-                      ? localTime() >= (activeSettings.workEnd || shiftEndFromStart(activeSettings.workStart, activeSettings.defaultHours))
-                      : minutesSince(r.checkIn, localTime()) >= (activeSettings.mode === "manual"
-                        ? Number(activeSettings.minimumCheckoutMinutes)
-                        : Number(r.hours || activeSettings.defaultHours) * 60));
+                  minutesSince(r.checkIn, localTime()) >= (settings.mode === "manual"
+                    ? Number(settings.minimumCheckoutMinutes)
+                    : Number(r.hours || settings.defaultHours) * 60);
                 const actionLabel = r.checkIn && !r.checkOut ? "Check Out" : "Check In";
                 return (
                   <tr key={r.id}>
                     <td className="ts-row-num">{i + 1}</td>
                     <td>
-                      <button
-                        type="button"
-                        className={`ts-check-button ${r.checkIn && !r.checkOut ? (canCheckout ? "checkout-ready" : "checkout-wait") : "checkin"}`}
-                        onClick={() => checkAction(r)}
-                        disabled={Boolean(r.checkIn && !r.checkOut && !canCheckout)}
-                        aria-live="polite"
-                      >
-                        {r.checkIn && !r.checkOut
-                          ? (canCheckout ? <CheckCircle2 size={15}/> : <span className="ts-working-spinner" aria-hidden="true"/>)
-                          : <Clock3 size={15}/>}
-                        {r.checkIn && !r.checkOut && !canCheckout
-                          ? <>{r.status === "Waiting" ? "Waiting" : r.status === "Pending" ? "Pending" : "Working"}<span className="ts-working-dots"><i>.</i><i>.</i><i>.</i></span></>
-                          : actionLabel}
+                      <button className={`ts-check-button ${r.checkIn && !r.checkOut ? (canCheckout ? "checkout-ready" : "checkout-wait") : "checkin"}`} onClick={() => checkAction(r)}>
+                        {r.checkIn && !r.checkOut ? <CheckCircle2 size={15}/> : <Clock3 size={15}/>}
+                        {actionLabel}
                       </button>
                     </td>
-                    <td className={`${isAttendanceSelected(i,1) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.name)} onMouseDown={() => startAttendanceSelection(i,1)} onMouseEnter={() => extendAttendanceSelection(i,1)}><input onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()} className="ts-cell ts-text-center" style={r.styles?.name} value={r.name ?? ""} onChange={e => updateCell(r.id,"name",e.currentTarget.value)} /></td>
-                    <td className={`${isAttendanceSelected(i,2) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.employeeId)} onMouseDown={() => startAttendanceSelection(i,2)} onMouseEnter={() => extendAttendanceSelection(i,2)}><input onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()} className="ts-cell ts-text-center" style={r.styles?.employeeId} value={r.employeeId ?? ""} onChange={e => updateCell(r.id,"employeeId",e.currentTarget.value)} /></td>
-                    {(sheet?.columns || []).map((c,ci) => { const colIndex = ci + 3; return <td key={c.id} className={`${isAttendanceSelected(i,colIndex) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.[`custom:${c.id}`])} onMouseDown={() => startAttendanceSelection(i,colIndex)} onMouseEnter={() => extendAttendanceSelection(i,colIndex)}><input onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()} className="ts-cell" style={r.styles?.[`custom:${c.id}`]} value={r.custom?.[c.id] ?? ""} onChange={e => updateCustomCell(r.id,c.id,e.currentTarget.value)} /></td>; })}
+                    <td className={`${isAttendanceSelected(i,1) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.name)} onMouseDown={() => startAttendanceSelection(i,1)} onMouseEnter={() => extendAttendanceSelection(i,1)}><input className="ts-cell ts-text-center" style={r.styles?.name} value={r.name} onChange={e => updateCell(r.id,"name",e.target.value)} /></td>
+                    <td className={`${isAttendanceSelected(i,2) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.employeeId)} onMouseDown={() => startAttendanceSelection(i,2)} onMouseEnter={() => extendAttendanceSelection(i,2)}><input className="ts-cell ts-text-center" style={r.styles?.employeeId} value={r.employeeId} onChange={e => updateCell(r.id,"employeeId",e.target.value)} /></td>
+                    {(sheet?.columns || []).map((c,ci) => { const colIndex = ci + 3; return <td key={c.id} className={`${isAttendanceSelected(i,colIndex) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.[`custom:${c.id}`])} onMouseDown={() => startAttendanceSelection(i,colIndex)} onMouseEnter={() => extendAttendanceSelection(i,colIndex)}><input className="ts-cell" style={r.styles?.[`custom:${c.id}`]} value={r.custom?.[c.id] ?? ""} onChange={e => updateCustomCell(r.id,c.id,e.target.value)} /></td>; })}
                     <td className={`${isAttendanceSelected(i,3+(sheet?.columns || []).length) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.day)} onMouseDown={() => startAttendanceSelection(i,3+(sheet?.columns || []).length)} onMouseEnter={() => extendAttendanceSelection(i,3+(sheet?.columns || []).length)}><button className="ts-day-cell" onDoubleClick={() => openDate(r.date)} title="Double-click to open the calendar date">{dayName(r.date)}</button></td>
-                    <td className={`${isAttendanceSelected(i,4+(sheet?.columns || []).length) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.hours)} onMouseDown={() => startAttendanceSelection(i,4+(sheet?.columns || []).length)} onMouseEnter={() => extendAttendanceSelection(i,4+(sheet?.columns || []).length)}><select onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()} className="ts-cell ts-select" style={r.styles?.hours} value={r.hours} onChange={e => updateCell(r.id,"hours",Number(e.target.value))}>{Array.from({length:24},(_,j)=><option key={j+1} value={j+1}>{j+1} H</option>)}</select></td>
-                    <td className={`${isAttendanceSelected(i,5+(sheet?.columns || []).length) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.ot)} onMouseDown={() => startAttendanceSelection(i,5+(sheet?.columns || []).length)} onMouseEnter={() => extendAttendanceSelection(i,5+(sheet?.columns || []).length)}><input onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()} className="ts-cell ts-number" style={r.styles?.ot} type="number" min="0" step="0.5" value={r.ot} onChange={e => updateCell(r.id,"ot",Number(e.target.value))}/></td>
-                    <td className={`${isAttendanceSelected(i,6+(sheet?.columns || []).length) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.rate)} onMouseDown={() => startAttendanceSelection(i,6+(sheet?.columns || []).length)} onMouseEnter={() => extendAttendanceSelection(i,6+(sheet?.columns || []).length)}>{money(activeSettings.defaultHourlyRate, activeSettings.currency)}</td>
-                    <td className={`${isAttendanceSelected(i,7+(sheet?.columns || []).length) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.status)} onMouseDown={() => startAttendanceSelection(i,7+(sheet?.columns || []).length)} onMouseEnter={() => extendAttendanceSelection(i,7+(sheet?.columns || []).length)}>{["Working","Waiting","Pending"].includes(r.status) ? <span className={`ts-status-working ts-status-${String(r.status).toLowerCase()}`} aria-label={r.status}>{r.status}<span className="ts-working-dots"><i>.</i><i>.</i><i>.</i></span></span> : <select onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()} className={`ts-status ${r.status.toLowerCase().replaceAll("-","")}`} style={r.styles?.status} value={r.status} onChange={e => updateCell(r.id,"status",e.target.value)}><option>Present</option><option>Off-day</option><option>Absent</option></select>}</td>
+                    <td className={`${isAttendanceSelected(i,4+(sheet?.columns || []).length) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.hours)} onMouseDown={() => startAttendanceSelection(i,4+(sheet?.columns || []).length)} onMouseEnter={() => extendAttendanceSelection(i,4+(sheet?.columns || []).length)}><select className="ts-cell ts-select" style={r.styles?.hours} value={r.hours} onChange={e => updateCell(r.id,"hours",Number(e.target.value))}>{Array.from({length:24},(_,j)=><option key={j+1} value={j+1}>{j+1} H</option>)}</select></td>
+                    <td className={`${isAttendanceSelected(i,5+(sheet?.columns || []).length) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.ot)} onMouseDown={() => startAttendanceSelection(i,5+(sheet?.columns || []).length)} onMouseEnter={() => extendAttendanceSelection(i,5+(sheet?.columns || []).length)}><input className="ts-cell ts-number" style={r.styles?.ot} type="number" min="0" step="0.5" value={r.ot} onChange={e => updateCell(r.id,"ot",Number(e.target.value))}/></td>
+                    <td className={`${isAttendanceSelected(i,6+(sheet?.columns || []).length) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.rate)} onMouseDown={() => startAttendanceSelection(i,6+(sheet?.columns || []).length)} onMouseEnter={() => extendAttendanceSelection(i,6+(sheet?.columns || []).length)}>{money(settings.defaultHourlyRate, settings.currency)}</td>
+                    <td className={`${isAttendanceSelected(i,7+(sheet?.columns || []).length) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.status)} onMouseDown={() => startAttendanceSelection(i,7+(sheet?.columns || []).length)} onMouseEnter={() => extendAttendanceSelection(i,7+(sheet?.columns || []).length)}><select className={`ts-status ${r.status.toLowerCase().replaceAll("-","")}`} style={r.styles?.status} value={r.status} onChange={e => updateCell(r.id,"status",e.target.value)}><option>Present</option><option>Off-day</option><option>Absent</option></select></td>
                   </tr>
                 );
               })}
@@ -3091,55 +2952,11 @@ export default function TimeSheetMain() {
         />
       )}
 
-      {lateCheckoutPrompt && <div style={{position:"fixed",inset:0,zIndex:10000,background:"rgba(15,23,42,.48)",display:"grid",placeItems:"center",padding:18}}>
-        <div role="dialog" aria-modal="true" aria-labelledby="late-checkout-title" style={{width:"min(460px,100%)",background:"#fff",borderRadius:16,padding:22,boxShadow:"0 24px 70px rgba(0,0,0,.25)",color:"#0f172a"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}><Clock3 color="#d97706"/><h3 id="late-checkout-title" style={{margin:0,fontSize:18}}>Late check-in — pending time</h3></div>
-          <p style={{fontSize:14,lineHeight:1.55,color:"#475569"}}><strong>{lateCheckoutPrompt.name}</strong> has reached the scheduled check-out time ({lateCheckoutPrompt.workEnd}) after checking in late. There are {lateCheckoutPrompt.pendingMinutes} pending minutes.</p>
-          <p style={{fontSize:13,color:"#475569"}}>Choose whether to allow the employee to complete the pending time or check out now and stop earning.</p>
-          <div style={{display:"flex",gap:10,justifyContent:"flex-end",flexWrap:"wrap",marginTop:18}}>
-            <button type="button" onClick={() => {
-              const prompt = lateCheckoutPrompt;
-              const [hh,mm] = prompt.workEnd.split(":").map(Number);
-              const total = hh*60+mm+prompt.pendingMinutes;
-              const pendingTime = `${String(Math.floor((total%1440)/60)).padStart(2,"0")}:${String(total%60).padStart(2,"0")}`;
-              setSheets(prev => prev.map(sh => sh.id !== prompt.sheetId ? sh : {...sh, rows:sh.rows.map(r => r.id !== prompt.rowId ? r : {...r,status:"Pending",pendingCheckoutAt:pendingTime})}));
-              setLateCheckoutPrompt(null);
-              notify("Pending time approved", `${prompt.name} will automatically check out at ${pendingTime}.`);
-            }} style={{border:0,borderRadius:9,padding:"10px 14px",background:"#059669",color:"#fff",fontWeight:800}}>Continue pending time</button>
-            <button type="button" onClick={() => {
-              const prompt = lateCheckoutPrompt, now = localTime();
-              setSheets(prev => prev.map(sh => sh.id !== prompt.sheetId ? sh : {...sh, rows:sh.rows.map(r => {
-                if (r.id !== prompt.rowId) return r;
-                const worked = Number(r.workedHours || 0) + hrs(r.earningStartAt || r.checkIn, now);
-                return {...r,checkOut:now,workedHours:worked,status:"Present",pendingCheckoutAt:""};
-              })}));
-              setLateCheckoutPrompt(null);
-              notify("Employee checked out", `${prompt.name} checked out at ${now}. Earnings stop at check-out.`);
-            }} style={{border:"1px solid #cbd5e1",borderRadius:9,padding:"10px 14px",background:"#fff",color:"#334155",fontWeight:800}}>Check out now</button>
-          </div>
-        </div>
-      </div>}
       {toast && <Toast {...toast} />}
       {celebrate && <Celebration data={celebrate} currency={settings.currency} />}
       </div>
 
       <style>{`
-        .ts-general-sheet-panel .ts-excel-ribbon-tools { position:relative; overflow:visible!important; z-index:30; }
-        .ts-general-sheet-panel .ts-ribbon-field {display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:#344054;white-space:nowrap}
-        .ts-general-sheet-panel .ts-ribbon-field select {height:30px;min-width:74px;border:1px solid #c3cbd2;border-radius:5px;background:#fff;padding:0 7px;color:#1f2937;font:inherit}
-        .ts-general-sheet-panel .ts-ribbon-pop {position:relative;display:inline-flex}
-        .ts-general-sheet-panel .ts-ribbon-palette {position:absolute;top:calc(100% + 5px);left:0;z-index:2000;display:grid;grid-template-columns:repeat(6,25px);gap:5px;padding:8px;background:#fff;border:1px solid #c3cbd2;border-radius:8px;box-shadow:0 12px 30px rgba(15,23,42,.2)}
-        .ts-general-sheet-panel .ts-ribbon-palette button {width:25px;min-width:25px;height:25px;min-height:25px;padding:0;border:1px solid #9ca3af;border-radius:5px}
-        .ts-general-sheet-panel .ts-ribbon-palette .ts-palette-clear {grid-column:span 6;width:auto;min-width:0;height:26px}
-        .ts-general-sheet-panel .ts-general-grid td input {font-size:inherit}
-        .ts-general-sheet-panel .ts-general-grid td input[style*="font-size"] {font-size:var(--cell-font-size)!important}
-        .ts-general-sheet-panel .ts-general-trash-backdrop {position:fixed;inset:0;z-index:3000;background:rgba(15,23,42,.38);display:flex;align-items:center;justify-content:center;padding:20px}
-        .ts-general-sheet-panel .ts-general-trash-panel {width:min(760px,96vw);max-height:80vh;overflow:auto;margin:0;box-shadow:0 24px 70px rgba(15,23,42,.28)}
-        .ts-status-working {display:inline-flex;align-items:center;justify-content:center;min-width:90px;padding:6px 10px;border-radius:7px;background:#dbeafe;color:#1d4ed8;font-weight:900;border:1px solid #93c5fd;white-space:nowrap}
-        .ts-working-dots {display:inline-flex;margin-left:2px;gap:1px}
-        .ts-working-dots i {font-style:normal;animation:ts-working-pulse 1.2s infinite;opacity:.25}
-        .ts-working-dots i:nth-child(2){animation-delay:.2s}.ts-working-dots i:nth-child(3){animation-delay:.4s}
-        @keyframes ts-working-pulse {50%{opacity:1}}
         /* BUSINESS DATA WORKSPACE — unified Excel-inspired command ribbon */
         /* PREMIUM EXCEL-LIKE RIBBON: stable grouped tools + visible sub-heads */
         .ts-app .ts-unified-toolbar {

@@ -2676,3 +2676,40 @@
   line-height: 1.4 !important;
   font-weight: 500 !important;
 }
+
+
+/* Face kiosk lock switch: compact toggle matching the Auto Save control */
+.ts-face-lock-controls{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:nowrap}
+.ts-kiosk-lock-switch{height:34px;min-width:82px;padding:3px 5px 3px 10px;border:1px solid #cbd5e1;border-radius:999px;background:#f1f5f9;color:#475569;display:inline-flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;font:600 11px/1 inherit;transition:background .18s,border-color .18s}
+.ts-kiosk-lock-switch.is-on{background:#059669;border-color:#059669;color:#fff}
+.ts-kiosk-lock-switch-label{min-width:22px;text-align:center}
+.ts-kiosk-lock-switch-thumb{width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0002;transition:transform .18s}
+.ts-kiosk-lock-switch.is-on .ts-kiosk-lock-switch-thumb{transform:translateX(0)}
+.ts-face-panel-header{display:flex;align-items:center;justify-content:space-between;gap:16px}
+/* Give the font controls their own readable width in the Home ribbon */
+.ts-ribbon-field{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;min-width:max-content;font-weight:600}
+.ts-ribbon-field select{height:32px;min-width:92px;max-width:170px;padding:0 28px 0 10px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#1f2937;font:500 12px inherit}
+.ts-ribbon-field select[aria-label="Font size"]{min-width:82px;max-width:90px}
+.ts-ribbon-field select[aria-label="Font family"]{min-width:145px;max-width:170px}
+
+/* Matching compact Auto Save and kiosk Lock controls */
+.ts-autosave-control,.ts-kiosk-lock-control{height:38px;display:inline-flex;align-items:center;gap:10px;padding:3px 8px 3px 11px;border:1px solid #d6e0e8;border-radius:11px;background:#fff;color:#253247;white-space:nowrap;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.ts-autosave-label,.ts-kiosk-lock-label{font-size:11px;font-weight:750;letter-spacing:.01em}
+.ts-autosave-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.ts-autosave-switch{position:relative;width:58px;height:28px;display:inline-flex;align-items:center;justify-content:flex-start;padding:0 28px 0 8px;border-radius:999px;background:#9aa7b4;color:#fff;transition:background .18s ease;cursor:pointer}
+.ts-autosave-switch b{font-size:9px;font-weight:900;line-height:1;letter-spacing:.02em}
+.ts-autosave-switch i{position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.22);transition:transform .18s ease}
+.ts-autosave-input:checked + .ts-autosave-switch{background:#00a878}
+.ts-autosave-input:checked + .ts-autosave-switch i{transform:translateX(0)}
+.ts-autosave-input:not(:checked) + .ts-autosave-switch{padding-left:28px;padding-right:8px;justify-content:flex-end}
+.ts-autosave-input:not(:checked) + .ts-autosave-switch i{right:auto;left:3px}
+.ts-autosave-input:focus-visible + .ts-autosave-switch{outline:3px solid rgba(59,130,246,.25);outline-offset:2px}
+.ts-kiosk-lock-control{gap:9px}
+.ts-kiosk-lock-switch{position:relative;min-width:74px;height:28px;padding:0 7px 0 9px;display:inline-flex;align-items:center;justify-content:space-between;gap:6px;border:0;border-radius:999px;background:#e8edf2;color:#465568;font-size:10px;font-weight:850;cursor:pointer;transition:background .18s ease,color .18s ease}
+.ts-kiosk-lock-switch .ts-kiosk-lock-action{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.ts-kiosk-lock-switch-thumb{width:20px;height:20px;flex:0 0 20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.2);transition:transform .18s ease}
+.ts-kiosk-lock-switch.is-on{background:#00a878;color:#fff}
+.ts-kiosk-lock-switch.is-on .ts-kiosk-lock-switch-thumb{background:#fff}
+.ts-face-lock-controls{display:flex;align-items:center;justify-content:flex-end}
+.ts-app.ts-dark .ts-autosave-control,.ts-app.ts-dark .ts-kiosk-lock-control{background:var(--palette-surface-2,#17283a);border-color:var(--palette-border,#475569);color:#fff}
+@media(max-width:700px){.ts-autosave-control,.ts-kiosk-lock-control{height:35px;padding-left:8px;gap:7px}.ts-autosave-switch{width:54px;height:26px}.ts-autosave-switch i{width:20px;height:20px}.ts-kiosk-lock-switch{height:26px;min-width:70px}}
