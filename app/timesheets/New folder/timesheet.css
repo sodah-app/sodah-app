@@ -1,0 +1,2678 @@
+/* Sodah Timesheet base stylesheet */
+.ts-app{--ts-bg:#f4f8fb;--ts-surface:#fff;--ts-surface-2:#f8fbfd;--ts-border:#dbe5ec;--ts-text:#172033;--ts-muted:#64748b;--ts-accent:#10b981;--ts-accent-2:#3b82f6;min-height:100vh;background:var(--ts-bg);color:var(--ts-text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 22px 34px;box-sizing:border-box}
+.ts-app *{box-sizing:border-box}.ts-app button,.ts-app input,.ts-app select,.ts-app textarea{font:inherit}.ts-app button{cursor:pointer}.ts-app button:disabled{cursor:not-allowed;opacity:.5}
+.ts-topbar{display:flex;align-items:center;gap:18px;padding:16px 0;border-bottom:1px solid var(--ts-border)}.ts-brand{display:flex;align-items:center;gap:10px;margin-right:auto}.ts-logo{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,var(--ts-accent),var(--ts-accent-2));color:#fff;font-weight:900}.ts-brand-name{font-weight:900;font-size:16px}.ts-brand-sub{font-size:11px;color:var(--ts-muted);margin-top:2px}.ts-top-actions,.ts-tools{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.ts-top-action,.ts-icon-tool{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 11px;border:1px solid var(--ts-border);border-radius:10px;background:var(--ts-surface);color:var(--ts-text);font-weight:750}.ts-top-action.active{background:#e9fbf4;border-color:#8ee5c6;color:#047857}.ts-icon-tool{min-height:34px;font-size:12px}
+.ts-search{display:flex;align-items:center;gap:8px;margin:14px 0}.ts-search input{flex:1;min-width:160px;height:42px;border:1px solid var(--ts-border);border-radius:11px;background:var(--ts-surface);padding:0 12px;outline:none}.ts-search-check{height:42px;padding:0 15px;border:0;border-radius:11px;background:var(--ts-accent);color:#052015;font-weight:900}
+.ts-heading{display:flex;justify-content:space-between;gap:20px;padding:18px 0}.ts-title-row{display:flex;align-items:center;gap:10px}.ts-title-row h1{margin:0;font-size:25px;letter-spacing:-.02em}.ts-heading p{margin:5px 0 0;color:var(--ts-muted)}.ts-live{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:900;color:#047857}.ts-live span{width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 0 4px #d1fae5}.ts-current-day{text-align:right;display:flex;flex-direction:column;gap:2px}.ts-current-day span,.ts-current-day small{font-size:11px;color:var(--ts-muted)}.ts-current-day strong{font-size:15px}
+.ts-main{display:flex;flex-direction:column;gap:14px}.ts-sheet-bar{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px;border:1px solid var(--ts-border);border-radius:14px;background:var(--ts-surface)}.ts-sheet-tabs{display:flex;gap:6px;flex-wrap:wrap}.ts-sheet-tab{display:flex;align-items:center;border:1px solid var(--ts-border);border-radius:9px;overflow:hidden;background:var(--ts-surface-2)}.ts-sheet-tab button{border:0;background:transparent;padding:8px 10px;color:var(--ts-text);font-weight:750}.ts-sheet-tab.active{border-color:#8ee5c6;background:#e9fbf4}.ts-sheet-tab.active button{color:#047857}.ts-sheet-x{padding:0 7px!important;color:#ef4444!important}.ts-add-sheet{width:34px;height:34px;border:1px dashed #9db0be;border-radius:9px;background:transparent;color:var(--ts-accent-2);display:grid;place-items:center}.ts-sheet-settings{display:flex;align-items:center;gap:8px;color:var(--ts-muted);font-size:12px}.ts-sheet-settings select{height:34px;border:1px solid var(--ts-border);border-radius:8px;background:var(--ts-surface);padding:0 8px}
+.ts-grid-wrap,.ts-equipment-table-wrap,.ts-record-table-wrap,.ts-week-summary-table-wrap,.ts-analytics-table-wrap{overflow:auto;border:1px solid var(--ts-border);border-radius:14px;background:var(--ts-surface)}.ts-grid{width:100%;min-width:1180px;border-collapse:separate;border-spacing:0}.ts-grid th,.ts-grid td{padding:9px 10px;border-right:1px solid var(--ts-border);border-bottom:1px solid var(--ts-border);white-space:nowrap;text-align:left}.ts-grid th{position:sticky;top:0;background:#eef5f8;z-index:3;font-size:10px;text-transform:uppercase;letter-spacing:.05em;font-weight:900}.ts-grid tbody tr:nth-child(even) td{background:#fbfdfe}.ts-row-num{width:42px;text-align:center!important;color:var(--ts-muted);background:#f7fafc}.ts-cell,.ts-status,.ts-select{width:100%;min-height:36px;border:1px solid #ccd9e2;border-radius:7px;background:#fff;color:var(--ts-text);padding:0 9px;outline:none}.ts-cell:focus,.ts-status:focus,.ts-select:focus{border-color:#6ee7b7;box-shadow:0 0 0 2px rgba(16,185,129,.12)}.ts-text-center{text-align:center}.ts-number{max-width:90px}.ts-money{font-weight:850}.ts-day-cell{border:1px solid var(--ts-border);background:#f1f7fa;border-radius:8px;padding:8px 10px;font-weight:800}.ts-check-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:112px;min-height:34px;border-radius:9px;border:1px solid #8ee5c6;background:#e9fbf4;color:#047857;font-weight:900}.ts-check-button.checkout-ready{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8}.ts-check-button.checkout-wait{background:#f8fafc;color:#64748b;border-color:#cbd5e1}.ts-status.present{color:#047857}.ts-status.offday,.ts-status.off-day{color:#a16207}.ts-status.absent{color:#dc2626}
+.ts-bottom-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0}.ts-bottom-tools button{display:inline-flex;align-items:center;gap:6px;min-height:35px;padding:0 11px;border:1px solid var(--ts-border);border-radius:9px;background:var(--ts-surface);color:var(--ts-text);font-weight:800}.ts-bottom-tools .ts-add-column-bottom{background:#e9fbf4;border-color:#8ee5c6;color:#047857}.ts-bottom-note{font-size:11px;color:var(--ts-muted);margin-left:auto}.ts-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.ts-summary-card{min-height:78px;padding:14px;border:1px solid var(--ts-border);border-radius:14px;background:var(--ts-surface);display:flex;align-items:center;gap:11px}.ts-summary-card.accent{border-color:#8ee5c6;background:#f1fdf8}.ts-summary-icon{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:#e8f4f8;color:#047857}.ts-summary-card span{display:block;color:var(--ts-muted);font-size:11px}.ts-summary-card strong{display:block;margin-top:3px;font-size:16px}
+.ts-panel{border:1px solid var(--ts-border);border-radius:16px;background:var(--ts-surface);padding:18px}.ts-panel-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:15px}.ts-panel-header h2{margin:0;font-size:19px}.ts-panel-header p{margin:4px 0 0;color:var(--ts-muted);font-size:12px}.ts-panel-header button{width:34px;height:34px;border:1px solid var(--ts-border);border-radius:9px;background:var(--ts-surface);display:grid;place-items:center}.ts-stat-grid,.ts-report-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.ts-stat,.ts-report-metric{padding:14px;border:1px solid var(--ts-border);border-radius:13px;background:var(--ts-surface-2)}.ts-stat span,.ts-report-metric span{display:block;color:var(--ts-muted);font-size:11px}.ts-stat strong,.ts-report-metric strong{display:block;font-size:21px;margin-top:5px}.ts-stat-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:9px;background:#e8f4f8;margin-bottom:8px}.ts-chart-card,.ts-detail-box,.ts-analytics-detail{border:1px solid var(--ts-border);border-radius:14px;padding:15px;background:var(--ts-surface);margin-top:12px}.ts-chart-title{font-weight:850;margin-bottom:10px}.ts-bars{display:flex;align-items:flex-end;gap:10px;height:190px}.ts-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}.ts-bar{width:min(44px,70%);min-height:4px;border-radius:7px 7px 2px 2px;background:linear-gradient(180deg,var(--ts-accent-2),var(--ts-accent))}.ts-bar-value{font-size:10px;color:var(--ts-muted)}
+.ts-calendar-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.ts-calendar-head button,.ts-mini-nav button{border:1px solid var(--ts-border);background:var(--ts-surface);border-radius:8px;min-width:34px;min-height:34px}.ts-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}.ts-cal-week{font-size:10px;font-weight:900;color:var(--ts-muted);text-align:center;padding:5px}.ts-cal-day{min-height:58px;border:1px solid var(--ts-border);border-radius:9px;background:var(--ts-surface);text-align:left;padding:7px}.ts-cal-day.has{background:#effcf7;border-color:#a7f3d0}.ts-cal-day.muted{opacity:.45}.ts-mini-nav{display:flex;gap:6px}.ts-mini-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.ts-mini-grid button{border:1px solid var(--ts-border);background:var(--ts-surface);border-radius:7px;padding:6px}.ts-mini-grid button.selected{background:#d1fae5;border-color:#6ee7b7}
+.ts-report-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.ts-report-toolbar,.ts-report-actions,.ts-analytics-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.ts-report-actions button{border:1px solid var(--ts-border);border-radius:9px;background:var(--ts-surface);padding:8px 11px;font-weight:800}.ts-report-actions button.ai{background:#d1fae5;color:#047857;border-color:#86efac}.ts-report-collapsed{margin-top:10px}.ts-week-report-title{font-size:14px;font-weight:900}.ts-week-record{overflow:auto;border:1px solid var(--ts-border);border-radius:14px;margin-top:10px}.ts-week-record-head{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:10px;padding:12px;border-bottom:1px solid var(--ts-border)}.ts-week-record-head span{display:block;font-size:10px;color:var(--ts-muted)}.ts-week-record-head strong{display:block;margin-top:3px}.ts-week-record table,.ts-week-summary-table{width:100%;border-collapse:collapse;min-width:900px}.ts-week-record th,.ts-week-record td,.ts-week-summary-table th,.ts-week-summary-table td,.ts-record-table th,.ts-record-table td,.ts-analytics-table-wrap th,.ts-analytics-table-wrap td{padding:9px 10px;border:1px solid var(--ts-border);text-align:left;white-space:nowrap}.ts-week-record th,.ts-week-summary-table th,.ts-record-table th,.ts-analytics-table-wrap th{background:#eef5f8;font-size:10px;text-transform:uppercase}.ts-week-summary-table-wrap{margin-top:12px}.ts-analytics-period-title{font-weight:900;margin:12px 0 8px}.ts-analytics-table-wrap{margin-top:10px}
+.ts-equipment-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px}.ts-equipment-stat{min-height:74px;border:1px solid var(--ts-border);border-radius:13px;padding:12px 14px;background:var(--ts-surface-2);display:flex;justify-content:space-between;align-items:center}.ts-equipment-stat span{font-size:11px;font-weight:850}.ts-equipment-stat strong{font-size:23px}.ts-equipment-stat.given{background:#e8fbf4;border-color:#86efac}.ts-equipment-stat.returned{background:#eff6ff;border-color:#93c5fd}.ts-equipment-stat.pending{background:#fff8e8;border-color:#fcd34d}.ts-equipment-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 0}.ts-equipment-main-btn{display:inline-flex;align-items:center;gap:6px;min-height:37px;padding:0 12px;border:1px solid var(--ts-border);border-radius:9px;background:var(--ts-surface);font-weight:850}.ts-equipment-main-btn.add{background:#d1fae5;color:#047857;border-color:#86efac}.ts-equipment-main-btn.remove{background:#f8fafc}.ts-equipment-main-btn.import{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd}.ts-equipment-sheet-tabs{display:flex;gap:5px;align-items:center;flex-wrap:wrap}.ts-equipment-sheet-tabs button{border:1px solid var(--ts-border);border-radius:8px;background:var(--ts-surface);padding:7px 9px}.ts-equipment-sheet-tabs button.active{background:#d1fae5;border-color:#86efac;color:#047857}.ts-equipment-add-sheet{display:grid;place-items:center;width:32px;height:32px;padding:0!important}.ts-equipment-import-names{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.ts-equipment-import-names select{height:37px;border:1px solid var(--ts-border);border-radius:9px;background:var(--ts-surface);padding:0 8px}.ts-equipment-table{width:100%;min-width:980px;border-collapse:collapse}.ts-equipment-table th,.ts-equipment-table td{padding:9px 10px;border:1px solid var(--ts-border);text-align:left;white-space:nowrap}.ts-equipment-table th{background:#eef5f8;font-size:10px;text-transform:uppercase}.ts-equipment-table .ts-cell{min-height:35px}.ts-equipment-action{min-width:120px;min-height:36px;border-radius:8px;border:1px solid #86efac;font-weight:900;display:inline-flex;align-items:center;justify-content:center;gap:6px}.ts-equipment-action.give{background:#10b981;color:#052015}.ts-equipment-action.return{background:#bfdbfe;color:#172554}.ts-equipment-action.returned{background:#e2e8f0;color:#334155}.ts-equipment-status{font-weight:900}.ts-equipment-status.pending{color:#a16207}.ts-equipment-status.returned{color:#047857}.ts-equipment-status.ready{color:#1d4ed8}.ts-equipment-help,.ts-setting-help{padding:12px 14px;margin-top:12px;border-radius:12px;background:#f7fafc;color:var(--ts-muted);font-size:12px;line-height:1.55}
+.ts-settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.ts-setting{display:flex;flex-direction:column;gap:6px}.ts-setting span{font-size:11px;font-weight:850;color:var(--ts-muted)}.ts-setting input,.ts-setting select{height:40px;border:1px solid var(--ts-border);border-radius:9px;background:var(--ts-surface);padding:0 10px}.ts-settings-appearance{margin-top:16px;padding:15px;border:1px solid var(--ts-border);border-radius:14px}.ts-settings-appearance-title{font-weight:900;font-size:12px;margin-bottom:10px}.ts-mode-buttons{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.ts-mode-button{min-height:42px;border:1px solid var(--ts-border);border-radius:9px;background:var(--ts-surface);font-weight:800}.ts-settings-brand-colors{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}.ts-theme-picker-wrap{margin-top:12px}.ts-theme-picker-label{display:block;font-size:11px;font-weight:900;margin-bottom:7px}.ts-theme-picker{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.ts-theme-swatch{min-height:60px;border:1px solid var(--ts-border);border-radius:11px;background:var(--ts-surface);display:flex;align-items:center;gap:8px;padding:8px;font-weight:800}.ts-theme-swatch.active{border:2px solid var(--ts-accent)}.ts-theme-swatch-color{width:30px;height:30px;border-radius:8px;border:1px solid #cbd5e1}.ts-theme-swatch.blue .ts-theme-swatch-color{background:linear-gradient(135deg,#061522,#123b59,#8fd3ff)}.ts-theme-swatch.black .ts-theme-swatch-color{background:linear-gradient(135deg,#050505,#181818,#fff)}.ts-theme-swatch.green .ts-theme-swatch-color{background:linear-gradient(135deg,#061a14,#104435,#67e8b5)}.ts-theme-swatch.gray .ts-theme-swatch-color{background:linear-gradient(135deg,#15181c,#2c333b,#d7dde4)}
+.ts-modal-bg{position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.5);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:20px}.ts-record-sheet{width:min(1500px,100%);max-height:92vh;overflow:auto;background:var(--ts-surface);border-radius:18px;border:1px solid var(--ts-border);box-shadow:0 30px 80px rgba(15,23,42,.25)}.ts-record-top{display:flex;justify-content:space-between;gap:15px;padding:18px;border-bottom:1px solid var(--ts-border)}.ts-record-top span{font-size:11px;color:var(--ts-muted);font-weight:800}.ts-record-top h2{margin:3px 0;font-size:20px}.ts-record-top p{margin:0;color:var(--ts-muted);font-size:12px}.ts-record-top button{width:36px;height:36px;border:1px solid var(--ts-border);border-radius:9px;background:var(--ts-surface)}.ts-record-calendar{padding:15px;border-bottom:1px solid var(--ts-border)}.ts-record-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:15px}.ts-record-summary div{padding:12px;border:1px solid var(--ts-border);border-radius:11px}.ts-record-summary span{display:block;color:var(--ts-muted);font-size:10px}.ts-record-summary b{display:block;margin-top:3px}.ts-record-actions{display:flex;gap:8px;padding:0 15px 15px;flex-wrap:wrap}.ts-record-actions button{border:1px solid var(--ts-border);border-radius:9px;background:var(--ts-surface);padding:8px 11px;font-weight:800}.ts-record-table-wrap{margin:0 15px 15px}.ts-record-table{width:100%;min-width:1100px;border-collapse:collapse}.ts-record-table-wrap+.ts-record-actions{margin-top:0}
+.ts-toast{position:fixed;right:20px;bottom:20px;z-index:1200;display:flex;gap:10px;align-items:flex-start;min-width:280px;max-width:420px;padding:12px 14px;border-radius:12px;background:#fff;border:1px solid var(--ts-border);box-shadow:0 15px 40px rgba(15,23,42,.18)}.ts-toast-icon{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:#d1fae5;color:#047857}.ts-toast strong,.ts-toast span{display:block}.ts-toast span{margin-top:2px;font-size:12px;color:#64748b}.ts-celebrate-bg{position:fixed;inset:0;z-index:1300;background:rgba(3,20,14,.72);display:grid;place-items:center;overflow:hidden}.ts-celebrate{position:relative;z-index:2;background:#fff;border-radius:22px;padding:30px;min-width:min(440px,90vw);text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.35)}.ts-celebrate-icon{width:62px;height:62px;border-radius:50%;margin:0 auto 10px;display:grid;place-items:center;background:#d1fae5;color:#059669}.ts-celebrate h2{margin:0}.ts-celebrate p{color:#64748b;margin:5px 0}.ts-celebrate-stats{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:15px 0}.ts-celebrate-stats span,.ts-celebrate-stats b{padding:8px 10px;border-radius:9px;background:#f1f5f9}.ts-celebrate small{color:#64748b}.ts-money-rain{position:absolute;inset:0}.ts-money-rain span{position:absolute;top:-30px;font-size:24px;animation:ts-money-fall 3s linear infinite}@keyframes ts-money-fall{to{transform:translateY(110vh) rotate(360deg);opacity:.1}}
+@media(max-width:1100px){.ts-summary{grid-template-columns:repeat(2,1fr)}.ts-topbar{flex-wrap:wrap}.ts-brand{width:100%}.ts-week-record-head{grid-template-columns:1fr 1fr}.ts-stat-grid,.ts-report-metrics{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){.ts-app{padding:0 10px 25px}.ts-heading{flex-direction:column}.ts-current-day{text-align:left}.ts-sheet-bar{align-items:flex-start;flex-direction:column}.ts-summary,.ts-stat-grid,.ts-report-metrics,.ts-equipment-stats,.ts-record-summary,.ts-settings-grid{grid-template-columns:1fr}.ts-theme-picker{grid-template-columns:repeat(2,1fr)}.ts-bottom-note{width:100%;margin-left:0}.ts-top-action span,.ts-icon-tool span{display:none}}
+@media print{.ts-topbar,.ts-search,.ts-tools,.ts-bottom-tools,.ts-top-actions,.ts-icon-tool,.ts-record-actions{display:none!important}.ts-app{padding:0;background:#fff}.ts-grid-wrap{overflow:visible}.ts-grid{min-width:0}.ts-grid th{position:static!important}}
+
+
+/* Consolidated from timesheet-updates.css; retain all existing styling. */
+/* Timesheet refinements: custom columns and spreadsheet controls */
+.ts-custom-header{min-width:145px}.ts-custom-head-inner{display:flex;align-items:center;gap:6px}.ts-custom-head-inner input{width:100%;min-width:110px;height:30px;border:1px solid #cbd5e1;border-radius:7px;padding:0 7px;font-size:10px;font-weight:800;background:transparent}.ts-custom-head-inner input:focus{outline:2px solid rgba(16,185,129,.22);border-color:#10b981}.ts-add-column-bottom{box-shadow:0 1px 2px rgba(15,23,42,.05)}.ts-equipment-bottom-tools{border-top:1px solid var(--ts-border);margin-top:10px;padding-top:12px}.ts-equipment-bottom-tools .ts-add-column-bottom{background:#e9fbf4;border-color:#8ee5c6;color:#047857}.ts-equipment-table .ts-custom-header{min-width:145px}.ts-equipment-table .ts-custom-head-inner input{background:transparent}.ts-app.ts-dark .ts-custom-head-inner input{color:#fff!important;background:var(--palette-surface,#0d2439)!important;border-color:var(--palette-border,rgba(255,255,255,.42))!important}.ts-app.ts-dark .ts-bottom-tools button{color:#fff}.ts-app.ts-dark .ts-add-column-bottom{background:var(--palette-accent,#8fd3ff)!important;color:#06111d!important;border-color:var(--palette-accent,#8fd3ff)!important}.ts-app.ts-dark .ts-equipment-bottom-tools{border-color:var(--palette-border,rgba(255,255,255,.42))}.ts-app.ts-dark .ts-equipment-table .ts-custom-head-inner input{color:#fff!important}.ts-app.ts-dark .ts-equipment-table th,.ts-app.ts-dark .ts-equipment-table td{border-color:rgba(255,255,255,.42)!important}.ts-app.ts-dark .ts-grid th,.ts-app.ts-dark .ts-grid td{border-color:rgba(255,255,255,.42)!important}
+
+/* Filled attendance action buttons */
+.ts-app:not(.ts-dark) .ts-check-button.checkin{background:#10b981!important;border-color:#10b981!important;color:#fff!important;box-shadow:0 2px 5px rgba(16,185,129,.18)}
+.ts-app:not(.ts-dark) .ts-check-button.checkout-ready{background:#2563eb!important;border-color:#2563eb!important;color:#fff!important}
+.ts-app:not(.ts-dark) .ts-check-button.checkout-wait{background:#94a3b8!important;border-color:#94a3b8!important;color:#fff!important}
+.ts-general-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px;border:1px solid var(--ts-border);border-radius:12px;background:var(--ts-surface-2);margin-bottom:10px}.ts-general-toolbar>button,.ts-general-color-wrap>button{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 10px;border:1px solid var(--ts-border);border-radius:8px;background:var(--ts-surface);color:var(--ts-text);font-weight:800}.ts-general-color-wrap{position:relative}.ts-general-color-popover{position:absolute;z-index:30;top:42px;left:0;display:flex;gap:6px;align-items:center;flex-wrap:wrap;width:240px;padding:10px;border:1px solid var(--ts-border);border-radius:12px;background:var(--ts-surface);box-shadow:0 18px 45px rgba(15,23,42,.18)}.ts-general-color-popover>button:not(.clear-color){width:28px;height:28px;border:1px solid #94a3b8;border-radius:6px}.ts-general-color-popover input[type=color]{width:34px;height:30px;padding:0;border:0}.ts-general-color-popover .clear-color{border:1px solid var(--ts-border);border-radius:6px;background:var(--ts-surface-2);padding:5px 7px}.ts-general-sheet-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.ts-general-sheet-tabs button{display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:0 10px;border:1px solid var(--ts-border);border-radius:8px;background:var(--ts-surface);font-weight:800;color:var(--ts-text)}.ts-general-sheet-tabs button.active{background:#e9fbf4;border-color:#8ee5c6;color:#047857}.ts-general-selection-bar{display:flex;gap:12px;align-items:center;min-height:38px;padding:0 10px;border:1px solid var(--ts-border);border-radius:8px;background:var(--ts-surface);margin-bottom:8px}.ts-general-selection-bar strong{min-width:45px}.ts-general-selection-bar span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ts-general-selection-bar small{color:var(--ts-muted)}.ts-general-grid-wrap{overflow:auto;border:1px solid var(--ts-border);border-radius:12px;background:var(--ts-surface)}.ts-general-grid{border-collapse:collapse;min-width:100%;width:max-content}.ts-general-grid th,.ts-general-grid td{border:1px solid var(--ts-border);min-width:145px;height:42px;padding:0}.ts-general-grid th{background:#eef5f8;position:sticky;top:0;z-index:4}.ts-general-grid th.row-head{min-width:45px;width:45px;left:0;z-index:6;text-align:center}.ts-general-grid td.selected{outline:2px solid #10b981;outline-offset:-2px}.ts-general-grid td input,.ts-general-grid th:not(.row-head) input{width:100%;height:100%;border:0;background:transparent;padding:7px 9px;outline:none;color:var(--ts-text)}.ts-general-grid td input:focus{box-shadow:inset 0 0 0 2px rgba(16,185,129,.28)}.ts-app.ts-dark .ts-general-toolbar,.ts-app.ts-dark .ts-general-selection-bar,.ts-app.ts-dark .ts-general-grid-wrap{background:var(--palette-surface)!important;border-color:var(--palette-border)!important}.ts-app.ts-dark .ts-general-toolbar>button,.ts-app.ts-dark .ts-general-color-wrap>button,.ts-app.ts-dark .ts-general-sheet-tabs button{background:var(--palette-surface-2)!important;color:#fff!important;border-color:var(--palette-border)!important}.ts-app.ts-dark .ts-general-sheet-tabs button.active{background:var(--palette-accent)!important;color:#06111d!important}.ts-app.ts-dark .ts-general-grid th{background:var(--palette-surface-2)!important;color:#fff!important}.ts-app.ts-dark .ts-general-grid td,.ts-app.ts-dark .ts-general-grid th{border-color:var(--palette-border)!important}.ts-app.ts-dark .ts-general-grid td input,.ts-app.ts-dark .ts-general-grid th input{color:#fff!important}.ts-app.ts-dark .ts-general-color-popover{background:var(--palette-surface)!important;border-color:var(--palette-border)!important}
+
+/* =========================================================
+   EXCEL-STYLE WORKSHEET SYSTEM — SODAH TIMESHEET
+   Compact standard grid, fixed toolbar/header, black command bar.
+   ========================================================= */
+.ts-app {
+  --excel-grid: #c8d0d8;
+  --excel-grid-dark: #44515d;
+  --excel-header: #f3f5f7;
+  --excel-header-dark: #151a1f;
+}
+
+/* The main command bar stays visible while the worksheet scrolls. */
+.ts-app .ts-topbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important;
+  background: #050505 !important;
+  color: #fff !important;
+  border-bottom: 1px solid #252525 !important;
+  padding: 8px 10px !important;
+  min-height: 58px !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,.18) !important;
+}
+.ts-app .ts-brand-name,
+.ts-app .ts-brand-sub { color:#fff !important; }
+.ts-app .ts-brand-sub { opacity:.62; }
+.ts-app .ts-top-actions,
+.ts-app .ts-tools { gap:5px !important; }
+.ts-app .ts-top-action,
+.ts-app .ts-icon-tool,
+.ts-app .ts-sheet-switcher-btn {
+  min-height:32px !important;
+  height:32px !important;
+  padding:0 9px !important;
+  border:1px solid #383838 !important;
+  border-radius:6px !important;
+  background:#101010 !important;
+  color:#fff !important;
+  font-size:12px !important;
+  box-shadow:none !important;
+}
+.ts-app .ts-top-action:hover,
+.ts-app .ts-icon-tool:hover,
+.ts-app .ts-sheet-switcher-btn:hover { background:#1d1d1d !important; }
+.ts-app .ts-top-action.active { background:#10b981 !important; border-color:#10b981 !important; color:#03140d !important; }
+.ts-app .ts-top-action.active svg { color:#03140d !important; }
+.ts-app .ts-tools .ts-icon-tool { background:#101010 !important; }
+.ts-app .ts-search { background:#111 !important; border-color:#3a3a3a !important; color:#fff !important; }
+.ts-app .ts-search input { background:transparent !important; color:#fff !important; border:0 !important; min-height:32px !important; }
+.ts-app .ts-search input::placeholder { color:#8c8c8c !important; }
+.ts-app .ts-search-check {
+  min-height:32px !important;
+  height:32px !important;
+  border-radius:6px !important;
+  background:#10b981 !important;
+  border:1px solid #10b981 !important;
+  color:#04140d !important;
+  font-weight:900 !important;
+  padding:0 13px !important;
+}
+.ts-app .ts-search-check:hover { background:#34d399 !important; }
+
+.ts-sheet-switcher { position:relative; }
+.ts-sheet-switcher-menu {
+  position:absolute;
+  top:38px;
+  left:0;
+  min-width:245px;
+  z-index:1100;
+  background:#0a0a0a;
+  border:1px solid #383838;
+  border-radius:8px;
+  padding:6px;
+  box-shadow:0 18px 45px rgba(0,0,0,.38);
+}
+.ts-sheet-switcher-title { padding:6px 9px 5px; color:#8b8b8b; font-size:9px; font-weight:900; letter-spacing:.08em; }
+.ts-sheet-switcher-menu button { width:100%; display:flex; align-items:center; gap:8px; min-height:34px; border:0; border-radius:5px; background:transparent; color:#f4f4f4; padding:0 9px; text-align:left; cursor:pointer; font-weight:700; }
+.ts-sheet-switcher-menu button:hover { background:#1b1b1b; }
+.ts-sheet-switcher-menu button.selected { background:#10b981; color:#03140d; }
+.ts-sheet-switcher-divider { height:1px; background:#292929; margin:5px 0; }
+
+/* Standard compact worksheet sizing. Excel documents use a compact default row height and standard column sizing; this UI mirrors that density rather than oversized cards. */
+.ts-app .ts-main { min-width:0 !important; }
+.ts-app .ts-sheet-bar { margin-top:8px !important; padding:7px 8px !important; border-radius:6px !important; }
+.ts-app .ts-sheet-tab,
+.ts-app .ts-sheet-tab button { border-radius:5px !important; }
+.ts-app .ts-grid-wrap {
+  max-height: calc(100vh - 285px) !important;
+  min-height: 280px !important;
+  overflow:auto !important;
+  border-radius:4px !important;
+  border:1px solid #aeb9c4 !important;
+  background:#fff !important;
+  scrollbar-gutter:stable;
+}
+.ts-app .ts-grid {
+  width:max-content !important;
+  min-width:100% !important;
+  table-layout:auto !important;
+  border-collapse:collapse !important;
+  border-spacing:0 !important;
+}
+.ts-app .ts-grid th,
+.ts-app .ts-grid td {
+  height:30px !important;
+  min-height:30px !important;
+  padding:2px 5px !important;
+  border:1px solid var(--excel-grid) !important;
+  font-size:12px !important;
+  line-height:1.15 !important;
+  white-space:nowrap !important;
+}
+.ts-app .ts-grid thead th {
+  position:sticky !important;
+  top:0 !important;
+  z-index:30 !important;
+  height:28px !important;
+  background:var(--excel-header) !important;
+  color:#1f2937 !important;
+  box-shadow:0 1px 0 #8f9ba6 !important;
+  font-size:10px !important;
+  letter-spacing:.035em !important;
+}
+.ts-app .ts-grid tbody tr:nth-child(even) td { background:#fafafa !important; }
+.ts-app .ts-grid tbody tr:hover td { background:#f0f7ff !important; }
+.ts-app .ts-grid .ts-row-num { width:36px !important; min-width:36px !important; background:#f1f3f5 !important; text-align:center !important; color:#56616b !important; }
+.ts-app .ts-grid .ts-cell,
+.ts-app .ts-grid .ts-status,
+.ts-app .ts-grid .ts-select {
+  width:100% !important;
+  min-width:0 !important;
+  height:26px !important;
+  min-height:26px !important;
+  padding:0 5px !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  outline:none !important;
+  font-size:12px !important;
+}
+.ts-app .ts-grid .ts-cell:focus,
+.ts-app .ts-grid .ts-status:focus,
+.ts-app .ts-grid .ts-select:focus { outline:2px solid #1677ff !important; outline-offset:-2px !important; box-shadow:none !important; }
+.ts-app .ts-grid .ts-custom-header input { width:100%; height:24px; border:0; background:transparent; font-size:10px; font-weight:900; text-transform:uppercase; outline:none; }
+.ts-app .ts-grid .ts-day-cell { height:26px !important; min-height:26px !important; padding:0 7px !important; border:0 !important; border-radius:0 !important; background:transparent !important; font-weight:700 !important; }
+.ts-app .ts-grid .ts-number { max-width:72px !important; }
+.ts-app .ts-grid .ts-money { font-weight:800 !important; padding-left:7px !important; }
+
+/* Compact, colored check-in/out actions without turning the worksheet into cards. */
+.ts-app .ts-grid .ts-check-button {
+  min-width:82px !important;
+  width:82px !important;
+  height:25px !important;
+  min-height:25px !important;
+  padding:0 7px !important;
+  border-radius:4px !important;
+  font-size:11px !important;
+  font-weight:900 !important;
+  box-shadow:none !important;
+}
+.ts-app .ts-grid .ts-check-button.checkin { background:#10b981 !important; border-color:#10b981 !important; color:#03140d !important; }
+.ts-app .ts-grid .ts-check-button.checkout-ready { background:#2563eb !important; border-color:#2563eb !important; color:#fff !important; }
+.ts-app .ts-grid .ts-check-button.checkout-wait { background:#6b7280 !important; border-color:#6b7280 !important; color:#fff !important; }
+
+/* Keep the worksheet controls compact and spreadsheet-like. */
+.ts-app .ts-bottom-tools { gap:5px !important; padding:7px 0 !important; }
+.ts-app .ts-bottom-tools button { min-height:30px !important; height:30px !important; padding:0 10px !important; border-radius:5px !important; font-size:11px !important; }
+.ts-app .ts-summary { gap:8px !important; }
+.ts-app .ts-summary-card { min-height:62px !important; padding:10px !important; border-radius:7px !important; }
+
+/* Dark worksheet keeps the same compact Excel geometry. */
+.ts-app.ts-dark .ts-grid-wrap { background:#0d1115 !important; border-color:#59636d !important; }
+.ts-app.ts-dark .ts-grid th,
+.ts-app.ts-dark .ts-grid td { border-color:var(--excel-grid-dark) !important; }
+.ts-app.ts-dark .ts-grid thead th { background:#151a1f !important; color:#e7edf3 !important; box-shadow:0 1px 0 #7c8791 !important; }
+.ts-app.ts-dark .ts-grid tbody tr:nth-child(even) td { background:#10151a !important; }
+.ts-app.ts-dark .ts-grid tbody tr:hover td { background:#16222d !important; }
+.ts-app.ts-dark .ts-grid .ts-row-num { background:#151a1f !important; color:#aeb8c2 !important; }
+.ts-app.ts-dark .ts-grid .ts-cell,
+.ts-app.ts-dark .ts-grid .ts-status,
+.ts-app.ts-dark .ts-grid .ts-select,
+.ts-app.ts-dark .ts-grid .ts-custom-header input { color:#fff !important; }
+.ts-app.ts-dark .ts-grid .ts-day-cell { color:#fff !important; }
+
+/* General Sheet: black Excel-like command bar + fixed header + compact grid. */
+.ts-app .ts-general-sheet-panel { min-height:0 !important; }
+.ts-app .ts-general-toolbar {
+  position:sticky !important;
+  top:58px !important;
+  z-index:900 !important;
+  display:flex !important;
+  align-items:center !important;
+  gap:4px !important;
+  flex-wrap:wrap !important;
+  padding:7px !important;
+  background:#050505 !important;
+  border:1px solid #292929 !important;
+  border-radius:5px !important;
+  box-shadow:0 2px 8px rgba(0,0,0,.2) !important;
+}
+.ts-app .ts-general-tool-group { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+.ts-app .ts-general-toolbar button { min-height:30px !important; height:30px !important; padding:0 9px !important; border:1px solid #3b3b3b !important; border-radius:4px !important; background:#111 !important; color:#f4f4f4 !important; font-size:11px !important; font-weight:800 !important; }
+.ts-app .ts-general-toolbar button:hover { background:#1e1e1e !important; }
+.ts-app .ts-general-toolbar button:disabled { opacity:.45 !important; cursor:not-allowed; }
+.ts-app .ts-general-sheet-tabs { display:flex !important; align-items:center !important; gap:2px !important; margin-top:6px !important; padding:3px 4px !important; border-bottom:1px solid #aeb6bf !important; background:#eef1f4 !important; overflow:auto !important; }
+.ts-app .ts-general-sheet-tabs button { min-height:27px !important; padding:0 12px !important; border:1px solid #c4ccd4 !important; border-bottom:0 !important; border-radius:4px 4px 0 0 !important; background:#dfe4e8 !important; color:#26313b !important; font-size:11px !important; font-weight:800 !important; white-space:nowrap !important; }
+.ts-app .ts-general-sheet-tabs button.active { background:#fff !important; color:#111827 !important; border-top:2px solid #10b981 !important; }
+.ts-app .ts-general-selection-bar { position:relative !important; display:flex !important; align-items:center !important; gap:10px !important; min-height:30px !important; padding:3px 6px !important; border:1px solid #c4ccd4 !important; border-top:0 !important; background:#f7f8f9 !important; color:#374151 !important; font-size:11px !important; }
+.ts-app .ts-general-selection-bar strong { min-width:55px; padding:4px 7px; border:1px solid #b7c0c9; background:#fff; font-weight:900; }
+.ts-app .ts-general-selection-bar span { flex:1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.ts-app .ts-general-selection-bar small { color:#6b7280; }
+.ts-app .ts-general-selection-bar > button { width:27px; height:27px; border:1px solid #c4ccd4; background:#fff; border-radius:4px; display:grid; place-items:center; }
+.ts-app .ts-general-selection-menu { position:absolute; right:5px; top:31px; z-index:100; background:#fff; border:1px solid #c4ccd4; box-shadow:0 10px 25px rgba(0,0,0,.16); padding:4px; min-width:150px; }
+.ts-app .ts-general-selection-menu button { display:block; width:100%; text-align:left; border:0; background:#fff; padding:7px 9px; font-size:11px; }
+.ts-app .ts-general-selection-menu button:hover { background:#eef2f5; }
+.ts-app .ts-general-color-wrap { position:relative; }
+.ts-app .ts-general-color-popover { position:absolute; top:34px; left:0; z-index:120; display:grid; grid-template-columns:repeat(5,24px); gap:4px; padding:7px; background:#fff; border:1px solid #c4ccd4; box-shadow:0 12px 28px rgba(0,0,0,.2); }
+.ts-app .ts-general-color-popover > button { width:24px !important; min-width:24px !important; height:24px !important; min-height:24px !important; padding:0 !important; border:1px solid #aeb6bf !important; border-radius:2px !important; }
+.ts-app .ts-general-color-popover input[type=color] { width:24px; height:24px; padding:0; border:1px solid #aeb6bf; }
+.ts-app .ts-general-color-popover .clear-color { grid-column:1/-1; width:auto !important; }
+.ts-app .ts-general-grid-wrap { max-height:calc(100vh - 300px) !important; overflow:auto !important; border:1px solid #8f9aa5 !important; background:#fff !important; }
+.ts-app .ts-general-grid { width:max-content !important; min-width:100% !important; border-collapse:collapse !important; table-layout:fixed !important; }
+.ts-app .ts-general-grid th,
+.ts-app .ts-general-grid td { width:110px !important; min-width:110px !important; max-width:220px !important; height:24px !important; padding:0 !important; border:1px solid #c6ccd2 !important; font-size:11px !important; }
+.ts-app .ts-general-grid thead th { position:sticky !important; top:0 !important; z-index:40 !important; height:25px !important; background:#eef1f3 !important; color:#374151 !important; box-shadow:0 1px 0 #8e98a2 !important; }
+.ts-app .ts-general-grid thead th.active-header,
+.ts-app .ts-general-grid .row-head.active-header { background:#dce8f5 !important; }
+.ts-app .ts-general-grid .row-head { position:sticky !important; left:0 !important; z-index:35 !important; width:42px !important; min-width:42px !important; max-width:42px !important; text-align:center !important; background:#eef1f3 !important; color:#4b5563 !important; font-weight:700 !important; }
+.ts-app .ts-general-grid thead .corner { z-index:50 !important; }
+.ts-app .ts-general-grid thead th:not(.row-head) input { width:100% !important; height:24px !important; border:0 !important; background:transparent !important; text-align:center !important; font-size:11px !important; font-weight:900 !important; color:#374151 !important; outline:none !important; }
+.ts-app .ts-general-grid td { position:relative !important; background:#fff !important; }
+.ts-app .ts-general-grid td.selected { outline:2px solid #1677ff !important; outline-offset:-2px !important; z-index:10 !important; }
+.ts-app .ts-general-grid td input { width:100% !important; height:23px !important; border:0 !important; outline:none !important; padding:0 5px !important; background:transparent !important; color:#111827 !important; font-size:11px !important; }
+.ts-app .ts-general-grid td input:focus { outline:0 !important; }
+.ts-app.ts-dark .ts-general-sheet-panel { background:var(--palette-bg) !important; color:#fff !important; }
+.ts-app.ts-dark .ts-general-sheet-tabs { background:#151a1f !important; border-color:#59636d !important; }
+.ts-app.ts-dark .ts-general-sheet-tabs button { background:#242a30 !important; color:#dbe3ea !important; border-color:#4a545e !important; }
+.ts-app.ts-dark .ts-general-sheet-tabs button.active { background:#0d1115 !important; color:#fff !important; }
+.ts-app.ts-dark .ts-general-selection-bar { background:#151a1f !important; border-color:#59636d !important; color:#e5e7eb !important; }
+.ts-app.ts-dark .ts-general-selection-bar strong,
+.ts-app.ts-dark .ts-general-selection-bar > button { background:#0d1115 !important; color:#fff !important; border-color:#59636d !important; }
+.ts-app.ts-dark .ts-general-selection-bar small { color:#9ca3af !important; }
+.ts-app.ts-dark .ts-general-grid-wrap { background:#0d1115 !important; border-color:#59636d !important; }
+.ts-app.ts-dark .ts-general-grid th,
+.ts-app.ts-dark .ts-general-grid td { border-color:#44515d !important; }
+.ts-app.ts-dark .ts-general-grid thead th,
+.ts-app.ts-dark .ts-general-grid .row-head { background:#151a1f !important; color:#e5e7eb !important; }
+.ts-app.ts-dark .ts-general-grid td { background:#0d1115 !important; }
+.ts-app.ts-dark .ts-general-grid td input,
+.ts-app.ts-dark .ts-general-grid thead th input { color:#fff !important; }
+
+@media(max-width:1100px){
+  .ts-app .ts-topbar { flex-wrap:wrap !important; }
+  .ts-app .ts-brand { width:auto !important; margin-right:0 !important; }
+  .ts-app .ts-grid-wrap { max-height:calc(100vh - 330px) !important; }
+}
+
+/* Analytics metric cards: distinct colored, compact dashboard controls. */
+.ts-app .ts-stat-grid .ts-stat { min-height:86px !important; padding:11px 12px !important; border-radius:8px !important; display:grid !important; grid-template-columns:34px 1fr !important; grid-template-rows:auto 1fr !important; column-gap:9px !important; align-items:center !important; }
+.ts-app .ts-stat-grid .ts-stat .ts-stat-icon { grid-row:1 / span 2 !important; margin:0 !important; width:34px !important; height:34px !important; border-radius:7px !important; }
+.ts-app .ts-stat-grid .ts-stat span { font-size:10px !important; font-weight:800 !important; }
+.ts-app .ts-stat-grid .ts-stat strong { font-size:18px !important; margin-top:1px !important; }
+.ts-app .ts-stat-grid .ts-stat.blue { background:#e8f2ff !important; border-color:#93c5fd !important; color:#1e3a8a !important; }
+.ts-app .ts-stat-grid .ts-stat.green { background:#e7f8f0 !important; border-color:#86efac !important; color:#065f46 !important; }
+.ts-app .ts-stat-grid .ts-stat.orange { background:#fff3df !important; border-color:#f6c66b !important; color:#92400e !important; }
+.ts-app .ts-stat-grid .ts-stat.purple { background:#f1eafe !important; border-color:#c4b5fd !important; color:#5b21b6 !important; }
+.ts-app.ts-dark .ts-stat-grid .ts-stat.blue { background:#10243a !important; border-color:#3f7db3 !important; color:#b9dcff !important; }
+.ts-app.ts-dark .ts-stat-grid .ts-stat.green { background:#0d2b21 !important; border-color:#278f6b !important; color:#8af0c8 !important; }
+.ts-app.ts-dark .ts-stat-grid .ts-stat.orange { background:#33240e !important; border-color:#a87928 !important; color:#ffd27a !important; }
+.ts-app.ts-dark .ts-stat-grid .ts-stat.purple { background:#24183a !important; border-color:#7655ad !important; color:#d6c4ff !important; }
+
+/* =========================================================
+   ADVANCED EXCEL WORKSHEET UPDATE
+   Full-width gray command bar, compact grid, resizing handles,
+   deep-red analytics/reports actions and default zero hourly rate.
+   ========================================================= */
+.ts-app .ts-general-sheet-panel {
+  width:100% !important;
+  max-width:none !important;
+  padding:10px !important;
+  border-radius:5px !important;
+}
+.ts-app .ts-general-toolbar {
+  width:100% !important;
+  box-sizing:border-box !important;
+  min-height:38px !important;
+  padding:5px 7px !important;
+  gap:4px !important;
+  background:#62676d !important;
+  border:1px solid #4b5055 !important;
+  border-radius:3px !important;
+  box-shadow:0 1px 2px rgba(0,0,0,.16) !important;
+}
+.ts-app .ts-general-tool-group { gap:3px !important; }
+.ts-app .ts-general-toolbar button {
+  min-height:28px !important;
+  height:28px !important;
+  padding:0 8px !important;
+  border:1px solid #858b91 !important;
+  border-radius:3px !important;
+  background:#70757a !important;
+  color:#fff !important;
+  font-size:10px !important;
+  font-weight:800 !important;
+}
+.ts-app .ts-general-toolbar button:hover { background:#80858a !important; }
+.ts-app .ts-general-toolbar button:active { background:#555a5f !important; }
+.ts-app .ts-general-toolbar button:disabled { opacity:.45 !important; }
+.ts-app .ts-general-sheet-tabs {
+  width:100% !important;
+  box-sizing:border-box !important;
+  margin:4px 0 0 !important;
+  min-height:28px !important;
+  padding:2px 3px !important;
+  gap:2px !important;
+  background:#d8dce0 !important;
+  border:1px solid #9ba2a9 !important;
+  border-bottom-color:#747b82 !important;
+  border-radius:3px 3px 0 0 !important;
+}
+.ts-app .ts-general-sheet-tabs button {
+  min-height:25px !important;
+  height:25px !important;
+  padding:0 10px !important;
+  border:1px solid #aeb5bc !important;
+  border-bottom:3px solid #8c949b !important;
+  border-radius:2px 2px 0 0 !important;
+  background:#eef0f2 !important;
+  color:#27313a !important;
+  font-size:10px !important;
+  font-weight:800 !important;
+}
+.ts-app .ts-general-sheet-tabs button.active {
+  background:#fff !important;
+  color:#111827 !important;
+  border-top:2px solid #10b981 !important;
+  border-left-color:#9ba2a9 !important;
+  border-right-color:#9ba2a9 !important;
+}
+.ts-app .ts-general-sheet-tabs button:disabled { opacity:.45 !important; }
+.ts-app .ts-general-selection-bar {
+  width:100% !important;
+  box-sizing:border-box !important;
+  min-height:28px !important;
+  margin:0 !important;
+  padding:2px 5px !important;
+  gap:8px !important;
+  border:1px solid #aeb6bf !important;
+  border-top:0 !important;
+  border-radius:0 0 3px 3px !important;
+  background:#f1f3f5 !important;
+  font-size:10px !important;
+}
+.ts-app .ts-general-selection-bar strong { min-width:50px !important; padding:3px 6px !important; border-radius:2px !important; }
+.ts-app .ts-general-selection-bar > button { width:24px !important; height:24px !important; border-radius:2px !important; }
+.ts-app .ts-general-selection-menu { top:29px !important; right:3px !important; min-width:140px !important; border-radius:2px !important; }
+.ts-app .ts-general-selection-menu button { min-height:27px !important; padding:4px 7px !important; font-size:10px !important; }
+.ts-app .ts-general-grid-wrap {
+  width:100% !important;
+  max-width:none !important;
+  max-height:calc(100vh - 285px) !important;
+  min-height:360px !important;
+  overflow:auto !important;
+  border:1px solid #8f979f !important;
+  border-top:0 !important;
+  border-radius:0 0 3px 3px !important;
+  background:#fff !important;
+}
+.ts-app .ts-general-grid {
+  width:max-content !important;
+  min-width:100% !important;
+  table-layout:fixed !important;
+  border-collapse:collapse !important;
+}
+.ts-app .ts-general-grid th,
+.ts-app .ts-general-grid td {
+  box-sizing:border-box !important;
+  min-width:54px !important;
+  height:24px !important;
+  padding:0 !important;
+  border:1px solid #c5cbd1 !important;
+  font-size:10px !important;
+}
+.ts-app .ts-general-grid thead th {
+  position:sticky !important;
+  top:0 !important;
+  z-index:40 !important;
+  height:25px !important;
+  background:#e7eaed !important;
+  color:#26313a !important;
+  box-shadow:0 1px 0 #7e8790 !important;
+}
+.ts-app .ts-general-grid .row-head {
+  position:sticky !important;
+  left:0 !important;
+  z-index:35 !important;
+  width:42px !important;
+  min-width:42px !important;
+  max-width:42px !important;
+  background:#e7eaed !important;
+  color:#4b5563 !important;
+  text-align:center !important;
+  font-weight:700 !important;
+}
+.ts-app .ts-general-grid thead .corner { z-index:50 !important; }
+.ts-app .ts-general-grid thead th:not(.row-head) { position:sticky !important; }
+.ts-app .ts-general-grid thead th:not(.row-head) input {
+  width:100% !important;
+  height:24px !important;
+  box-sizing:border-box !important;
+  border:0 !important;
+  background:transparent !important;
+  padding:0 4px !important;
+  text-align:center !important;
+  font-size:10px !important;
+  font-weight:900 !important;
+  color:#26313a !important;
+  outline:none !important;
+}
+.ts-app .ts-general-grid td { position:relative !important; background:#fff !important; }
+.ts-app .ts-general-grid tbody tr:nth-child(even) td { background:#fbfcfd !important; }
+.ts-app .ts-general-grid td.selected { outline:2px solid #1677ff !important; outline-offset:-2px !important; z-index:10 !important; }
+.ts-app .ts-general-grid td input {
+  width:100% !important;
+  height:100% !important;
+  min-height:22px !important;
+  box-sizing:border-box !important;
+  border:0 !important;
+  outline:none !important;
+  padding:0 5px !important;
+  background:transparent !important;
+  color:#111827 !important;
+  font-size:10px !important;
+}
+.ts-app .ts-general-grid td input:focus { box-shadow:inset 0 0 0 1px rgba(22,119,255,.55) !important; }
+.ts-app .ts-general-grid .active-header { background:#d9e7f7 !important; }
+.ts-app .ts-col-resizer,
+.ts-app .ts-row-resizer {
+  position:absolute !important;
+  z-index:60 !important;
+  display:block !important;
+  opacity:0 !important;
+  transition:opacity .12s ease !important;
+}
+.ts-app .ts-general-grid th:hover .ts-col-resizer,
+.ts-app .ts-general-grid .row-head:hover .ts-row-resizer { opacity:1 !important; }
+.ts-app .ts-col-resizer {
+  top:0 !important;
+  right:-3px !important;
+  width:6px !important;
+  height:100% !important;
+  cursor:col-resize !important;
+}
+.ts-app .ts-row-resizer {
+  left:0 !important;
+  right:0 !important;
+  bottom:-3px !important;
+  height:6px !important;
+  cursor:row-resize !important;
+}
+.ts-app .ts-general-color-wrap { position:relative !important; }
+.ts-app .ts-general-color-popover {
+  top:32px !important;
+  left:0 !important;
+  z-index:120 !important;
+  display:grid !important;
+  grid-template-columns:repeat(6,22px) !important;
+  gap:3px !important;
+  width:auto !important;
+  min-width:155px !important;
+  padding:5px !important;
+  border:1px solid #89929b !important;
+  border-radius:3px !important;
+  background:#fff !important;
+}
+.ts-app .ts-general-color-popover > button { width:22px !important; min-width:22px !important; height:22px !important; min-height:22px !important; padding:0 !important; border:1px solid #9aa2aa !important; border-radius:2px !important; }
+.ts-app .ts-general-color-popover input[type=color] { width:22px !important; height:22px !important; padding:0 !important; border:1px solid #9aa2aa !important; }
+.ts-app .ts-general-color-popover .clear-color { grid-column:1/-1 !important; width:auto !important; min-width:0 !important; height:23px !important; }
+
+/* Deep red action buttons for Analytics and Reports. */
+.ts-app .ts-top-action.report-red,
+.ts-app .ts-top-action.report-red:hover {
+  background:#8f1515 !important;
+  border-color:#b21d1d !important;
+  color:#fff !important;
+}
+.ts-app .ts-top-action.report-red.active { background:#a91515 !important; border-color:#d43a3a !important; color:#fff !important; }
+.ts-app .ts-top-action.report-red.active svg { color:#fff !important; }
+
+/* Compact overall workspace: spreadsheet density rather than large cards. */
+.ts-app .ts-heading { padding:8px 0 !important; }
+.ts-app .ts-title-row h1 { font-size:20px !important; }
+.ts-app .ts-heading p { margin-top:2px !important; font-size:11px !important; }
+.ts-app .ts-main { gap:7px !important; }
+.ts-app .ts-sheet-bar { margin-top:3px !important; padding:4px 6px !important; border-radius:3px !important; }
+.ts-app .ts-grid-wrap { min-height:280px !important; max-height:calc(100vh - 250px) !important; }
+.ts-app .ts-grid th,
+.ts-app .ts-grid td { height:27px !important; min-height:27px !important; padding:1px 4px !important; font-size:10px !important; }
+.ts-app .ts-cell,
+.ts-app .ts-status,
+.ts-app .ts-select { min-height:25px !important; height:25px !important; border-radius:2px !important; padding:0 5px !important; font-size:10px !important; }
+.ts-app .ts-check-button { min-width:86px !important; min-height:25px !important; height:25px !important; border-radius:3px !important; padding:0 7px !important; font-size:10px !important; }
+.ts-app .ts-bottom-tools { padding:5px 0 !important; gap:4px !important; }
+.ts-app .ts-bottom-tools button { min-height:27px !important; padding:0 8px !important; border-radius:3px !important; font-size:10px !important; }
+.ts-app .ts-summary-card { min-height:58px !important; padding:8px !important; border-radius:5px !important; }
+.ts-app .ts-summary-icon { width:28px !important; height:28px !important; border-radius:5px !important; }
+
+/* Dark worksheet keeps the same compact geometry while retaining light text/lines. */
+.ts-app.ts-dark .ts-general-toolbar { background:#5a6066 !important; border-color:#7b838a !important; }
+.ts-app.ts-dark .ts-general-toolbar button { background:#686f75 !important; border-color:#929aa1 !important; color:#fff !important; }
+.ts-app.ts-dark .ts-general-sheet-tabs { background:#11171c !important; border-color:#59636d !important; }
+.ts-app.ts-dark .ts-general-sheet-tabs button { background:#252c33 !important; color:#e5e7eb !important; border-color:#59636d !important; }
+.ts-app.ts-dark .ts-general-sheet-tabs button.active { background:#0d1115 !important; color:#fff !important; }
+.ts-app.ts-dark .ts-general-selection-bar { background:#151a1f !important; color:#fff !important; border-color:#59636d !important; }
+.ts-app.ts-dark .ts-general-grid-wrap { background:#0d1115 !important; border-color:#59636d !important; }
+.ts-app.ts-dark .ts-general-grid th,
+.ts-app.ts-dark .ts-general-grid td { border-color:#44515d !important; }
+.ts-app.ts-dark .ts-general-grid thead th,
+.ts-app.ts-dark .ts-general-grid .row-head { background:#151a1f !important; color:#e5e7eb !important; }
+.ts-app.ts-dark .ts-general-grid tbody tr:nth-child(even) td,
+.ts-app.ts-dark .ts-general-grid td { background:#0d1115 !important; }
+.ts-app.ts-dark .ts-general-grid td input,
+.ts-app.ts-dark .ts-general-grid thead th input { color:#fff !important; }
+
+@media(max-width:1100px){
+  .ts-app .ts-general-toolbar { align-items:flex-start !important; }
+  .ts-app .ts-general-tool-group { flex-wrap:wrap !important; }
+}
+
+/* ADVANCED WORKBOOK COMMAND BAR — final gray Excel-inspired layer */
+.ts-app .ts-topbar {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  background: #62676c !important;
+  border-bottom: 1px solid #4b5055 !important;
+  color: #fff !important;
+}
+.ts-app .ts-top-action,
+.ts-app .ts-icon-tool,
+.ts-app .ts-sheet-switcher-btn {
+  background: #70767b !important;
+  border-color: #858b90 !important;
+  color: #fff !important;
+}
+.ts-app .ts-top-action:hover,
+.ts-app .ts-icon-tool:hover,
+.ts-app .ts-sheet-switcher-btn:hover { background:#7d8388 !important; }
+.ts-app .ts-top-action.active { background:#d8dde1 !important; border-color:#f2f4f5 !important; color:#20252a !important; }
+.ts-app .ts-top-action.active svg { color:#20252a !important; }
+.ts-app .ts-top-action.report-red,
+.ts-app .ts-top-action.report-red:hover { background:#8f1515 !important; border-color:#b51f1f !important; color:#fff !important; }
+.ts-app .ts-top-action.report-red.active { background:#a81717 !important; border-color:#dc3b3b !important; color:#fff !important; }
+.ts-app .ts-top-action.insert-sheet-action { background:#81878c !important; border-color:#9da3a8 !important; color:#fff !important; }
+.ts-app .ts-search { background:#555b60 !important; border-color:#858b90 !important; }
+.ts-app .ts-tools .ts-icon-tool { background:#70767b !important; }
+
+/* Sheet tabs: Excel-style tab color, right-click/double-click friendly affordance. */
+.ts-app .ts-sheet-tab {
+  position: relative !important;
+  border-bottom: 3px solid var(--ts-tab-color, #9ca3af) !important;
+}
+.ts-app .ts-sheet-tab.active {
+  box-shadow: inset 0 -3px 0 var(--ts-tab-color, #10b981) !important;
+}
+.ts-app .ts-sheet-context-menu,
+.ts-app .ts-general-sheet-context {
+  position: fixed !important;
+  z-index: 50000 !important;
+  width: 220px !important;
+  padding: 7px !important;
+  border: 1px solid #8c9399 !important;
+  border-radius: 7px !important;
+  background: #f3f4f5 !important;
+  color: #20252a !important;
+  box-shadow: 0 18px 45px rgba(0,0,0,.28) !important;
+}
+.ts-app .ts-sheet-context-menu strong,
+.ts-app .ts-general-sheet-context strong {
+  display:block !important;
+  padding:6px 8px 8px !important;
+  font-size:11px !important;
+  border-bottom:1px solid #d2d6da !important;
+  margin-bottom:4px !important;
+}
+.ts-app .ts-sheet-context-menu > button,
+.ts-app .ts-general-sheet-context > button {
+  display:block !important;
+  width:100% !important;
+  min-height:29px !important;
+  border:0 !important;
+  border-radius:4px !important;
+  background:transparent !important;
+  color:#20252a !important;
+  text-align:left !important;
+  padding:0 8px !important;
+  font-size:11px !important;
+  cursor:pointer !important;
+}
+.ts-app .ts-sheet-context-menu > button:hover,
+.ts-app .ts-general-sheet-context > button:hover { background:#dfe3e6 !important; }
+.ts-app .ts-sheet-context-menu > button.danger,
+.ts-app .ts-general-sheet-context > button.danger { color:#b91c1c !important; }
+.ts-app .ts-sheet-context-label,
+.ts-app .ts-general-sheet-context-label {
+  padding:8px 8px 5px !important;
+  font-size:9px !important;
+  font-weight:900 !important;
+  letter-spacing:.08em !important;
+  color:#6b7280 !important;
+}
+.ts-app .ts-sheet-context-colors,
+.ts-app .ts-general-sheet-context-colors { display:grid !important; grid-template-columns:repeat(5,1fr) !important; gap:5px !important; padding:3px 8px 8px !important; }
+.ts-app .ts-sheet-context-colors button,
+.ts-app .ts-general-sheet-context-colors button {
+  width:25px !important; height:25px !important; min-height:25px !important;
+  padding:0 !important; border:1px solid #89919a !important; border-radius:4px !important; cursor:pointer !important;
+}
+.ts-app .ts-general-sheet-tabs button { position:relative !important; }
+.ts-app .ts-sheet-tab-color-dot { width:6px !important; height:6px !important; border-radius:50% !important; background:var(--ts-tab-color,#10b981) !important; display:inline-block !important; flex:none !important; }
+
+/* Excel-style resize affordances: drag boundaries; double-click AutoFit. */
+.ts-app .ts-col-resizer,
+.ts-app .ts-row-resizer { position:absolute !important; display:block !important; z-index:10 !important; }
+.ts-app .ts-col-resizer { top:0 !important; right:-3px !important; width:7px !important; height:100% !important; cursor:col-resize !important; }
+.ts-app .ts-row-resizer { left:0 !important; bottom:-3px !important; width:100% !important; height:7px !important; cursor:row-resize !important; }
+.ts-app .ts-general-grid thead th:not(.row-head),
+.ts-app .ts-general-grid .row-head { position:sticky !important; }
+.ts-app .ts-general-grid thead th:not(.row-head) { top:0 !important; }
+.ts-app .ts-general-grid .row-head { left:0 !important; }
+
+/* Keep the General Sheet toolbar full-width and gray, including dark mode. */
+.ts-app .ts-general-toolbar { width:100% !important; box-sizing:border-box !important; background:#62676c !important; border-color:#858b90 !important; }
+.ts-app .ts-general-toolbar button { background:#70767b !important; border-color:#858b90 !important; color:#fff !important; }
+.ts-app .ts-general-toolbar button:hover { background:#7d8388 !important; }
+.ts-app.ts-dark .ts-topbar,
+.ts-app.ts-dark .ts-general-toolbar { background:#555b60 !important; border-color:#7b838a !important; }
+.ts-app.ts-dark .ts-top-action,
+.ts-app.ts-dark .ts-icon-tool,
+.ts-app.ts-dark .ts-sheet-switcher-btn,
+.ts-app.ts-dark .ts-general-toolbar button { background:#686f75 !important; border-color:#929aa1 !important; color:#fff !important; }
+.ts-app.ts-dark .ts-top-action.active { background:#d8dde1 !important; color:#20252a !important; border-color:#f2f4f5 !important; }
+.ts-app.ts-dark .ts-top-action.report-red,
+.ts-app.ts-dark .ts-top-action.report-red:hover { background:#8f1515 !important; color:#fff !important; border-color:#b51f1f !important; }
+.ts-app.ts-dark .ts-sheet-context-menu,
+.ts-app.ts-dark .ts-general-sheet-context { background:#20252b !important; color:#fff !important; border-color:#6b747c !important; }
+.ts-app.ts-dark .ts-sheet-context-menu strong,
+.ts-app.ts-dark .ts-general-sheet-context strong { border-color:#454d54 !important; color:#fff !important; }
+.ts-app.ts-dark .ts-sheet-context-menu > button,
+.ts-app.ts-dark .ts-general-sheet-context > button { color:#fff !important; }
+.ts-app.ts-dark .ts-sheet-context-menu > button:hover,
+.ts-app.ts-dark .ts-general-sheet-context > button:hover { background:#343b42 !important; }
+.ts-app.ts-dark .ts-sheet-context-label,
+.ts-app.ts-dark .ts-general-sheet-context-label { color:#aeb7bf !important; }
+
+/* Slightly tighter page chrome without changing the existing attendance table geometry. */
+.ts-app .ts-heading { padding-top:7px !important; padding-bottom:7px !important; }
+.ts-app .ts-current-day { padding:6px 10px !important; }
+
+
+/* =========================================================
+   GENERAL SHEET — RANGE SELECTION, CELL FORMATTING & TRASH BIN
+   ========================================================= */
+.ts-general-toolbar .format-active{background:#10b981!important;border-color:#10b981!important;color:#03140d!important}
+.ts-general-format-wrap{position:relative;display:inline-flex}
+.ts-general-format-popover{position:absolute;z-index:1200;top:34px;left:0;min-width:110px;display:flex;flex-direction:column;gap:3px;padding:6px;background:#fff;border:1px solid #c4ccd4;border-radius:7px;box-shadow:0 14px 35px rgba(15,23,42,.22)}
+.ts-general-format-popover button{display:block!important;width:100%;height:30px!important;min-height:30px!important;text-align:left;padding:0 9px!important;background:#fff!important;color:#1f2937!important;border:0!important;border-radius:4px!important;font-size:11px!important}
+.ts-general-format-popover button:hover{background:#eef2f5!important}
+.ts-general-format-popover.font-list{min-width:165px}
+.ts-general-color-wrap .ts-general-color-popover{z-index:1200}
+.ts-general-grid td.selected{position:relative;outline:2px solid #10b981!important;outline-offset:-2px!important;box-shadow:inset 0 0 0 1px rgba(16,185,129,.22)!important}
+.ts-general-grid td.selected:after{content:"";position:absolute;inset:0;border:1px solid rgba(16,185,129,.24);pointer-events:none}
+.ts-general-grid td{user-select:none;cursor:cell}
+.ts-general-grid td input{user-select:text;cursor:text}
+.ts-general-grid th.active-header{background:#dff8ed!important;color:#047857!important}
+.ts-general-grid th.row-head.active-header{background:#dff8ed!important}
+
+.ts-general-trash-panel{margin:8px 0 10px;border:1px solid #c4ccd4;border-radius:8px;background:#fff;box-shadow:0 12px 30px rgba(15,23,42,.12);overflow:hidden}
+.ts-general-trash-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;background:#f5f7f9;border-bottom:1px solid #d8dee5}
+.ts-general-trash-header>div:first-child{display:flex;flex-direction:column;gap:2px}
+.ts-general-trash-header strong{font-size:13px;color:#111827}
+.ts-general-trash-header span{font-size:10px;color:#6b7280}
+.ts-general-trash-actions{display:flex;gap:5px}
+.ts-general-trash-actions button{min-height:29px;padding:0 9px;border:1px solid #c4ccd4;border-radius:5px;background:#fff;color:#374151;font-size:10px;font-weight:800}
+.ts-general-trash-actions button:hover{background:#eef2f5}
+.ts-general-trash-table-wrap{max-height:230px;overflow:auto}
+.ts-general-trash-table{width:100%;border-collapse:collapse;font-size:10px}
+.ts-general-trash-table th,.ts-general-trash-table td{padding:7px 9px;border-bottom:1px solid #e1e5e9;text-align:left;white-space:nowrap}
+.ts-general-trash-table th{position:sticky;top:0;background:#f8fafc;color:#64748b;font-size:9px;text-transform:uppercase;letter-spacing:.04em;z-index:2}
+.ts-general-trash-table td{color:#374151}
+.ts-general-trash-table td:last-child{display:flex;gap:5px;align-items:center}
+.ts-general-trash-table button{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 7px;border-radius:4px;border:1px solid #cbd5e1;background:#fff;font-size:9px;font-weight:800;cursor:pointer}
+.ts-general-trash-table button.restore{color:#047857;border-color:#86efac;background:#f0fdf4}
+.ts-general-trash-table button.permanent{color:#b91c1c;border-color:#fecaca;background:#fff5f5}
+.ts-general-trash-table button:disabled{opacity:.45;cursor:not-allowed}
+.ts-general-trash-empty{padding:22px;text-align:center;color:#6b7280;font-size:11px}
+
+.ts-app.ts-dark .ts-general-format-popover{background:#161b20!important;border-color:var(--palette-border)!important}
+.ts-app.ts-dark .ts-general-format-popover button{background:#161b20!important;color:#fff!important}
+.ts-app.ts-dark .ts-general-format-popover button:hover{background:#2b333b!important}
+.ts-app.ts-dark .ts-general-grid td.selected{outline-color:#8fd3ff!important;box-shadow:inset 0 0 0 1px rgba(143,211,255,.22)!important}
+.ts-app.ts-dark .ts-general-grid th.active-header{background:#26323d!important;color:#fff!important}
+.ts-app.ts-dark .ts-general-trash-panel{background:var(--palette-surface,#0d1115)!important;border-color:var(--palette-border)!important}
+.ts-app.ts-dark .ts-general-trash-header{background:var(--palette-surface-2,#181d22)!important;border-color:var(--palette-border)!important}
+.ts-app.ts-dark .ts-general-trash-header strong,.ts-app.ts-dark .ts-general-trash-table td{color:#fff!important}
+.ts-app.ts-dark .ts-general-trash-header span,.ts-app.ts-dark .ts-general-trash-table th{color:#aeb8c2!important}
+.ts-app.ts-dark .ts-general-trash-actions button,.ts-app.ts-dark .ts-general-trash-table button{background:#161b20!important;color:#fff!important;border-color:var(--palette-border)!important}
+.ts-app.ts-dark .ts-general-trash-table th{background:#20262c!important}
+.ts-app.ts-dark .ts-general-trash-table td{border-color:#3a424a!important}
+
+/* =========================================================
+   UNIFIED WORKBOOK TOOLBAR — SHARED BY EVERY SHEET
+   ========================================================= */
+.ts-app .ts-topbar {
+  background:#62676c !important;
+  border-bottom:1px solid #4b5055 !important;
+  color:#fff !important;
+}
+.ts-app .ts-top-action.report-red,
+.ts-app .ts-top-action.report-red:hover,
+.ts-app .ts-top-action.report-red.active {
+  background:#70767b !important;
+  border-color:#858b90 !important;
+  color:#fff !important;
+}
+.ts-app .ts-top-action.report-red.active svg { color:#fff !important; }
+
+.ts-unified-toolbar {
+  position:sticky;
+  top:0;
+  z-index:950;
+  width:100%;
+  box-sizing:border-box;
+  display:flex;
+  align-items:flex-end;
+  gap:0;
+  overflow-x:auto;
+  overflow-y:visible;
+  padding:7px 10px 8px;
+  background:#d6d9dc;
+  color:#20252a;
+  border-bottom:1px solid #9ca3aa;
+  box-shadow:0 2px 7px rgba(0,0,0,.12);
+  scrollbar-width:thin;
+}
+.ts-unified-group {
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:4px;
+  min-height:50px;
+  padding:15px 9px 2px;
+  border-right:1px solid #b5bbc0;
+  flex:none;
+}
+.ts-unified-group:last-of-type { border-right:0; }
+.ts-unified-label {
+  position:absolute;
+  left:9px;
+  top:3px;
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.09em;
+  color:#596168;
+  white-space:nowrap;
+}
+.ts-unified-group > button,
+.ts-toolbar-pop > button {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  min-height:31px;
+  height:31px;
+  padding:0 8px;
+  border:1px solid #aab1b7;
+  border-radius:5px;
+  background:#eef0f2;
+  color:#20252a;
+  font-size:10px;
+  font-weight:800;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.ts-unified-group > button:hover,
+.ts-toolbar-pop > button:hover { background:#fff; border-color:#8d969e; }
+.ts-unified-group > button:active,
+.ts-toolbar-pop > button:active { background:#cbd0d4; }
+.ts-toolbar-pop { position:relative; }
+.ts-toolbar-pop > button { min-width:72px; }
+.ts-toolbar-menu,
+.ts-toolbar-colors {
+  position:absolute;
+  left:0;
+  top:35px;
+  z-index:2000;
+  padding:5px;
+  border:1px solid #9ca3aa;
+  border-radius:7px;
+  background:#f7f8f9;
+  box-shadow:0 14px 35px rgba(0,0,0,.25);
+}
+.ts-toolbar-menu { min-width:155px; }
+.ts-toolbar-menu button {
+  display:block;
+  width:100%;
+  min-height:29px;
+  border:0;
+  border-radius:4px;
+  background:transparent;
+  color:#20252a;
+  text-align:left;
+  padding:0 8px;
+  font-size:11px;
+  cursor:pointer;
+}
+.ts-toolbar-menu button:hover { background:#e3e6e8; }
+.ts-toolbar-colors {
+  display:grid;
+  grid-template-columns:repeat(4,26px);
+  gap:5px;
+}
+.ts-toolbar-colors button {
+  width:26px;
+  height:26px;
+  padding:0;
+  border:1px solid #89919a;
+  border-radius:4px;
+  cursor:pointer;
+}
+.ts-unified-current {
+  margin-left:auto;
+  min-width:160px;
+  padding:5px 10px 3px;
+  align-self:center;
+  flex:none;
+}
+.ts-unified-current span { display:block; font-size:10px; font-weight:900; color:#30363b; }
+.ts-unified-current small { display:block; margin-top:2px; font-size:8px; color:#687178; }
+
+/* Right-side universal Bin. */
+.ts-unified-bin-panel {
+  position:fixed;
+  top:0;
+  right:0;
+  bottom:0;
+  z-index:50000;
+  width:min(390px,92vw);
+  display:flex;
+  flex-direction:column;
+  background:#f4f5f6;
+  color:#20252a;
+  border-left:1px solid #9ca3aa;
+  box-shadow:-18px 0 50px rgba(0,0,0,.28);
+}
+.ts-unified-bin-header {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  padding:20px;
+  border-bottom:1px solid #c6cbd0;
+  background:#d6d9dc;
+}
+.ts-unified-bin-header strong { display:flex; align-items:center; gap:7px; font-size:15px; }
+.ts-unified-bin-header span { display:block; margin-top:5px; max-width:285px; font-size:11px; line-height:1.5; color:#65707a; }
+.ts-unified-bin-header > button { border:0; background:transparent; color:#3f474d; cursor:pointer; }
+.ts-unified-bin-list { flex:1; overflow:auto; padding:14px; }
+.ts-unified-bin-item {
+  padding:13px;
+  margin-bottom:9px;
+  border:1px solid #cbd0d5;
+  border-radius:9px;
+  background:#fff;
+}
+.ts-unified-bin-item > div:first-child strong { display:block; font-size:12px; }
+.ts-unified-bin-item > div:first-child small { display:block; margin-top:4px; font-size:9px; color:#717b84; }
+.ts-unified-bin-item > div:last-child { display:flex; gap:6px; margin-top:11px; }
+.ts-unified-bin-item button {
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  min-height:29px;
+  padding:0 8px;
+  border:1px solid #c2c8cd;
+  border-radius:5px;
+  background:#edf0f2;
+  color:#30363b;
+  font-size:9px;
+  font-weight:900;
+  cursor:pointer;
+}
+.ts-unified-bin-item button:hover { background:#e0e4e7; }
+.ts-unified-bin-item button.danger { color:#b42318; background:#fff0ef; border-color:#efb5b0; }
+.ts-unified-bin-empty { padding:50px 15px; text-align:center; font-size:12px; color:#7a838b; }
+.ts-unified-empty-bin {
+  margin:14px;
+  min-height:38px;
+  border:1px solid #efb5b0;
+  border-radius:7px;
+  background:#ffe2df;
+  color:#b42318;
+  font-size:11px;
+  font-weight:900;
+  cursor:pointer;
+}
+.ts-unified-empty-bin:disabled { opacity:.45; cursor:not-allowed; }
+
+/* Shared range selection on the Employee Timesheet grid. */
+.ts-app .ts-grid td.ts-attendance-selected,
+.ts-app .ts-grid td.ts-attendance-selected:hover {
+  background:#e8f1ff !important;
+  box-shadow:inset 0 0 0 2px #1677ff !important;
+}
+.ts-app .ts-grid td.ts-attendance-selected input,
+.ts-app .ts-grid td.ts-attendance-selected select { background:transparent !important; }
+
+/* General Sheet no longer owns a separate command toolbar. */
+.ts-app .ts-general-sheet-panel .ts-general-toolbar { display:none !important; }
+
+/* Both the main navigation bar and the universal tool bar use gray instead of red accents. */
+.ts-app .ts-top-action.report-red,
+.ts-app .ts-top-action.report-red:hover,
+.ts-app .ts-top-action.report-red.active { background:#70767b !important; border-color:#858b90 !important; color:#fff !important; }
+
+@media (max-width:1100px) {
+  .ts-unified-toolbar { align-items:flex-start; }
+  .ts-unified-current { display:none; }
+}
+
+
+/* =========================================================
+   SODAH — FINAL STABLE WORKSHEET LAYOUT
+   Companion overrides for the unified toolbar / sheet bar /
+   page subtitle / attendance table.
+   ========================================================= */
+
+/* Keep the main workbook chrome in one predictable stacking order. */
+.ts-app {
+  --ts-topbar-stack: 124px;
+  --ts-toolbar-stack: 0px;
+  --ts-heading-stack: 62px;
+  --ts-sheet-stack: 102px;
+}
+
+/* Main top navigation remains the first fixed layer. */
+.ts-app .ts-topbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 4000 !important;
+}
+
+/* One-line workbook tools ribbon.
+   It scrolls horizontally, but never wraps or disappears underneath
+   the navigation bar. */
+.ts-app .ts-unified-toolbar {
+  position: sticky !important;
+  top: var(--ts-topbar-stack) !important;
+  z-index: 3900 !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: flex-end !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  overscroll-behavior-x: contain !important;
+  scrollbar-width: thin !important;
+}
+
+/* Never allow an individual command group to shrink into hidden controls. */
+.ts-app .ts-unified-group {
+  flex: 0 0 auto !important;
+  min-width: max-content !important;
+  white-space: nowrap !important;
+}
+
+/* Dropdowns must escape the ribbon instead of being clipped by it. */
+.ts-app .ts-unified-toolbar,
+.ts-app .ts-unified-group,
+.ts-app .ts-toolbar-pop {
+  overflow: visible !important;
+}
+.ts-app .ts-unified-toolbar {
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+}
+.ts-app .ts-toolbar-menu,
+.ts-app .ts-toolbar-colors {
+  z-index: 50000 !important;
+}
+
+/* Stable page title/subtitle strip.
+   It stays gray, full-width and flexible while the worksheet moves. */
+.ts-app .ts-heading {
+  position: sticky !important;
+  top: calc(var(--ts-topbar-stack) + 66px) !important;
+  z-index: 3600 !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  flex: 1 1 auto !important;
+  padding: 7px 0 !important;
+  margin: 0 !important;
+  background: var(--ts-page-bg, #f5f7f9) !important;
+}
+
+/* Subtitle is deliberately muted gray and allowed to extend. */
+.ts-app .ts-heading p,
+.ts-app .ts-heading .ts-subtitle,
+.ts-app .ts-title-row + p {
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+  white-space: normal !important;
+  color: #6b7280 !important;
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+  margin: 2px 0 0 !important;
+  text-overflow: clip !important;
+}
+.ts-app.ts-dark .ts-heading {
+  background: #0d1115 !important;
+}
+.ts-app.ts-dark .ts-heading p,
+.ts-app.ts-dark .ts-heading .ts-subtitle,
+.ts-app.ts-dark .ts-title-row + p {
+  color: #9ca3af !important;
+}
+
+/* Sheet management/tabs form the stable layer immediately below
+   the title/subtitle. Tabs remain horizontally scrollable. */
+.ts-app .ts-sheet-bar {
+  position: sticky !important;
+  top: calc(var(--ts-topbar-stack) + 124px) !important;
+  z-index: 3500 !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  scrollbar-width: thin !important;
+  background: var(--ts-page-bg, #f5f7f9) !important;
+}
+
+/* The worksheet itself scrolls beneath the stable chrome. */
+.ts-app .ts-grid-wrap {
+  position: relative !important;
+  overflow: auto !important;
+  isolation: isolate !important;
+}
+
+/* Attendance header is sticky inside the worksheet viewport.
+   The page chrome is outside this scroll container, so the header
+   never jumps into the middle of the employee rows. */
+.ts-app .ts-grid-wrap .ts-grid thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 120 !important;
+  background: var(--excel-header, #f3f5f7) !important;
+  box-shadow: 0 1px 0 #8f9ba6, 0 2px 4px rgba(15,23,42,.08) !important;
+}
+.ts-app .ts-grid-wrap .ts-grid thead .ts-row-num {
+  z-index: 130 !important;
+}
+
+/* Keep the first column usable while horizontally scrolling. */
+.ts-app .ts-grid-wrap .ts-grid tbody .ts-row-num {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 110 !important;
+}
+
+/* Slightly compact, standard spreadsheet row density. */
+.ts-app .ts-grid-wrap .ts-grid th,
+.ts-app .ts-grid-wrap .ts-grid td {
+  height: 27px !important;
+  min-height: 27px !important;
+  padding: 1px 4px !important;
+}
+.ts-app .ts-grid-wrap .ts-grid .ts-check-button {
+  min-width: 96px !important;
+  width: 96px !important;
+  height: 27px !important;
+  min-height: 27px !important;
+  padding: 0 9px !important;
+  white-space: nowrap !important;
+  line-height: 1 !important;
+}
+
+/* Keep status colors readable and consistent. */
+.ts-app .ts-grid .ts-status.status-present,
+.ts-app .ts-grid .ts-status[value="Present"] {
+  background: #dcfce7 !important;
+  border-color: #86efac !important;
+  color: #047857 !important;
+}
+.ts-app .ts-grid .ts-status.status-off-day,
+.ts-app .ts-grid .ts-status[value="Off-day"] {
+  background: #fef3c7 !important;
+  border-color: #fbbf24 !important;
+  color: #b45309 !important;
+}
+.ts-app .ts-grid .ts-status.status-absent,
+.ts-app .ts-grid .ts-status[value="Absent"] {
+  background: #fee2e2 !important;
+  border-color: #fca5a5 !important;
+  color: #b91c1c !important;
+}
+
+/* Keep the sheet color on the outer sheet chrome rather than flooding
+   the white worksheet cells. */
+.ts-app .ts-grid-wrap {
+  border-top-color: var(--ts-active-sheet-color, #10b981) !important;
+}
+.ts-app .ts-grid-wrap .ts-grid {
+  background: #fff !important;
+}
+.ts-app.ts-dark .ts-grid-wrap .ts-grid {
+  background: #0d1115 !important;
+}
+
+/* Responsive: retain one-line ribbons and horizontal access rather
+   than hiding command buttons. */
+@media (max-width: 1100px) {
+  .ts-app {
+    --ts-topbar-stack: 124px;
+  }
+  .ts-app .ts-unified-toolbar {
+    flex-wrap: nowrap !important;
+  }
+  .ts-app .ts-unified-current {
+    flex: 0 0 auto !important;
+  }
+  .ts-app .ts-heading {
+    width: 100% !important;
+  }
+  .ts-app .ts-sheet-bar {
+    overflow-x: auto !important;
+  }
+}
+
+/* =========================================================
+   FINAL EXACT LAYOUT — stable title/subtitle + compact worksheet
+   This is the final override layer for the JSX companion file.
+   ========================================================= */
+.ts-app .ts-stable-heading {
+  position:sticky !important;
+  top:189px !important;
+  z-index:1000 !important;
+  width:100% !important;
+  max-width:none !important;
+  min-width:0 !important;
+  min-height:58px !important;
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  gap:18px !important;
+  margin:0 !important;
+  padding:7px 12px !important;
+  background:#f5f7f9 !important;
+  border-bottom:1px solid #d7dde2 !important;
+}
+.ts-app .ts-stable-heading .ts-heading-content {
+  flex:1 1 auto !important;
+  min-width:0 !important;
+  width:auto !important;
+  max-width:none !important;
+}
+.ts-app .ts-stable-heading .ts-title-row {
+  min-width:0 !important;
+  display:flex !important;
+  align-items:center !important;
+  gap:8px !important;
+}
+.ts-app .ts-stable-heading .ts-title-row h1 {
+  min-width:0 !important;
+  margin:0 !important;
+  font-size:18px !important;
+  line-height:1.15 !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+.ts-app .ts-stable-heading .ts-page-subtitle {
+  display:block !important;
+  width:100% !important;
+  max-width:none !important;
+  min-width:0 !important;
+  margin:3px 0 0 !important;
+  padding:0 !important;
+  color:#6b7280 !important;
+  font-size:11px !important;
+  line-height:1.3 !important;
+  font-weight:500 !important;
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+}
+.ts-app .ts-stable-heading .ts-current-day {
+  flex:0 0 auto !important;
+  width:auto !important;
+  min-width:132px !important;
+  margin-left:auto !important;
+  padding:5px 10px !important;
+  box-sizing:border-box !important;
+}
+.ts-app.ts-dark .ts-stable-heading {
+  background:#0d1115 !important;
+  border-bottom-color:#3f4851 !important;
+}
+.ts-app.ts-dark .ts-stable-heading .ts-page-subtitle { color:#9ca3af !important; }
+
+/* Sheet tabs stay immediately below the stable title/subtitle strip. */
+.ts-app .ts-sheet-bar {
+  position:sticky !important;
+  top:247px !important;
+  z-index:990 !important;
+  width:100% !important;
+  max-width:none !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+  overflow-x:auto !important;
+  overflow-y:visible !important;
+}
+
+/* Stable worksheet header: only employee rows scroll inside this viewport. */
+.ts-app .ts-grid-wrap {
+  position:relative !important;
+  height:calc(100vh - 365px) !important;
+  max-height:calc(100vh - 365px) !important;
+  min-height:300px !important;
+  overflow:auto !important;
+  isolation:isolate !important;
+}
+.ts-app .ts-grid thead th,
+.ts-app .ts-grid-wrap.ts-freeze-header .ts-grid thead th {
+  position:sticky !important;
+  top:0 !important;
+  z-index:120 !important;
+  height:30px !important;
+  min-height:30px !important;
+  padding:3px 6px !important;
+  background:#eef3f7 !important;
+  color:#26313a !important;
+  box-shadow:0 2px 6px rgba(15,23,42,.16) !important;
+  font-size:10px !important;
+  line-height:1.1 !important;
+}
+.ts-app .ts-grid thead .ts-row-num,
+.ts-app .ts-grid-wrap.ts-freeze-header .ts-grid thead .ts-row-num {
+  position:sticky !important;
+  left:0 !important;
+  top:0 !important;
+  z-index:130 !important;
+}
+.ts-app .ts-grid tbody .ts-row-num {
+  position:sticky !important;
+  left:0 !important;
+  z-index:110 !important;
+}
+/* Normal spreadsheet row density — compact, not card-sized. */
+.ts-app .ts-grid tbody tr td {
+  height:30px !important;
+  min-height:30px !important;
+  padding:2px 5px !important;
+  line-height:1.1 !important;
+}
+.ts-app .ts-grid .ts-cell,
+.ts-app .ts-grid .ts-status,
+.ts-app .ts-grid .ts-select {
+  height:26px !important;
+  min-height:26px !important;
+  padding:0 5px !important;
+  font-size:11px !important;
+}
+/* Check-in/out is larger than the old compact button, while the row remains compact. */
+.ts-app .ts-grid .col-action {
+  min-width:126px !important;
+  width:126px !important;
+}
+.ts-app .ts-grid .ts-check-button {
+  width:108px !important;
+  min-width:108px !important;
+  max-width:108px !important;
+  height:28px !important;
+  min-height:28px !important;
+  padding:0 9px !important;
+  font-size:11px !important;
+  border-radius:4px !important;
+  white-space:nowrap !important;
+}
+.ts-app .ts-grid .ts-check-button svg { flex:0 0 auto !important; }
+.ts-app .ts-grid .ts-check-button span { white-space:nowrap !important; }
+
+@media (max-width:900px) {
+  .ts-app .ts-stable-heading { top:123px !important; min-height:58px !important; }
+  .ts-app .ts-sheet-bar { top:181px !important; }
+  .ts-app .ts-stable-heading .ts-current-day { min-width:112px !important; }
+  .ts-app .ts-grid-wrap {
+    height:calc(100vh - 325px) !important;
+    max-height:calc(100vh - 325px) !important;
+  }
+}
+
+/* =========================================================
+   FINAL WORKBOOK SCROLL BEHAVIOUR
+   Tools + sheet management remain fixed. The sheet title is allowed
+   to disappear on page scroll while the gray subtitle remains visible.
+   Applies to both Employee Timesheet and General Sheets because this
+   chrome is owned by TimeSheetMain.
+   ========================================================= */
+.ts-app .ts-stable-heading {
+  position: sticky !important;
+  top: 189px !important;
+  z-index: 1000 !important;
+  min-height: 58px !important;
+  height: 58px !important;
+  transition: height .16s ease, min-height .16s ease, padding .16s ease !important;
+}
+.ts-app .ts-stable-heading .ts-title-row {
+  max-height: 24px !important;
+  overflow: hidden !important;
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+  transition: max-height .16s ease, opacity .12s ease, transform .16s ease, margin .16s ease !important;
+}
+.ts-app .ts-stable-heading .ts-page-subtitle {
+  color: #6b7280 !important;
+  width: 100% !important;
+  max-width: none !important;
+  overflow: visible !important;
+  white-space: normal !important;
+}
+.ts-app.ts-page-scrolled .ts-stable-heading {
+  min-height: 34px !important;
+  height: 34px !important;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+  align-items: center !important;
+}
+.ts-app.ts-page-scrolled .ts-stable-heading .ts-title-row {
+  max-height: 0 !important;
+  margin: 0 !important;
+  opacity: 0 !important;
+  transform: translateY(-8px) !important;
+  pointer-events: none !important;
+}
+.ts-app.ts-page-scrolled .ts-stable-heading .ts-page-subtitle {
+  margin: 0 !important;
+  line-height: 1.2 !important;
+  color: #6b7280 !important;
+}
+.ts-app.ts-dark.ts-page-scrolled .ts-stable-heading .ts-page-subtitle,
+.ts-app.ts-dark .ts-stable-heading .ts-page-subtitle {
+  color: #9ca3af !important;
+}
+
+/* Sheet management moves up automatically when the title line collapses. */
+.ts-app.ts-page-scrolled .ts-sheet-bar {
+  top: 223px !important;
+}
+.ts-app:not(.ts-page-scrolled) .ts-sheet-bar {
+  top: 247px !important;
+}
+
+/* The worksheet viewport can be resized with the native corner handle.
+   Width is bounded by the workspace; height can be expanded or reduced. */
+.ts-app .ts-grid-wrap,
+.ts-app .ts-general-grid-wrap {
+  resize: both !important;
+  min-width: 320px !important;
+  max-width: 100% !important;
+  min-height: 280px !important;
+  max-height: none !important;
+}
+.ts-app .ts-grid-wrap {
+  height: calc(100vh - 365px) !important;
+}
+.ts-app .ts-general-grid-wrap {
+  height: calc(100vh - 300px) !important;
+}
+
+/* Keep the actual worksheet white; the selected sheet color is only the
+   resize/gutter/frame surrounding it. */
+.ts-app .ts-grid-wrap {
+  background: var(--ts-active-sheet-color, #10b981) !important;
+  padding: 4px !important;
+  border: 0 !important;
+}
+.ts-app .ts-grid-wrap > .ts-grid {
+  background: #fff !important;
+  border: 1px solid rgba(100,116,139,.45) !important;
+}
+.ts-app.ts-dark .ts-grid-wrap > .ts-grid {
+  background: #0d1115 !important;
+}
+
+/* More polished sheet-management colors and visible active-sheet indicator. */
+.ts-app .ts-sheet-bar {
+  background: linear-gradient(180deg,#f8fafb 0%,#e8edf0 100%) !important;
+  border-color: #c2cbd2 !important;
+}
+.ts-app .ts-sheet-tab {
+  position: relative !important;
+  border-bottom: 2px solid transparent !important;
+}
+.ts-app .ts-sheet-tab::before {
+  content: "" !important;
+  position: absolute !important;
+  left: 7px !important;
+  top: 50% !important;
+  width: 6px !important;
+  height: 6px !important;
+  transform: translateY(-50%) !important;
+  border-radius: 50% !important;
+  background: var(--ts-tab-color, #10b981) !important;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.75) !important;
+}
+.ts-app .ts-sheet-tab > button:first-child {
+  padding-left: 18px !important;
+}
+.ts-app .ts-sheet-tab.active {
+  border-bottom-color: var(--ts-tab-color, #10b981) !important;
+  background: color-mix(in srgb, var(--ts-tab-color, #10b981) 10%, white) !important;
+}
+
+@media (max-width:900px) {
+  .ts-app .ts-grid-wrap { height: calc(100vh - 325px) !important; }
+  .ts-app .ts-general-grid-wrap { height: calc(100vh - 280px) !important; }
+  .ts-app.ts-page-scrolled .ts-sheet-bar { top: 157px !important; }
+  .ts-app:not(.ts-page-scrolled) .ts-sheet-bar { top: 181px !important; }
+}
+
+
+
+/* =========================================================
+   SODAH FINAL STACK — SINGLE SOURCE OF TRUTH
+   Order while scrolling:
+   TOP NAV -> TOOLS -> SHEET MANAGEMENT -> SUBTITLE -> WORKSHEET
+   The sheet title is normal content and disappears on scroll;
+   the subtitle remains as the stable fourth layer.
+   ========================================================= */
+.ts-app {
+  --ts-final-topbar: 123px;
+  --ts-final-tools: 66px;
+  --ts-final-sheetbar: 49px;
+  --ts-final-subtitle: 34px;
+}
+
+/* Top navigation */
+.ts-app .ts-topbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 5000 !important;
+}
+
+/* One-line tools ribbon: stable, horizontally scrollable */
+.ts-app .ts-unified-toolbar {
+  position: sticky !important;
+  top: var(--ts-final-topbar) !important;
+  z-index: 4900 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: var(--ts-final-tools) !important;
+  min-height: var(--ts-final-tools) !important;
+  max-height: var(--ts-final-tools) !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  white-space: nowrap !important;
+  scrollbar-width: thin !important;
+}
+.ts-app .ts-unified-group {
+  flex: 0 0 auto !important;
+  min-width: max-content !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+}
+
+/* Sheet management / tabs: always immediately below tools */
+.ts-app .ts-sheet-bar {
+  position: sticky !important;
+  top: calc(var(--ts-final-topbar) + var(--ts-final-tools)) !important;
+  z-index: 4800 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: var(--ts-final-sheetbar) !important;
+  min-height: var(--ts-final-sheetbar) !important;
+  max-height: var(--ts-final-sheetbar) !important;
+  box-sizing: border-box !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  scrollbar-width: thin !important;
+}
+.ts-app .ts-sheet-tabs {
+  min-width: max-content !important;
+  flex: 0 0 auto !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  white-space: nowrap !important;
+}
+
+/* The generic heading must NOT compete with the stable subtitle layer. */
+.ts-app .ts-heading {
+  position: relative !important;
+  top: auto !important;
+}
+
+/* Page heading: title is normal/temporary; subtitle is the stable layer. */
+.ts-app .ts-stable-heading {
+  position: sticky !important;
+  top: calc(
+    var(--ts-final-topbar) +
+    var(--ts-final-tools) +
+    var(--ts-final-sheetbar)
+  ) !important;
+  z-index: 4700 !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  min-height: 58px !important;
+  height: 58px !important;
+  box-sizing: border-box !important;
+  padding: 7px 12px !important;
+  margin: 0 !important;
+  background: #f5f7f9 !important;
+  border-bottom: 1px solid #d7dde2 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 18px !important;
+}
+
+.ts-app .ts-stable-heading .ts-heading-content {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+}
+.ts-app .ts-stable-heading .ts-title-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  max-height: 24px !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  opacity: 1 !important;
+  transform: none !important;
+  transition: max-height .15s ease, opacity .12s ease, transform .15s ease !important;
+}
+.ts-app .ts-stable-heading .ts-title-row h1 {
+  min-width: 0 !important;
+  margin: 0 !important;
+  font-size: 18px !important;
+  line-height: 1.15 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.ts-app .ts-stable-heading .ts-page-subtitle {
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  margin: 3px 0 0 !important;
+  padding: 0 !important;
+  color: #6b7280 !important;
+  font-size: 11px !important;
+  line-height: 1.3 !important;
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+.ts-app .ts-stable-heading .ts-current-day {
+  flex: 0 0 auto !important;
+  min-width: 132px !important;
+  margin-left: auto !important;
+  padding: 5px 10px !important;
+  box-sizing: border-box !important;
+}
+
+/* On scroll: only the title collapses. The subtitle stays visible and stable. */
+.ts-app.ts-page-scrolled .ts-stable-heading {
+  min-height: var(--ts-final-subtitle) !important;
+  height: var(--ts-final-subtitle) !important;
+  padding: 4px 12px !important;
+  align-items: center !important;
+}
+.ts-app.ts-page-scrolled .ts-stable-heading .ts-title-row {
+  max-height: 0 !important;
+  margin: 0 !important;
+  opacity: 0 !important;
+  transform: translateY(-6px) !important;
+  pointer-events: none !important;
+}
+.ts-app.ts-page-scrolled .ts-stable-heading .ts-page-subtitle {
+  margin: 0 !important;
+  line-height: 24px !important;
+  color: #6b7280 !important;
+}
+
+/* Never move Sheet Management when the page is scrolled. */
+.ts-app.ts-page-scrolled .ts-sheet-bar,
+.ts-app:not(.ts-page-scrolled) .ts-sheet-bar {
+  top: calc(var(--ts-final-topbar) + var(--ts-final-tools)) !important;
+}
+
+/* Worksheet remains below the stable chrome. Its own header sticks inside it. */
+.ts-app .ts-grid-wrap {
+  position: relative !important;
+  z-index: 1 !important;
+  overflow: auto !important;
+  isolation: isolate !important;
+}
+.ts-app .ts-grid-wrap .ts-grid thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 120 !important;
+}
+.ts-app .ts-grid-wrap .ts-grid thead .ts-row-num {
+  position: sticky !important;
+  left: 0 !important;
+  top: 0 !important;
+  z-index: 130 !important;
+}
+.ts-app .ts-grid-wrap .ts-grid tbody .ts-row-num {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 110 !important;
+}
+
+/* Selected sheet color belongs to the outer gutter/frame, never the white cells. */
+.ts-app .ts-grid-wrap {
+  background: var(--ts-active-sheet-color, #10b981) !important;
+  padding: 4px !important;
+  border: 0 !important;
+}
+.ts-app .ts-grid-wrap > .ts-grid {
+  background: #fff !important;
+}
+
+/* Preserve the compact spreadsheet proportions and larger check button. */
+.ts-app .ts-grid-wrap .ts-grid th,
+.ts-app .ts-grid-wrap .ts-grid td {
+  height: 27px !important;
+  min-height: 27px !important;
+  padding: 1px 4px !important;
+}
+.ts-app .ts-grid-wrap .ts-grid .ts-check-button {
+  width: 108px !important;
+  min-width: 108px !important;
+  max-width: 108px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  white-space: nowrap !important;
+}
+
+/* Dropdowns/popovers always escape the stable bars. */
+.ts-app .ts-toolbar-pop,
+.ts-app .ts-toolbar-menu,
+.ts-app .ts-toolbar-colors {
+  z-index: 50000 !important;
+}
+.ts-app .ts-toolbar-menu,
+.ts-app .ts-toolbar-colors {
+  position: absolute !important;
+}
+
+/* Dark mode equivalent */
+.ts-app.ts-dark .ts-stable-heading {
+  background: #0d1115 !important;
+  border-bottom-color: #3f4851 !important;
+}
+.ts-app.ts-dark .ts-stable-heading .ts-page-subtitle,
+.ts-app.ts-dark.ts-page-scrolled .ts-stable-heading .ts-page-subtitle {
+  color: #9ca3af !important;
+}
+.ts-app.ts-dark .ts-grid-wrap > .ts-grid {
+  background: #0d1115 !important;
+}
+
+@media (max-width: 900px) {
+  .ts-app {
+    --ts-final-topbar: 123px;
+    --ts-final-tools: 66px;
+    --ts-final-sheetbar: 49px;
+  }
+  .ts-app .ts-stable-heading {
+    min-height: 58px !important;
+    height: 58px !important;
+  }
+  .ts-app.ts-page-scrolled .ts-stable-heading {
+    min-height: var(--ts-final-subtitle) !important;
+    height: var(--ts-final-subtitle) !important;
+  }
+  .ts-app .ts-stable-heading .ts-current-day {
+    min-width: 112px !important;
+  }
+}
+
+/* =========================================================
+   FINAL OVERRIDE — PAGE SCROLL + STABLE WORKSHEET HEADER
+   The page, not the worksheet frame, owns vertical scrolling.
+   This keeps the subtitle stable and puts the table header directly
+   underneath it instead of allowing the header to disappear behind it.
+   ========================================================= */
+.ts-app {
+  --ts-final-chrome: calc(
+    var(--ts-final-topbar) +
+    var(--ts-final-tools) +
+    var(--ts-final-sheetbar) +
+    var(--ts-final-subtitle)
+  );
+}
+
+/* The worksheet can scroll horizontally, but vertical scrolling belongs
+   to the page so the whole workbook behaves like one continuous sheet. */
+.ts-app .ts-grid-wrap {
+  position: relative !important;
+  height: auto !important;
+  min-height: 280px !important;
+  max-height: none !important;
+  overflow: visible !important;
+  isolation: auto !important;
+  padding: 4px !important;
+  box-sizing: border-box !important;
+}
+
+.ts-app .ts-grid-wrap > .ts-grid {
+  position: relative !important;
+  width: 100% !important;
+  min-width: 1080px !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+/* The table header is now part of the same stable page stack as the
+   subtitle. It remains visible while the employee rows pass underneath. */
+.ts-app .ts-grid-wrap .ts-grid thead {
+  position: sticky !important;
+  top: var(--ts-final-chrome) !important;
+  z-index: 4600 !important;
+}
+
+.ts-app .ts-grid-wrap .ts-grid thead th,
+.ts-app .ts-grid-wrap.ts-freeze-header .ts-grid thead th {
+  position: sticky !important;
+  top: var(--ts-final-chrome) !important;
+  z-index: 4610 !important;
+  background: #eef3f7 !important;
+  color: #26313a !important;
+  box-shadow: 0 2px 6px rgba(15,23,42,.16) !important;
+}
+
+.ts-app .ts-grid-wrap .ts-grid thead .ts-row-num,
+.ts-app .ts-grid-wrap.ts-freeze-header .ts-grid thead .ts-row-num {
+  left: 0 !important;
+  top: var(--ts-final-chrome) !important;
+  z-index: 4620 !important;
+}
+
+/* Keep the row-number column selectable/sticky horizontally. */
+.ts-app .ts-grid-wrap .ts-grid tbody .ts-row-num {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 110 !important;
+}
+
+/* The stable subtitle remains above the worksheet header. */
+.ts-app .ts-stable-heading {
+  z-index: 4700 !important;
+}
+.ts-app .ts-sheet-bar {
+  z-index: 4800 !important;
+}
+.ts-app .ts-unified-toolbar {
+  z-index: 4900 !important;
+}
+.ts-app .ts-topbar {
+  z-index: 5000 !important;
+}
+
+/* Keep the selected sheet colour on the outer gutter only. */
+.ts-app .ts-grid-wrap {
+  background: var(--ts-active-sheet-color, #10b981) !important;
+}
+.ts-app .ts-grid-wrap > .ts-grid {
+  background: #fff !important;
+}
+
+/* Compact spreadsheet rows remain compact. */
+.ts-app .ts-grid-wrap .ts-grid th,
+.ts-app .ts-grid-wrap .ts-grid td {
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 2px 5px !important;
+}
+.ts-app .ts-grid-wrap .ts-grid .ts-check-button {
+  width: 108px !important;
+  min-width: 108px !important;
+  max-width: 108px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  white-space: nowrap !important;
+}
+
+/* General Sheets use page scrolling as well; their own header remains sticky. */
+.ts-app .ts-general-grid-wrap {
+  overflow: visible !important;
+  max-height: none !important;
+}
+
+@media (max-width: 900px) {
+  .ts-app {
+    --ts-final-chrome: calc(
+      var(--ts-final-topbar) +
+      var(--ts-final-tools) +
+      var(--ts-final-sheetbar) +
+      var(--ts-final-subtitle)
+    );
+  }
+  .ts-app .ts-grid-wrap {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .ts-app .ts-grid-wrap .ts-grid thead th,
+  .ts-app .ts-grid-wrap.ts-freeze-header .ts-grid thead th,
+  .ts-app .ts-grid-wrap .ts-grid thead {
+    top: var(--ts-final-chrome) !important;
+  }
+}
+
+/* Final correction: the attendance grid itself must not create a vertical
+   scrolling box. The browser page owns vertical scrolling, so the header
+   can remain sticky directly beneath the stable Sodah chrome. */
+.ts-app .ts-grid-wrap,
+.ts-app .ts-grid-wrap.ts-freeze-header {
+  overflow: visible !important;
+  height: auto !important;
+  max-height: none !important;
+  min-height: 280px !important;
+}
+.ts-app .ts-grid-wrap > .ts-grid {
+  width: 100% !important;
+  min-width: 1080px !important;
+  max-width: none !important;
+  table-layout: auto !important;
+}
+.ts-app .ts-grid-wrap .ts-grid thead {
+  display: table-header-group !important;
+  position: sticky !important;
+  top: var(--ts-final-chrome) !important;
+  z-index: 4600 !important;
+}
+.ts-app .ts-grid-wrap .ts-grid thead th,
+.ts-app .ts-grid-wrap.ts-freeze-header .ts-grid thead th {
+  position: sticky !important;
+  top: var(--ts-final-chrome) !important;
+  z-index: 4610 !important;
+  background: #eef3f7 !important;
+  color: #26313a !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+.ts-app .ts-grid-wrap .ts-grid thead .ts-row-num,
+.ts-app .ts-grid-wrap.ts-freeze-header .ts-grid thead .ts-row-num {
+  position: sticky !important;
+  left: 0 !important;
+  top: var(--ts-final-chrome) !important;
+  z-index: 4620 !important;
+}
+
+/* FINAL HEADER FIX — the table header must be sticky itself, not the <thead>.
+   The previous sticky <thead> rule caused the header row to be pushed down
+   into the employee rows. */
+
+/* FINAL HEADER FIX — the table header must be sticky itself, not the <thead>.
+   The previous sticky <thead> rule caused the header row to be pushed down
+   into the employee rows. */
+.ts-app .ts-grid-wrap .ts-attendance-table thead {
+  position: static !important;
+  display: table-header-group !important;
+  top: auto !important;
+  z-index: auto !important;
+  transform: none !important;
+}
+
+.ts-app .ts-grid-wrap .ts-attendance-table thead th,
+.ts-app .ts-grid-wrap.ts-freeze-header .ts-attendance-table thead th {
+  position: sticky !important;
+  top: var(--ts-final-chrome) !important;
+  z-index: 4610 !important;
+  background: #eef3f7 !important;
+  color: #26313a !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  box-shadow: 0 2px 6px rgba(15,23,42,.16) !important;
+}
+
+.ts-app .ts-grid-wrap .ts-attendance-table thead .ts-row-num,
+.ts-app .ts-grid-wrap.ts-freeze-header .ts-attendance-table thead .ts-row-num {
+  position: sticky !important;
+  left: 0 !important;
+  top: var(--ts-final-chrome) !important;
+  z-index: 4620 !important;
+}
+
+/* The page owns vertical scrolling; the attendance grid must never create
+   a nested vertical scrollport that changes the sticky-header reference. */
+.ts-app .ts-grid-wrap {
+  overflow: visible !important;
+  height: auto !important;
+  max-height: none !important;
+}
+.ts-app .ts-grid-wrap .ts-attendance-table {
+  position: relative !important;
+  overflow: visible !important;
+}
+
+/* Keep the stable subtitle immediately above the worksheet. */
+.ts-app .ts-stable-heading {
+  position: sticky !important;
+  top: calc(var(--ts-final-topbar) + var(--ts-final-tools) + var(--ts-final-sheetbar)) !important;
+  z-index: 4700 !important;
+}
+
+/* When the page scrolls, the title remains normal content and disappears;
+   only the subtitle remains visible in the stable strip. */
+.ts-app.ts-page-scrolled .ts-stable-heading .ts-title-row {
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+.ts-app.ts-page-scrolled .ts-stable-heading .ts-page-subtitle {
+  margin: 0 !important;
+  line-height: 28px !important;
+}
+
+/* =========================================================
+   FINAL PATCH — RESTORE WORKSHEET VIEWPORT SCROLLING
+   ========================================================= */
+.ts-app .ts-topbar { position:sticky !important; top:0 !important; z-index:5000 !important; }
+.ts-app .ts-unified-toolbar { position:sticky !important; top:123px !important; z-index:4900 !important; height:66px !important; min-height:66px !important; max-height:66px !important; overflow-x:auto !important; overflow-y:visible !important; flex-wrap:nowrap !important; }
+.ts-app .ts-sheet-bar { position:sticky !important; top:189px !important; z-index:4800 !important; height:49px !important; min-height:49px !important; max-height:49px !important; overflow-x:auto !important; overflow-y:visible !important; }
+.ts-app .ts-stable-heading { position:sticky !important; top:238px !important; z-index:4700 !important; width:100% !important; min-height:34px !important; height:34px !important; max-height:34px !important; box-sizing:border-box !important; padding:4px 12px !important; margin:0 !important; background:#f5f7f9 !important; border-bottom:1px solid #d7dde2 !important; display:flex !important; align-items:center !important; }
+.ts-app .ts-stable-heading .ts-title-row { display:none !important; }
+.ts-app .ts-stable-heading .ts-page-subtitle { display:block !important; width:100% !important; max-width:none !important; margin:0 !important; padding:0 !important; color:#6b7280 !important; font-size:11px !important; line-height:24px !important; white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important; }
+.ts-app .ts-stable-heading .ts-current-day { display:none !important; }
+
+.ts-app .ts-grid-wrap,
+.ts-app .ts-grid-wrap.ts-freeze-header { position:relative !important; display:block !important; width:100% !important; height:clamp(320px,58vh,560px) !important; min-height:320px !important; max-height:560px !important; overflow:auto !important; overflow-x:auto !important; overflow-y:auto !important; resize:both !important; box-sizing:border-box !important; isolation:isolate !important; scrollbar-gutter:stable both-edges !important; background:var(--ts-active-sheet-color,#10b981) !important; padding:4px !important; }
+.ts-app .ts-grid-wrap > .ts-attendance-table { width:max-content !important; min-width:100% !important; border-collapse:collapse !important; border-spacing:0 !important; background:#fff !important; }
+.ts-app .ts-grid-wrap .ts-attendance-table thead { position:static !important; display:table-header-group !important; }
+.ts-app .ts-grid-wrap .ts-attendance-table thead th,
+.ts-app .ts-grid-wrap.ts-freeze-header .ts-attendance-table thead th { position:sticky !important; top:0 !important; z-index:120 !important; background:#eef3f7 !important; color:#26313a !important; box-shadow:0 1px 4px rgba(15,23,42,.16) !important; }
+.ts-app .ts-grid-wrap .ts-attendance-table thead .ts-row-num { position:sticky !important; left:0 !important; top:0 !important; z-index:140 !important; }
+.ts-app .ts-grid-wrap .ts-attendance-table tbody .ts-row-num { position:sticky !important; left:0 !important; z-index:110 !important; background:#f5f7f9 !important; }
+.ts-app .ts-grid-wrap .ts-attendance-table th,
+.ts-app .ts-grid-wrap .ts-attendance-table td { height:30px !important; min-height:30px !important; padding:2px 5px !important; }
+.ts-app .ts-grid-wrap .ts-attendance-table .ts-check-button { width:108px !important; min-width:108px !important; max-width:108px !important; height:28px !important; min-height:28px !important; white-space:nowrap !important; }
+
+.ts-app .ts-general-grid-wrap { position:relative !important; display:block !important; height:clamp(320px,62vh,650px) !important; min-height:320px !important; max-height:650px !important; overflow:auto !important; overflow-x:auto !important; overflow-y:auto !important; resize:both !important; box-sizing:border-box !important; scrollbar-gutter:stable both-edges !important; }
+.ts-app .ts-general-grid { min-width:max-content !important; width:max-content !important; }
+.ts-app .ts-general-grid thead th,
+.ts-app .ts-general-grid th { position:sticky !important; top:0 !important; z-index:20 !important; }
+.ts-app .ts-general-grid th.row-head { position:sticky !important; left:0 !important; top:0 !important; z-index:30 !important; }
+.ts-app .ts-grid-wrap > .ts-attendance-table,
+.ts-app .ts-general-grid-wrap { background:#fff !important; }
+.ts-app.ts-dark .ts-stable-heading { background:#0d1115 !important; border-bottom-color:#3f4851 !important; }
+.ts-app.ts-dark .ts-stable-heading .ts-page-subtitle { color:#9ca3af !important; }
+.ts-app.ts-dark .ts-grid-wrap > .ts-attendance-table,
+.ts-app.ts-dark .ts-general-grid-wrap { background:#0d1115 !important; }
+@media (max-width:900px) {
+  .ts-app .ts-unified-toolbar { top:123px !important; }
+  .ts-app .ts-sheet-bar { top:189px !important; }
+  .ts-app .ts-stable-heading { top:238px !important; }
+  .ts-app .ts-grid-wrap { height:48vh !important; min-height:300px !important; }
+  .ts-app .ts-general-grid-wrap { height:55vh !important; min-height:300px !important; }
+}
+
+/* FINAL WORKSHEET FIX: restore independent spreadsheet scrolling. */
+.ts-app .ts-topbar{position:sticky!important;top:0!important;z-index:5000!important}
+.ts-app .ts-unified-toolbar{position:sticky!important;top:123px!important;z-index:4900!important;height:66px!important;min-height:66px!important;max-height:66px!important;overflow-x:auto!important;overflow-y:visible!important;flex-wrap:nowrap!important}
+.ts-app .ts-sheet-bar{position:sticky!important;top:189px!important;z-index:4800!important;height:49px!important;min-height:49px!important;max-height:49px!important;overflow-x:auto!important;overflow-y:visible!important}
+.ts-app .ts-stable-heading{position:sticky!important;top:238px!important;z-index:4700!important;width:100%!important;min-height:34px!important;height:34px!important;max-height:34px!important;box-sizing:border-box!important;padding:4px 12px!important;margin:0!important;background:#f5f7f9!important;border-bottom:1px solid #d7dde2!important;display:flex!important;align-items:center!important}
+.ts-app .ts-stable-heading .ts-title-row{display:none!important}
+.ts-app .ts-stable-heading .ts-page-subtitle{display:block!important;width:100%!important;max-width:none!important;margin:0!important;padding:0!important;color:#6b7280!important;font-size:11px!important;line-height:24px!important;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important}
+.ts-app .ts-stable-heading .ts-current-day{display:none!important}
+.ts-app .ts-grid-wrap,.ts-app .ts-grid-wrap.ts-freeze-header{position:relative!important;display:block!important;width:100%!important;height:clamp(320px,58vh,560px)!important;min-height:320px!important;max-height:560px!important;overflow:auto!important;overflow-x:auto!important;overflow-y:auto!important;resize:both!important;box-sizing:border-box!important;isolation:isolate!important;scrollbar-gutter:stable both-edges!important;background:var(--ts-active-sheet-color,#10b981)!important;padding:4px!important}
+.ts-app .ts-grid-wrap>.ts-attendance-table{width:max-content!important;min-width:100%!important;border-collapse:collapse!important;border-spacing:0!important;background:#fff!important}
+.ts-app .ts-grid-wrap .ts-attendance-table thead{position:static!important;display:table-header-group!important}
+.ts-app .ts-grid-wrap .ts-attendance-table thead th,.ts-app .ts-grid-wrap.ts-freeze-header .ts-attendance-table thead th{position:sticky!important;top:0!important;z-index:120!important;background:#eef3f7!important;color:#26313a!important;box-shadow:0 1px 4px rgba(15,23,42,.16)!important}
+.ts-app .ts-grid-wrap .ts-attendance-table thead .ts-row-num{position:sticky!important;left:0!important;top:0!important;z-index:140!important}
+.ts-app .ts-grid-wrap .ts-attendance-table tbody .ts-row-num{position:sticky!important;left:0!important;z-index:110!important;background:#f5f7f9!important}
+.ts-app .ts-grid-wrap .ts-attendance-table th,.ts-app .ts-grid-wrap .ts-attendance-table td{height:30px!important;min-height:30px!important;padding:2px 5px!important}
+.ts-app .ts-grid-wrap .ts-attendance-table .ts-check-button{width:108px!important;min-width:108px!important;max-width:108px!important;height:28px!important;min-height:28px!important;white-space:nowrap!important}
+.ts-app .ts-general-grid-wrap{position:relative!important;display:block!important;height:clamp(320px,62vh,650px)!important;min-height:320px!important;max-height:650px!important;overflow:auto!important;overflow-x:auto!important;overflow-y:auto!important;resize:both!important;box-sizing:border-box!important;scrollbar-gutter:stable both-edges!important}
+.ts-app .ts-general-grid{min-width:max-content!important;width:max-content!important}
+.ts-app .ts-general-grid thead th,.ts-app .ts-general-grid th{position:sticky!important;top:0!important;z-index:20!important}
+.ts-app .ts-general-grid th.row-head{position:sticky!important;left:0!important;top:0!important;z-index:30!important}
+.ts-app .ts-grid-wrap>.ts-attendance-table,.ts-app .ts-general-grid-wrap{background:#fff!important}
+.ts-app.ts-dark .ts-stable-heading{background:#0d1115!important;border-bottom-color:#3f4851!important}
+.ts-app.ts-dark .ts-stable-heading .ts-page-subtitle{color:#9ca3af!important}
+.ts-app.ts-dark .ts-grid-wrap>.ts-attendance-table,.ts-app.ts-dark .ts-general-grid-wrap{background:#0d1115!important}
+@media(max-width:900px){.ts-app .ts-unified-toolbar{top:123px!important}.ts-app .ts-sheet-bar{top:189px!important}.ts-app .ts-stable-heading{top:238px!important}.ts-app .ts-grid-wrap{height:48vh!important;min-height:300px!important}.ts-app .ts-general-grid-wrap{height:55vh!important;min-height:300px!important}}
+
+/* ================================================================
+   SODAH WORKSPACE FINAL — CHROME STAYS, CONTENT SCROLLS
+   Tools + Sheet Management + Add Sheet + Subtitle are outside the
+   scrolling content area. Only .ts-main scrolls.
+   ================================================================ */
+.ts-app[data-workspace-shell="sheet"] {
+  --ts-shell-toolbar: 66px;
+  --ts-shell-sheetbar: 49px;
+  --ts-shell-subtitle: 34px;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  height: 100vh !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+.ts-app[data-workspace-shell="sheet"] .ts-topbar,
+.ts-app[data-workspace-shell="sheet"] .ts-unified-toolbar,
+.ts-app[data-workspace-shell="sheet"] .ts-sheet-bar,
+.ts-app[data-workspace-shell="sheet"] .ts-stable-heading {
+  position: relative !important;
+  top: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+.ts-app[data-workspace-shell="sheet"] .ts-unified-toolbar {
+  flex: 0 0 var(--ts-shell-toolbar) !important;
+  height: var(--ts-shell-toolbar) !important;
+  min-height: var(--ts-shell-toolbar) !important;
+  max-height: var(--ts-shell-toolbar) !important;
+  width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  flex-wrap: nowrap !important;
+  white-space: nowrap !important;
+  z-index: 2000 !important;
+}
+
+.ts-app[data-workspace-shell="sheet"] .ts-sheet-bar {
+  flex: 0 0 var(--ts-shell-sheetbar) !important;
+  height: var(--ts-shell-sheetbar) !important;
+  min-height: var(--ts-shell-sheetbar) !important;
+  max-height: var(--ts-shell-sheetbar) !important;
+  width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  white-space: nowrap !important;
+  z-index: 1900 !important;
+  box-sizing: border-box !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-sheet-tabs {
+  display: flex !important;
+  align-items: center !important;
+  flex: 0 0 max-content !important;
+  width: max-content !important;
+  min-width: max-content !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-add-sheet {
+  flex: 0 0 auto !important;
+  position: relative !important;
+  z-index: 5 !important;
+}
+
+/* The subtitle is the only stable text between Sheet Management and the page. */
+.ts-app[data-workspace-shell="sheet"] .ts-stable-heading {
+  flex: 0 0 var(--ts-shell-subtitle) !important;
+  height: var(--ts-shell-subtitle) !important;
+  min-height: var(--ts-shell-subtitle) !important;
+  max-height: var(--ts-shell-subtitle) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 4px 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  background: #f5f7f9 !important;
+  border-bottom: 1px solid #d7dde2 !important;
+  z-index: 1800 !important;
+  overflow: hidden !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-stable-heading .ts-heading-content {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-stable-heading .ts-title-row,
+.ts-app[data-workspace-shell="sheet"] .ts-stable-heading .ts-current-day {
+  display: none !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-stable-heading .ts-page-subtitle {
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #6b7280 !important;
+  font-size: 11px !important;
+  line-height: 24px !important;
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Only the page/workspace below the subtitle scrolls. */
+.ts-app[data-workspace-shell="sheet"] .ts-main {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: auto !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  scrollbar-gutter: stable !important;
+  position: relative !important;
+  isolation: isolate !important;
+}
+
+/* Employee worksheet: resize the page/sheet viewport freely. */
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-grid-wrap {
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+  height: clamp(320px, 58vh, 650px) !important;
+  min-height: 300px !important;
+  max-height: calc(100vh - 300px) !important;
+  overflow: auto !important;
+  resize: both !important;
+  box-sizing: border-box !important;
+  scrollbar-gutter: stable both-edges !important;
+  background: var(--ts-active-sheet-color, #10b981) !important;
+  padding: 4px !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-grid-wrap > .ts-attendance-table {
+  min-width: 1080px !important;
+  width: max-content !important;
+  background: #fff !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-grid-wrap .ts-attendance-table thead {
+  position: static !important;
+  display: table-header-group !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-grid-wrap .ts-attendance-table thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 120 !important;
+  background: #eef3f7 !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-grid-wrap .ts-attendance-table thead .ts-row-num {
+  left: 0 !important;
+  top: 0 !important;
+  z-index: 140 !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-grid-wrap .ts-attendance-table tbody .ts-row-num {
+  left: 0 !important;
+  z-index: 110 !important;
+}
+
+/* General Sheet: stable sheet tabs inside the scrollable page and a resizable grid. */
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-general-sheet-panel {
+  min-height: 100% !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-general-sheet-tabs {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1500 !important;
+  margin-top: 0 !important;
+  background: #eef1f4 !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-general-grid-wrap {
+  position: relative !important;
+  width: 100% !important;
+  height: clamp(320px, 62vh, 700px) !important;
+  min-height: 320px !important;
+  max-height: calc(100vh - 300px) !important;
+  overflow: auto !important;
+  resize: both !important;
+  box-sizing: border-box !important;
+  scrollbar-gutter: stable both-edges !important;
+  background: #fff !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-general-grid {
+  min-width: max-content !important;
+  width: max-content !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-general-grid thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-general-grid th.row-head {
+  position: sticky !important;
+  left: 0 !important;
+  top: 0 !important;
+  z-index: 30 !important;
+}
+
+/* Selected sheet color belongs to the outer frame, not the white spreadsheet. */
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-grid-wrap {
+  background: var(--ts-active-sheet-color, #10b981) !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-grid-wrap > .ts-attendance-table,
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-general-grid-wrap {
+  background: #fff !important;
+}
+
+.ts-app.ts-dark[data-workspace-shell="sheet"] .ts-stable-heading {
+  background: #0d1115 !important;
+  border-bottom-color: #3f4851 !important;
+}
+.ts-app.ts-dark[data-workspace-shell="sheet"] .ts-stable-heading .ts-page-subtitle {
+  color: #9ca3af !important;
+}
+.ts-app.ts-dark[data-workspace-shell="sheet"] .ts-main .ts-grid-wrap > .ts-attendance-table,
+.ts-app.ts-dark[data-workspace-shell="sheet"] .ts-main .ts-general-grid-wrap {
+  background: #0d1115 !important;
+}
+
+/* Match the clean General Sheet reference: no extra panel title between the
+   stable subtitle and the sheet tabs. */
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-general-sheet-panel > .ts-panel-header {
+  display: none !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-general-sheet-tabs {
+  margin: 0 !important;
+  min-height: 34px !important;
+  height: 34px !important;
+  padding: 2px 4px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  white-space: nowrap !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-general-selection-bar {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* Keep the employee sheet management row clean: tabs + Add Sheet remain
+   together; the optional Sheet Hours control does not create another layer. */
+.ts-app[data-workspace-shell="sheet"] .ts-sheet-settings {
+  flex: 0 0 auto !important;
+}
+
+
+/* =========================================================
+   EMPLOYEE SHEET FINAL FIX
+   The employee sheet tabs belong to the scrollable workbook area,
+   not to the global chrome. This prevents the tabs from sliding over
+   the attendance table/header while the employee sheet is scrolled.
+   ========================================================= */
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-employee-sheet-tabs-bar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1700 !important;
+  display: flex !important;
+  align-items: center !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 49px !important;
+  height: 49px !important;
+  max-height: 49px !important;
+  margin: 0 !important;
+  padding: 5px 8px !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  background: linear-gradient(180deg,#f8fafb 0%,#e8edf0 100%) !important;
+  border: 1px solid #c2cbd2 !important;
+  border-top: 0 !important;
+  box-shadow: 0 2px 7px rgba(15,23,42,.08) !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-employee-sheet-tabs-bar .ts-sheet-tabs {
+  display: flex !important;
+  align-items: flex-end !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  width: auto !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  white-space: nowrap !important;
+  gap: 4px !important;
+  scrollbar-width: thin !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-employee-sheet-tabs-bar .ts-sheet-tab,
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-employee-sheet-tabs-bar .ts-add-sheet {
+  flex: 0 0 auto !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-employee-sheet-tabs-bar .ts-sheet-settings {
+  flex: 0 0 auto !important;
+  margin-left: 8px !important;
+  z-index: 2 !important;
+}
+
+/* The attendance table starts below the stable employee sheet-tab row. */
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-employee-sheet-tabs-bar + .ts-sheet-context-menu + .ts-grid-wrap,
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-employee-sheet-tabs-bar ~ .ts-grid-wrap {
+  margin-top: 0 !important;
+}
+
+/* Never let the attendance table paint above the employee sheet tabs. */
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-grid-wrap {
+  z-index: 1 !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-grid-wrap .ts-grid thead th {
+  z-index: 120 !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-main .ts-grid-wrap .ts-grid thead .ts-row-num {
+  z-index: 140 !important;
+}
+
+/* Keep the global stable chrome untouched; only the employee sheet tabs
+   move into the workbook scroll area. */
+.ts-app[data-workspace-shell="sheet"] > .ts-sheet-bar {
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  .ts-app[data-workspace-shell="sheet"] .ts-main .ts-employee-sheet-tabs-bar {
+    min-height: 46px !important;
+    height: 46px !important;
+    max-height: 46px !important;
+  }
+}
+
+
+/* =========================================================
+   FINAL EMPLOYEE SUBTITLE VISIBILITY FIX
+   The employee worksheet uses the same stable subtitle strip as the
+   General Sheet. The title/current-day area is hidden in the compact
+   sheet workspace, but the subtitle itself is always visible.
+   ========================================================= */
+.ts-app[data-workspace-shell="sheet"] .ts-stable-heading {
+  position: sticky !important;
+  top: 189px !important;
+  z-index: 4700 !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  max-height: 34px !important;
+  margin: 0 !important;
+  padding: 4px 12px !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  background: #f5f7f9 !important;
+  border-bottom: 1px solid #d7dde2 !important;
+  border-top: 0 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-stable-heading .ts-heading-content {
+  display: block !important;
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-stable-heading .ts-title-row,
+.ts-app[data-workspace-shell="sheet"] .ts-stable-heading .ts-current-day {
+  display: none !important;
+}
+.ts-app[data-workspace-shell="sheet"] .ts-stable-heading .ts-page-subtitle {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  height: 25px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #6b7280 !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  line-height: 25px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.ts-app.ts-dark[data-workspace-shell="sheet"] .ts-stable-heading {
+  background: #0d1115 !important;
+  border-bottom-color: #3f4851 !important;
+}
+.ts-app.ts-dark[data-workspace-shell="sheet"] .ts-stable-heading .ts-page-subtitle {
+  color: #9ca3af !important;
+}
+
+/* Never let the page-scroll collapse rule hide the employee subtitle. */
+.ts-app[data-workspace-shell="sheet"].ts-page-scrolled .ts-stable-heading {
+  height: 34px !important;
+  min-height: 34px !important;
+  max-height: 34px !important;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+.ts-app[data-workspace-shell="sheet"].ts-page-scrolled .ts-stable-heading .ts-title-row,
+.ts-app[data-workspace-shell="sheet"].ts-page-scrolled .ts-stable-heading .ts-current-day {
+  display: none !important;
+}
+.ts-app[data-workspace-shell="sheet"].ts-page-scrolled .ts-stable-heading .ts-page-subtitle {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+
+/* =========================================================
+   DEFINITIVE STABLE SUBTITLE STRIP
+   The subtitle is deliberately a separate sibling of .ts-main.
+   .ts-main owns all worksheet scrolling; this strip never enters
+   that scrolling container and therefore cannot disappear, overlap,
+   or be pushed underneath the employee sheet tabs.
+   ========================================================= */
+.ts-app[data-workspace-shell="sheet"] .ts-stable-subtitle-bar {
+  flex: 0 0 34px !important;
+  width: 100% !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  max-height: 34px !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  position: relative !important;
+  z-index: 6000 !important;
+  margin: 0 !important;
+  padding: 0 12px !important;
+  overflow: hidden !important;
+  background: #f5f7f9 !important;
+  border-top: 1px solid #e1e6ea !important;
+  border-bottom: 1px solid #d7dde2 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.ts-app[data-workspace-shell="sheet"] .ts-stable-subtitle-bar .ts-page-subtitle {
+  display: block !important;
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #6b7280 !important;
+  font-size: 11px !important;
+  line-height: 20px !important;
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.ts-app.ts-dark[data-workspace-shell="sheet"] .ts-stable-subtitle-bar {
+  background: #0d1115 !important;
+  border-top-color: #3f4851 !important;
+  border-bottom-color: #3f4851 !important;
+}
+
+.ts-app.ts-dark[data-workspace-shell="sheet"] .ts-stable-subtitle-bar .ts-page-subtitle {
+  color: #9ca3af !important;
+}
+
+/* The old heading must never reserve space or cover the new strip. */
+.ts-app[data-workspace-shell="sheet"] > .ts-stable-heading {
+  display: none !important;
+}
+
+
+/* Sodah worksheet: Microsoft-Excel-inspired light ribbon and high-contrast editable grid. */
+.ts-app .ts-topbar { background:#dfe3e6!important; color:#17212b!important; border-bottom:1px solid #b8c1c9!important; box-shadow:0 1px 4px rgba(15,23,42,.12)!important; }
+.ts-app .ts-brand-name,.ts-app .ts-brand-sub { color:#26323c!important; }
+.ts-app .ts-top-action,.ts-app .ts-icon-tool,.ts-app .ts-sheet-switcher-btn { background:#f7f8f9!important;color:#273340!important;border:1px solid #c3cbd2!important;box-shadow:0 1px 1px rgba(15,23,42,.06)!important; }
+.ts-app .ts-top-action:hover,.ts-app .ts-icon-tool:hover,.ts-app .ts-sheet-switcher-btn:hover { background:#fff!important; }
+.ts-app .ts-top-action.active { background:#d7f5e8!important;color:#047857!important;border-color:#7ddbb8!important; }
+.ts-app .ts-search { background:#f7f8f9!important;border-color:#c3cbd2!important;color:#273340!important; }
+.ts-app .ts-search input { color:#273340!important; }
+.ts-app .ts-search input::placeholder { color:#687785!important; }
+.ts-app .ts-search-check { color:#fff!important; }
+.ts-excel-ribbon { display:flex; align-items:stretch; gap:0; min-height:36px; overflow-x:auto; padding:0 8px; background:#f8f9fa; border:1px solid #c8d0d7; border-bottom:0; }
+.ts-excel-ribbon button { flex:0 0 auto; border:0; border-bottom:3px solid transparent; background:transparent; color:#384550; padding:8px 13px 6px; font-size:12px; cursor:pointer; }
+.ts-excel-ribbon button:hover { background:#e9edf0; }
+.ts-excel-ribbon button.active { color:#087f5b; border-bottom-color:#10b981; font-weight:800; background:#fff; }
+.ts-excel-ribbon-tools { display:flex; align-items:center; gap:7px; flex-wrap:wrap; min-height:48px; padding:7px 10px; background:#f0f2f4; border:1px solid #c8d0d7; margin-bottom:8px; }
+.ts-excel-ribbon-tools button { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:30px; padding:0 10px; background:#fff; color:#293640; border:1px solid #c3cbd2; border-radius:4px; font-size:12px; cursor:pointer; }
+.ts-excel-ribbon-tools button:hover { background:#e7f5ef; border-color:#8fd8bb; }
+.ts-ribbon-note { font-size:12px; color:#596875; padding:4px 6px; }
+.ts-general-sheet-panel { background:#fff!important; color:#202a33!important; border:1px solid #c7d0d8!important; border-radius:3px!important; box-shadow:0 1px 3px rgba(15,23,42,.08)!important; }
+.ts-general-sheet-panel .ts-panel-header { background:#f7f8f9!important; color:#273340!important; border-bottom:1px solid #d1d8de!important; padding:8px 12px!important; }
+.ts-general-sheet-panel .ts-panel-header h2 { font-size:14px!important; color:#273340!important; }
+.ts-general-sheet-panel .ts-panel-header p { color:#647482!important; font-size:11px!important; }
+.ts-general-sheet-tabs { gap:3px!important; flex-wrap:nowrap!important; overflow-x:auto!important; border-bottom:1px solid #aeb8c1!important; margin:4px 0 0!important; padding:0 8px!important; background:#f0f2f4!important; }
+.ts-general-sheet-tabs button { min-height:30px!important; border-radius:3px 3px 0 0!important; background:#e8ecef!important; border:1px solid #c1c9d0!important; border-bottom:0!important; color:#34414b!important; font-weight:600!important; white-space:nowrap!important; }
+.ts-general-sheet-tabs button.active { background:#fff!important; color:#087f5b!important; border-top:2px solid #10b981!important; }
+.ts-general-selection-bar { border-radius:0!important; background:#fff!important; border-color:#d3d9df!important; min-height:31px!important; margin-bottom:5px!important; }
+.ts-general-grid-wrap { border-radius:0!important; border:1px solid #aeb8c1!important; background:#fff!important; max-height:calc(100vh - 360px)!important; min-height:360px!important; }
+.ts-general-grid { border-collapse:collapse!important; }
+.ts-general-grid th,.ts-general-grid td { min-width:110px!important; height:25px!important; padding:0!important; border:1px solid #c6ced6!important; }
+.ts-general-grid th { background:#edf0f2!important; color:#273340!important; }
+.ts-general-grid th.row-head { min-width:42px!important; width:42px!important; background:#edf0f2!important; color:#53616d!important; font-weight:500!important; }
+.ts-general-grid thead th input { text-align:center!important; font-weight:600!important; color:#3c4b56!important; }
+.ts-general-grid td input { padding:3px 6px!important; color:#202a33!important; }
+.ts-general-grid td input:focus { box-shadow:inset 0 0 0 2px #1686d9!important; }
+.ts-general-grid td.selected { outline:2px solid #1686d9!important; outline-offset:-2px!important; }
+@media(max-width:900px){.ts-excel-ribbon button{padding-left:10px;padding-right:10px}.ts-excel-ribbon-tools{gap:5px}.ts-general-grid-wrap{max-height:calc(100vh - 390px)!important}}
+
+/* Record modal must sit above the worksheet toolbar and every workspace panel. */
+.ts-record-modal { position: fixed !important; inset: 0 !important; z-index: 99999 !important; display: flex !important; align-items: center !important; justify-content: center !important; overflow: auto !important; }
+.ts-record-modal .ts-record-sheet { position: relative !important; z-index: 100000 !important; width: min(1500px, 100%) !important; max-height: 92vh !important; overflow: auto !important; }
+
+
+/* Premium analytics/report metric rail: six colorful cards on one stable horizontal row. */
+.ts-analytics .ts-stat-grid,
+.ts-panel .ts-report-metrics {
+  display:grid!important;
+  grid-template-columns:repeat(6,minmax(150px,1fr))!important;
+  gap:9px!important;
+  position:sticky!important;
+  top:70px!important;
+  z-index:450!important;
+  padding:6px 0!important;
+  background:rgba(255,255,255,.96)!important;
+  backdrop-filter:blur(12px)!important;
+}
+.ts-analytics .ts-stat,
+.ts-panel .ts-report-metric {
+  min-width:0!important;
+  min-height:92px!important;
+  display:grid!important;
+  grid-template-columns:34px minmax(0,1fr)!important;
+  grid-template-rows:auto auto!important;
+  align-items:center!important;
+  gap:3px 9px!important;
+  padding:12px!important;
+  border-radius:13px!important;
+  box-shadow:0 6px 16px rgba(15,23,42,.08)!important;
+  border:1px solid transparent!important;
+}
+.ts-analytics .ts-stat-icon { grid-row:1/3!important;width:34px!important;height:34px!important;margin:0!important;color:inherit!important;background:rgba(255,255,255,.25)!important }
+.ts-analytics .ts-stat span,.ts-panel .ts-report-metric span { font-size:10px!important;font-weight:800!important;color:inherit!important;line-height:1.25!important }
+.ts-analytics .ts-stat strong,.ts-panel .ts-report-metric strong { margin:0!important;font-size:15px!important;line-height:1.2!important;color:inherit!important;overflow-wrap:anywhere!important }
+.ts-analytics .ts-stat.blue,.ts-panel .ts-report-metric.blue { background:linear-gradient(135deg,#2563eb,#60a5fa)!important;color:#fff!important;border-color:#3b82f6!important }
+.ts-analytics .ts-stat.green,.ts-panel .ts-report-metric.green { background:linear-gradient(135deg,#059669,#34d399)!important;color:#fff!important;border-color:#10b981!important }
+.ts-analytics .ts-stat.orange,.ts-panel .ts-report-metric.orange { background:linear-gradient(135deg,#f59e0b,#fbbf24)!important;color:#fff!important;border-color:#f59e0b!important }
+.ts-analytics .ts-stat.purple,.ts-panel .ts-report-metric.purple { background:linear-gradient(135deg,#9333ea,#c084fc)!important;color:#fff!important;border-color:#a855f7!important }
+.ts-analytics .ts-stat.pink,.ts-panel .ts-report-metric.pink { background:linear-gradient(135deg,#db2777,#f472b6)!important;color:#fff!important;border-color:#ec4899!important }
+.ts-analytics .ts-stat.yellow,.ts-panel .ts-report-metric.yellow { background:linear-gradient(135deg,#eab308,#fde047)!important;color:#422006!important;border-color:#facc15!important }
+.ts-analytics .ts-stat:nth-child(1){background:linear-gradient(135deg,#059669,#34d399)!important;color:#fff!important;border-color:#10b981!important}
+.ts-analytics .ts-stat:nth-child(2){background:linear-gradient(135deg,#2563eb,#60a5fa)!important;color:#fff!important;border-color:#3b82f6!important}
+.ts-analytics .ts-stat:nth-child(3){background:linear-gradient(135deg,#f59e0b,#fbbf24)!important;color:#fff!important;border-color:#f59e0b!important}
+.ts-analytics .ts-stat:nth-child(4){background:linear-gradient(135deg,#db2777,#f472b6)!important;color:#fff!important;border-color:#ec4899!important}
+.ts-analytics .ts-stat:nth-child(5){background:linear-gradient(135deg,#9333ea,#c084fc)!important;color:#fff!important;border-color:#a855f7!important}
+.ts-analytics .ts-stat:nth-child(6){background:linear-gradient(135deg,#eab308,#fde047)!important;color:#422006!important;border-color:#facc15!important}
+.ts-analytics .ts-stat:nth-child(6) .ts-stat-icon{background:rgba(255,255,255,.45)!important}
+.ts-analytics-controls{display:flex;flex-wrap:wrap;gap:9px!important;align-items:center}
+.ts-analytics-controls select,.ts-analytics-controls input,.ts-analytics-controls button{min-height:40px!important;border-radius:10px!important;border:1px solid #d7e2ee!important;background:#fff!important}
+@media(max-width:1100px){
+ .ts-analytics .ts-stat-grid,.ts-panel .ts-report-metrics{grid-template-columns:repeat(6,minmax(145px,1fr))!important;overflow-x:auto!important;scrollbar-width:thin!important}
+}
+@media(max-width:700px){
+ .ts-analytics .ts-stat-grid,.ts-panel .ts-report-metrics{top:0!important;grid-template-columns:repeat(6,minmax(150px,1fr))!important}
+ .ts-analytics .ts-stat,.ts-panel .ts-report-metric{min-height:82px!important;padding:9px!important}
+}
+
+.ts-panel .ts-report-metric:nth-child(1){background:linear-gradient(135deg,#059669,#34d399)!important;color:#fff!important;border-color:#10b981!important}
+.ts-panel .ts-report-metric:nth-child(2){background:linear-gradient(135deg,#2563eb,#60a5fa)!important;color:#fff!important;border-color:#3b82f6!important}
+.ts-panel .ts-report-metric:nth-child(3){background:linear-gradient(135deg,#f59e0b,#fbbf24)!important;color:#fff!important;border-color:#f59e0b!important}
+.ts-panel .ts-report-metric:nth-child(4){background:linear-gradient(135deg,#db2777,#f472b6)!important;color:#fff!important;border-color:#ec4899!important}
+.ts-panel .ts-report-metric:nth-child(5){background:linear-gradient(135deg,#9333ea,#c084fc)!important;color:#fff!important;border-color:#a855f7!important}
+.ts-panel .ts-report-metric:nth-child(6){background:linear-gradient(135deg,#eab308,#fde047)!important;color:#422006!important;border-color:#facc15!important}
+.ts-panel .ts-report-metric:nth-child(7){background:linear-gradient(135deg,#0f766e,#2dd4bf)!important;color:#fff!important;border-color:#14b8a6!important}
+
+
+/* Final interaction fixes: editable attendance cells must receive pointer and keyboard input. */
+.ts-app .ts-attendance-table td { position: relative; }
+.ts-app .ts-attendance-table td input.ts-cell,
+.ts-app .ts-attendance-table td select.ts-cell,
+.ts-app .ts-attendance-table td select.ts-status {
+  position: relative !important; z-index: 2 !important; pointer-events: auto !important;
+  user-select: text !important; -webkit-user-select: text !important; cursor: text !important;
+  opacity: 1 !important; visibility: visible !important;
+}
+.ts-app .ts-attendance-table td input.ts-cell:focus,
+.ts-app .ts-attendance-table td select.ts-cell:focus {
+  outline: 2px solid #2563eb !important; outline-offset: -2px !important;
+  background: #fff !important; color: #111827 !important;
+}
+.ts-app .ts-check-button:disabled { opacity: .88 !important; cursor: wait !important; }
+.ts-app .ts-working-spinner { width:12px;height:12px;display:inline-block;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:ts-working-spin .8s linear infinite; }
+@keyframes ts-working-spin { to { transform:rotate(360deg); } }
+.ts-app .ts-working-dots i { font-style:normal;animation:ts-dot-pulse 1.1s infinite; }
+.ts-app .ts-working-dots i:nth-child(2) { animation-delay:.18s; }
+.ts-app .ts-working-dots i:nth-child(3) { animation-delay:.36s; }
+@keyframes ts-dot-pulse { 0%,60%,100%{opacity:.25}30%{opacity:1} }
+.ts-app .ts-ribbon-pop { position:relative !important; overflow:visible !important; }
+.ts-app .ts-ribbon-palette { position:fixed !important; z-index:99999 !important; min-width:220px !important; max-width:min(320px,calc(100vw - 24px)) !important; padding:12px !important; display:grid !important; grid-template-columns:repeat(6,26px) !important; gap:8px !important; background:#fff !important; border:1px solid #aeb8c4 !important; border-radius:10px !important; box-shadow:0 14px 35px rgba(15,23,42,.24) !important; overflow:visible !important; }
+.ts-app .ts-ribbon-palette button { width:26px !important;height:26px !important;min-width:26px !important;border:1px solid #9aa4b2 !important;border-radius:6px !important; }
+.ts-app .ts-ribbon-palette input[type="color"] { width:100% !important;height:30px !important;grid-column:1/-1 !important; }
+.ts-app .ts-general-sheet-tabs { overflow:visible !important; }
+.ts-app .ts-general-sheet-tabs button .ts-sheet-close { display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:0;border-radius:50%;background:transparent;color:inherit;padding:0;margin-left:5px; }
+.ts-app .ts-general-sheet-tabs button .ts-sheet-close:hover { background:rgba(220,38,38,.14);color:#dc2626; }
+.ts-app .ts-custom-color-choice { grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;font-weight:700;color:#26313a;padding:4px 0; }
+.ts-app .ts-custom-color-choice input[type="color"] { width:48px !important;height:30px !important;grid-column:auto !important;padding:2px !important;cursor:pointer; }
+.ts-app .ts-general-sheet-tabs button { gap:7px !important; }
+.ts-app .ts-general-sheet-tabs button .ts-sheet-close { font-size:17px;line-height:1; }
+.ts-app .ts-general-grid td input { pointer-events:auto !important;user-select:text !important;-webkit-user-select:text !important;cursor:text !important; }
+.ts-app .ts-general-grid td input:focus { outline:2px solid #2563eb !important;outline-offset:-2px !important;background:#fff !important;color:#111827 !important; }
+
+/* Employee Tools & Device Register: standard readable entry text.
+   Scoped only to editable cells in this table; all other sheets stay unchanged. */
+.ts-app .ts-equipment-table input.ts-cell {
+  font-size: 15px !important;
+  line-height: 1.4 !important;
+  font-weight: 500 !important;
+}

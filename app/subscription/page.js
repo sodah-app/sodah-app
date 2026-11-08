@@ -1,1068 +1,279 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
+const PAYPAL_CHECKOUT_LINKS = {
+  Starter: "https://www.paypal.com/ncp/payment/44CGPMTMY4ZHQ",
+  Business: "https://www.paypal.com/ncp/payment/AH23RR8JBGTNN",
+  Pro: "https://www.paypal.com/ncp/payment/H87TGY5F8Z6EA",
+};
+
+const PLANS = [
+  {
+    name: "Starter", price: "$40.99", subtitle: "Essential WhatsApp automation for small teams.", badge: "Great for getting started", icon: "▥",
+    features: [
+      "Send up to 20 WhatsApp messages at once",
+      "Up to 100 messages per day",
+      "5 scheduled campaigns · 5 contacts each",
+      "Up to 20 product images",
+      "2 active promotion",
+      "AI customer replies 24/7",
+      "Appointment booking, follow-ups and reminders",
+      "Send and schedule messages for customers and team members",
+      "Business dashboard and workspace",
+      "Daily business reports not included",
+    ],
+  },
+  {
+    name: "Business", price: "$81.99", subtitle: "More capacity, team coordination and daily business insights.", badge: "For growing businesses", icon: "♛",
+    features: [
+      "Send up to 50 WhatsApp messages at once",
+      "Up to 220 messages per day",
+      "10 scheduled campaigns · 5 contacts each",
+      "Up to 60 product images",
+      "5 active promotions",
+      "AI customer replies 24/7",
+      "Appointment booking, follow-ups and reminders",
+      "Send and schedule messages for customers and team members",
+      "Daily business summary delivered at 6:00 PM",
+      "Add team numbers to receive the daily report",
+      "Business dashboard and workspace",
+    ],
+  },
+  {
+    name: "Pro", price: "$135.99", subtitle: "Maximum capacity, flexible reporting and advanced team communication.", badge: "Most complete plan", icon: "◇",
+    features: [
+      "Send up to 100 WhatsApp messages at once",
+      "Up to 500 messages per day",
+      "10 scheduled campaigns · 10 contacts each",
+      "Up to 500 product images",
+      "10 active promotions",
+      "AI customer replies 24/7",
+      "Appointment booking, follow-ups and reminders",
+      "Send and schedule messages for customers and team members",
+      "Daily business summary with a custom delivery time",
+      "Add multiple team numbers to receive the daily report",
+      "Business dashboard and workspace",
+    ],
+  },
+];
+
+function formatDate(value) {
+  if (!value) return "Not available";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "Not available" : date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
 export default function SubscriptionPage() {
   const router = useRouter();
+  const [business, setBusiness] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [trialStarting, setTrialStarting] = useState(false);
+  const [pageError, setPageError] = useState("");
+  const [notice, setNotice] = useState("");
 
-  const WHATSAPP_NUMBER = "971544027954";
-
-  const [notification, setNotification] = useState(null);
-  const [businessId, setBusinessId] = useState(null);
-  const [businessLoading, setBusinessLoading] = useState(true);
-
-  // =====================================================
-  // BUSINESS ID
-  // =====================================================
-
-  useEffect(() => {
-    let mounted = true;
-
-    const loadBusinessId = async () => {
-      try {
-        setBusinessLoading(true);
-
-        /*
-         * 1. Get the authenticated Supabase session.
-         */
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
-
-        if (sessionError) {
-          console.error(
-            "[Subscription] Session error:",
-            sessionError
-          );
-        }
-
-        /*
-         * 2. Get business ID from URL.
-         *
-         * Example:
-         *
-         * /subscription?businessId=223e4e9d-73a7-4d1f-aa79-34621d1eff30
-         */
-        const params = new URLSearchParams(
-          window.location.search
-        );
-
-        const urlBusinessId =
-          params.get("businessId");
-
-        /*
-         * 3. If authenticated, resolve the business
-         * directly from the logged-in Supabase user.
-         *
-         * This is the primary source of truth.
-         */
-        if (session?.user?.id) {
-          const { data, error } = await supabase
-            .from("businesses")
-            .select("business_id")
-            .eq("user_id", session.user.id)
-            .maybeSingle();
-
-          if (error) {
-            console.error(
-              "[Subscription] Business lookup error:",
-              error
-            );
-          }
-
-          if (data?.business_id) {
-            const activeBusinessId =
-              data.business_id;
-
-            if (mounted) {
-              setBusinessId(
-                activeBusinessId
-              );
-            }
-
-            /*
-             * Keep the business ID available
-             * throughout the application.
-             */
-            localStorage.setItem(
-              "business_id",
-              activeBusinessId
-            );
-
-            setBusinessLoading(false);
-            return;
-          }
-        }
-
-        /*
-         * 4. If the database lookup was not available,
-         * use the business ID already supplied in the URL.
-         */
-        if (urlBusinessId) {
-          if (mounted) {
-            setBusinessId(urlBusinessId);
-          }
-
-          localStorage.setItem(
-            "business_id",
-            urlBusinessId
-          );
-
-          setBusinessLoading(false);
-          return;
-        }
-
-        /*
-         * 5. Last fallback: localStorage.
-         */
-        const storedBusinessId =
-          localStorage.getItem(
-            "business_id"
-          );
-
-        if (storedBusinessId) {
-          if (mounted) {
-            setBusinessId(
-              storedBusinessId
-            );
-          }
-
-          setBusinessLoading(false);
-          return;
-        }
-
-        /*
-         * No business could be resolved.
-         */
-        console.error(
-          "[Subscription] Unable to determine active business."
-        );
-
-        setBusinessLoading(false);
-      } catch (error) {
-        console.error(
-          "[Subscription] Business resolution error:",
-          error
-        );
-
-        setBusinessLoading(false);
-      }
-    };
-
-    loadBusinessId();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  // =====================================================
-  // HELPER
-  // =====================================================
-
-  const getBusinessQuery = () => {
-    if (!businessId) {
-      return "";
-    }
-
-    return `?businessId=${encodeURIComponent(
-      businessId
-    )}`;
-  };
-
-  const goToChannels = () => {
-    if (businessId) {
-      router.push(
-        `/channels?businessId=${encodeURIComponent(
-          businessId
-        )}`
-      );
-    } else {
-      router.push("/channels");
-    }
-  };
-
-  const goToWelcome = () => {
-    if (businessId) {
-      router.push(
-        `/welcome?businessId=${encodeURIComponent(
-          businessId
-        )}`
-      );
-    } else {
-      router.push("/welcome");
-    }
-  };
-
-  // =====================================================
-  // SUBSCRIPTION CHECK
-  // =====================================================
-
-  useEffect(() => {
-    const storedUser =
-      localStorage.getItem("user");
-
-    if (!storedUser) {
-      return;
-    }
-
-    let user;
-
+  const loadBusiness = useCallback(async () => {
+    setLoading(true);
+    setPageError("");
     try {
-      user = JSON.parse(storedUser);
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!session?.user?.id) {
+        router.replace(`/login?next=${encodeURIComponent("/subscription")}`);
+        return;
+      }
+      const { data, error } = await supabase
+        .from("businesses")
+        .select("business_id,business_name,subscription_plan,subscription_status,subscription_start,subscription_expiry,renewal_date,trial_used_at")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data?.business_id) {
+        setBusiness(null);
+        setPageError("No business workspace was found for this account. Please finish setting up your business first.");
+        return;
+      }
+      setBusiness(data);
+      localStorage.setItem("business_id", data.business_id);
     } catch (error) {
-      console.error(
-        "[Subscription] Invalid user data:",
-        error
-      );
+      console.error("[Subscription] Could not load business subscription:", error);
+      setPageError(error?.message?.includes("trial_used_at")
+        ? "The subscription database needs the trial_used_at field before trial eligibility can be checked safely. Apply the SQL migration supplied with this update."
+        : "We could not load your business subscription. Please refresh the page and try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
+
+  useEffect(() => { loadBusiness(); }, [loadBusiness]);
+
+  const expiryTime = business?.subscription_expiry ? new Date(business.subscription_expiry).getTime() : 0;
+  const isUnexpired = Number.isFinite(expiryTime) && expiryTime > Date.now();
+  const status = String(business?.subscription_status || "inactive").toLowerCase();
+  const plan = String(business?.subscription_plan || "");
+  const isTrialPlan = /trial/i.test(plan);
+  const trialActive = isTrialPlan && isUnexpired && ["active", "trialing"].includes(status);
+  const paidActive = Boolean(plan) && !isTrialPlan && isUnexpired && status === "active";
+  // A trial-plan record is evidence that this business has entered the trial, even if its expiry is missing.
+  const trialUsed = Boolean(business?.trial_used_at) || isTrialPlan;
+  const trialExpired = trialUsed && !trialActive;
+  const expiryLabel = formatDate(business?.subscription_expiry);
+
+  const statusText = useMemo(() => {
+    if (trialActive) return `Free trial active until ${expiryLabel}`;
+    if (paidActive) return `${plan} plan active until ${expiryLabel}`;
+    if (trialExpired) return "Your free trial has expired";
+    return "Your free trial is available";
+  }, [trialActive, paidActive, trialExpired, expiryLabel, plan]);
+
+  async function startFreeTrial() {
+    if (!business?.business_id || trialStarting) return;
+
+    // An already-active trial should let the customer continue, not leave them
+    // stuck behind a disabled button.
+    if (trialActive || paidActive) {
+      router.push("/channels");
       return;
     }
 
-    if (!user?.planExpiry) {
-      return;
-    }
+    // A used/expired trial remains locked. Paid checkout buttons are independent.
+    if (trialUsed) return;
 
-    const now = new Date();
-
-    const expiry = new Date(
-      user.planExpiry
-    );
-
-    if (Number.isNaN(expiry.getTime())) {
-      return;
-    }
-
-    const diffMs =
-      expiry.getTime() -
-      now.getTime();
-
-    const daysRemaining =
-      Math.ceil(
-        diffMs /
-          (1000 * 60 * 60 * 24)
-      );
-
-    if (daysRemaining <= 0) {
-      user.subscription =
-        "expired";
-
-      localStorage.setItem(
-        "user",
-        JSON.stringify(user)
-      );
-
-      localStorage.removeItem(
-        "token"
-      );
-
-      localStorage.removeItem(
-        "isLoggedIn"
-      );
-
-      document.cookie =
-        "blocked=true; path=/";
-
-      document.cookie =
-        "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
-
-      setNotification(
-        "Your subscription has expired. Please renew your plan."
-      );
-
-      return;
-    }
-
-    if (daysRemaining === 3) {
-      setNotification(
-        "⚠️ Your subscription expires in 3 days. Renew now to avoid interruption."
-      );
-    } else if (daysRemaining === 2) {
-      setNotification(
-        "⚠️ Your subscription expires in 2 days. Renew now to avoid interruption."
-      );
-    } else if (daysRemaining === 1) {
-      setNotification(
-        "⏰ Your subscription expires tomorrow. Renew now to continue using Sodah."
-      );
-    } else {
-      setNotification(null);
-    }
-  }, []);
-
-  // =====================================================
-  // PLAN HANDLER
-  // =====================================================
-
-  const handleUpgrade = (plan) => {
-    const now = new Date();
-
-    /*
-     * -----------------------------------------------------
-     * STARTER
-     * -----------------------------------------------------
-     */
-
-    if (plan === "Starter") {
-      let user = {};
-
-      try {
-        user = JSON.parse(
-          localStorage.getItem(
-            "user"
-          ) || "{}"
-        );
-      } catch (error) {
-        console.error(
-          "[Subscription] User data error:",
-          error
-        );
+    setTrialStarting(true);
+    setPageError("");
+    setNotice("");
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!session?.access_token) {
+        router.replace(`/login?next=${encodeURIComponent("/subscription")}`);
+        return;
       }
-
-      const expiry =
-        new Date(now);
-
-      expiry.setDate(
-        now.getDate() + 7
-      );
-
-      user.subscription =
-        "active";
-
-      user.plan =
-        "Starter";
-
-      user.planType =
-        "trial";
-
-      user.planStartDate =
-        now.toISOString();
-
-      user.planExpiry =
-        expiry.toISOString();
-
-      user.aiUsageLimit =
-        "500 AI Replies";
-
-      /*
-       * Always preserve the active business ID.
-       */
-      if (businessId) {
-        user.business_id =
-          businessId;
-
-        localStorage.setItem(
-          "business_id",
-          businessId
-        );
-      }
-
-      localStorage.setItem(
-        "user",
-        JSON.stringify(user)
-      );
-
-      goToWelcome();
-
-      return;
+      const response = await fetch("/api/subscription/start-trial", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ businessId: business.business_id }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "The free trial could not be started.");
+      setNotice("Your 7-day free trial is active. Opening WhatsApp channels…");
+      await loadBusiness();
+      router.push("/channels");
+    } catch (error) {
+      setPageError(error?.message || "The free trial could not be started. Please try again.");
+      await loadBusiness();
+    } finally {
+      setTrialStarting(false);
     }
-
-    /*
-     * -----------------------------------------------------
-     * PRO
-     * -----------------------------------------------------
-     */
-
-    if (plan === "Pro") {
-      window.location.href =
-        "https://www.paypal.com/ncp/payment/AH23RR8JBGTNN?plan=pro";
-
-      return;
-    }
-
-    /*
-     * -----------------------------------------------------
-     * PREMIUM
-     * -----------------------------------------------------
-     */
-
-    if (plan === "Premium") {
-      window.location.href =
-        "https://www.paypal.com/ncp/payment/H87TGY5F8Z6EA?plan=premium";
-
-      return;
-    }
-
-    /*
-     * -----------------------------------------------------
-     * ENTERPRISE
-     * -----------------------------------------------------
-     */
-
-    if (
-      plan ===
-      "Custom Automation"
-    ) {
-      const message =
-        businessId
-          ? `Hi, I want a fully customized AI automation solution for my business. Business ID: ${businessId}`
-          : "Hi, I want a fully customized AI automation solution for my business.";
-
-      const whatsappUrl =
-        `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-          message
-        )}`;
-
-      window.open(
-        whatsappUrl,
-        "_blank",
-        "noopener,noreferrer"
-      );
-
-      return;
-    }
-  };
-
-  // =====================================================
-  // PLAN CARD
-  // =====================================================
-
-  function PlanCard({
-    title,
-    price,
-    features,
-    buttonText,
-    buttonClass,
-    borderClass,
-    onClick,
-    subtitle,
-    badge,
-    priceDescription,
-  }) {
-    return (
-      <div
-        className={`
-          relative
-          bg-white/[0.035]
-          ${borderClass}
-          border
-          rounded-2xl
-          px-4
-          py-5
-          backdrop-blur-xl
-          flex
-          flex-col
-          justify-between
-          h-full
-          transition-all
-          duration-300
-          hover:-translate-y-1
-          hover:bg-white/[0.055]
-          shadow-[0_20px_60px_rgba(0,0,0,0.25)]
-        `}
-      >
-        <div>
-          {badge && (
-            <div className="inline-flex mb-3 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/15 text-emerald-300 text-[10px] font-bold uppercase tracking-wide">
-              {badge}
-            </div>
-          )}
-
-          <h3 className="text-xl font-black mb-1">
-            {title}
-          </h3>
-
-          {price && (
-            <div className="mb-1">
-              <p className="text-3xl font-black tracking-tight">
-                {price}
-              </p>
-
-              {priceDescription && (
-                <p className="text-[11px] text-white/45 mt-1">
-                  {priceDescription}
-                </p>
-              )}
-            </div>
-          )}
-
-          {subtitle && (
-            <p className="text-xs text-purple-300 mb-4">
-              {subtitle}
-            </p>
-          )}
-
-          <ul className="text-[12px] text-gray-300 space-y-2">
-            {features.map(
-              (feature, index) => (
-                <li
-                  key={index}
-                  className="flex items-start gap-2"
-                >
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-400/15 text-emerald-300 text-[9px] font-black mt-[1px]">
-                    ✓
-                  </span>
-
-                  <span className="leading-4">
-                    {feature}
-                  </span>
-                </li>
-              )
-            )}
-          </ul>
-        </div>
-
-        <button
-          type="button"
-          onClick={onClick}
-          className={`
-            mt-5
-            mx-auto
-            w-[92%]
-            py-2
-            px-3
-            rounded-lg
-            font-bold
-            text-xs
-            transition-all
-            duration-300
-            hover:scale-[1.01]
-            active:scale-[0.98]
-            ${buttonClass}
-          `}
-        >
-          {buttonText}
-        </button>
-      </div>
-    );
   }
 
-  // =====================================================
-  // LOADING
-  // =====================================================
-
-  if (businessLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f172a] via-[#064e3b] to-[#020617] text-white">
-        <div className="rounded-2xl border border-white/10 bg-black/30 px-6 py-5 backdrop-blur-xl shadow-2xl text-center">
-          <div className="mx-auto mb-3 h-8 w-8 rounded-full border-2 border-white/10 border-t-emerald-400 animate-spin" />
-
-          <p className="text-sm font-semibold">
-            Loading your business...
-          </p>
-
-          <p className="mt-1 text-[11px] text-white/40">
-            Preparing your subscription workspace
-          </p>
-        </div>
-      </div>
-    );
+  function openCheckout(planName) {
+    setPageError("");
+    const url = PAYPAL_CHECKOUT_LINKS[planName];
+    if (!url) {
+      setPageError(`The PayPal checkout link for ${planName} is not configured.`);
+      return;
+    }
+    window.location.assign(url);
   }
 
-  // =====================================================
-  // PAGE
-  // =====================================================
+  if (loading) return (
+    <main className="flex min-h-screen items-center justify-center bg-[#020b18] px-4 text-white">
+      <div className="rounded-2xl border border-sky-400/20 bg-[#071a2e] px-8 py-6 text-center shadow-2xl shadow-sky-950/50">
+        <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-sky-400" />
+        <p className="text-sm font-semibold text-slate-200">Loading your subscription…</p>
+      </div>
+    </main>
+  );
+
+  // Active trial is clickable and continues to Channels. Only a previously used
+  // or expired trial is locked; the three paid plan buttons remain independent.
+  const trialButtonDisabled = trialStarting || trialExpired || (!business?.business_id);
+  const trialButtonLabel = trialStarting
+    ? "Checking business…"
+    : trialActive
+      ? "Continue to Channels  ›"
+      : trialExpired
+        ? "🔒 Free Trial Expired"
+        : paidActive
+          ? "Continue to Channels  ›"
+          : "Start Free Trial  ›";
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-[#0f172a] via-[#064e3b] to-[#020617] text-white px-4 py-6 sm:px-6 lg:px-8">
+    <main className="min-h-screen overflow-x-hidden bg-[#020914] text-white selection:bg-sky-500/30">
+      <div className="pointer-events-none fixed inset-0 -z-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute -right-32 -top-48 h-[520px] w-[760px] rounded-full bg-blue-600/20 blur-3xl" />
+        <div className="absolute -left-48 top-[35%] h-[420px] w-[620px] rounded-full bg-sky-700/10 blur-3xl" />
+        <div className="absolute bottom-0 right-[20%] h-[300px] w-[520px] rounded-full bg-indigo-700/10 blur-3xl" />
+      </div>
 
-      {/* =================================================
-          TOP NAVIGATION
-      ================================================= */}
-
-      <div className="w-full max-w-7xl mx-auto flex items-center justify-between mb-7">
-
-        <button
-          type="button"
-          onClick={goToChannels}
-          className="
-            rounded-xl
-            border
-            border-white/10
-            bg-black/20
-            px-3
-            py-2
-            text-xs
-            font-bold
-            text-white/75
-            hover:text-white
-            hover:bg-white/[0.06]
-            transition
-            backdrop-blur-xl
-          "
-        >
-          ← Back to Channels
-        </button>
-
-        <div className="hidden sm:block text-center">
-          <p className="text-sm font-black">
-            Sodah
-            <span className="text-cyan-400">
-              .io
-            </span>
-          </p>
-
-          <p className="text-[8px] uppercase tracking-[0.25em] text-white/35">
-            AI Automation Platform
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="hidden sm:block text-right">
-            <p className="text-[9px] uppercase tracking-wider text-white/35">
-              Active Business ID
-            </p>
-
-            <p className="text-[11px] font-mono font-bold text-emerald-300">
-              {businessId ||
-                "Not available"}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-400 text-[#04120e] text-xs font-black">
-              B
-            </span>
-
-            <span className="max-w-[120px] truncate text-[10px] font-mono font-bold text-emerald-300">
-              {businessId ||
-                "No Business ID"}
-            </span>
+      <header className="relative z-10 border-b border-sky-100/10 bg-[#061629]/90">
+        <div className="mx-auto flex min-h-[78px] w-full max-w-[1500px] items-center justify-between gap-4 px-5 py-3 sm:px-8">
+          <button type="button" onClick={() => router.push("/dashboard")} className="flex items-center gap-3 text-left" aria-label="Sodah.io dashboard">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-sky-400/40 bg-sky-500/10 text-2xl font-black text-sky-400 shadow-lg shadow-sky-950/30">✉</span>
+            <span><span className="block text-[27px] font-black leading-none tracking-tight">Sodah<span className="text-sky-400">.io</span></span><span className="mt-1 block text-[11px] font-medium tracking-wide text-slate-400">AI for Business Growth</span></span>
+          </button>
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+            <span className="hidden h-11 w-11 items-center justify-center rounded-full border border-sky-300/70 text-xl text-sky-200 sm:flex">▱</span>
+            <div className="hidden min-w-0 sm:block"><p className="text-xs text-slate-400">My Business</p><p className="max-w-[230px] truncate text-sm font-bold text-white">{business?.business_name || "Business Workspace"}</p></div>
+            <span className="text-slate-400">⌄</span>
           </div>
         </div>
-      </div>
-
-      {/* =================================================
-          NOTIFICATION
-      ================================================= */}
-
-      {notification && (
-        <div className="w-full max-w-6xl mx-auto mb-5 bg-yellow-500/10 border border-yellow-400/30 text-yellow-200 px-4 py-3 rounded-xl text-center text-xs sm:text-sm backdrop-blur-xl">
-          {notification}
-        </div>
-      )}
-
-      {/* =================================================
-          HEADER
-      ================================================= */}
-
-      <div className="text-center mb-7">
-
-        <p className="text-[10px] uppercase tracking-[0.3em] text-emerald-300 font-black mb-2">
-          Sodah Subscription
-        </p>
-
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-black mb-2 tracking-tight">
-          Choose Your Plan
-          <span className="ml-2">
-            💎
-          </span>
-        </h1>
-
-        <p className="text-white/55 text-sm md:text-base">
-          Powerful AI automation without unnecessary complexity.
-        </p>
-
-        {businessId && (
-          <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-4 py-2 backdrop-blur-xl">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-
-            <span className="text-[10px] uppercase tracking-wider text-white/40">
-              Business
-            </span>
-
-            <span className="font-mono text-[10px] font-bold text-emerald-300">
-              {businessId}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* =================================================
-          PLANS
-      ================================================= */}
-
-      <div
-        className="
-          w-full
-          max-w-7xl
-          mx-auto
-          grid
-          grid-cols-1
-          sm:grid-cols-2
-          xl:grid-cols-4
-          gap-4
-          items-stretch
-        "
-      >
-
-        {/* =================================================
-            STARTER
-        ================================================= */}
-
-        <PlanCard
-          title="Starter"
-          badge="7-Day Free Trial"
-          price="$0"
-          priceDescription="7 days free"
-          features={[
-            "500 AI Replies / Month",
-            "1 WhatsApp Connection",
-            "AI Auto Replies",
-            "Basic FAQ Responses",
-            "Lead Capture",
-            "Basic Dashboard",
-            "Basic Analytics",
-            "Community Support",
-            "Email Support",
-            "Upgrade Anytime",
-          ]}
-          buttonText="Start Free Trial"
-          buttonClass="border border-white/15 bg-white/[0.05] hover:bg-white/[0.10] text-white"
-          borderClass="border-white/10"
-          onClick={() =>
-            handleUpgrade("Starter")
-          }
-        />
-
-        {/* =================================================
-            PRO
-        ================================================= */}
-
-        <PlanCard
-          title="Pro"
-          badge="Most Popular"
-          price="$29"
-          priceDescription="/ month"
-          subtitle="Advanced • Small Businesses"
-          features={[
-            "5,000 AI Replies / Month",
-            "Everything in Starter",
-            "Appointment Scheduling",
-            "Lead Management",
-            "Customer Database",
-            "Analytics Dashboard",
-            "Inventory Tracking",
-            "Priority Support",
-            "Custom AI Responses",
-            "Business Automation",
-          ]}
-          buttonText="Upgrade to Pro"
-          buttonClass="bg-green-500 hover:bg-green-400 text-black shadow-[0_0_25px_rgba(34,197,94,0.18)]"
-          borderClass="border-green-400/50"
-          onClick={() =>
-            handleUpgrade("Pro")
-          }
-        />
-
-        {/* =================================================
-            PREMIUM
-        ================================================= */}
-
-        <PlanCard
-          title="Premium"
-          badge="Best Value"
-          price="$79"
-          priceDescription="/ month"
-          subtitle="Advanced • Growing Businesses"
-          features={[
-            "Unlimited AI Replies",
-            "Everything in Pro",
-            "Run WhatsApp Campaigns",
-            "Unlimited WhatsApp Messages",
-            "AI Chat in All Languages",
-            "Smart Follow-Up Messages",
-            "Reminder Messages",
-            "Group Chat Automation",
-            "Business Updates & Promotions Anytime",
-            "VIP Priority Support",
-          ]}
-          buttonText="Go Premium 🚀"
-          buttonClass="bg-yellow-400 hover:bg-yellow-300 text-black shadow-[0_0_25px_rgba(250,204,21,0.16)]"
-          borderClass="border-yellow-400/50"
-          onClick={() =>
-            handleUpgrade("Premium")
-          }
-        />
-
-        {/* =================================================
-            ENTERPRISE
-        ================================================= */}
-
-        <PlanCard
-          title="Enterprise"
-          badge="Custom Solution"
-          price="Custom"
-          priceDescription="For Larger Businesses"
-          subtitle="Tailored for your business"
-          features={[
-            "Unlimited AI Replies",
-            "Everything in Premium",
-            "Custom AI Workflows",
-            "AI Voice Call Automation",
-            "Dedicated Setup Team",
-            "Business AI Training",
-            "Sales & Operations Automation",
-            "Enterprise Integrations",
-            "Custom Reporting",
-            "Dedicated Account Manager",
-          ]}
-          buttonText="Contact on WhatsApp 💬"
-          buttonClass="bg-purple-500 hover:bg-purple-400 text-white shadow-[0_0_25px_rgba(168,85,247,0.18)]"
-          borderClass="border-purple-400/50"
-          onClick={() =>
-            handleUpgrade(
-              "Custom Automation"
-            )
-          }
-        />
-      </div>
-
-      {/* =================================================
-          TRUST SECTION
-      ================================================= */}
-
-      <div className="w-full max-w-7xl mx-auto mt-5">
-
-        <div
-          className="
-            bg-black/20
-            border
-            border-white/10
-            rounded-2xl
-            p-5
-            sm:p-6
-            backdrop-blur-xl
-            text-center
-          "
-        >
-
-          <p className="text-[9px] uppercase tracking-[0.25em] text-emerald-300 font-black mb-2">
-            Built for Business Growth
-          </p>
-
-          <h3 className="text-xl font-black mb-5">
-            Why Businesses Choose Sodah.io 🚀
-          </h3>
-
-          <div
-            className="
-              grid
-              grid-cols-1
-              md:grid-cols-3
-              gap-5
-              text-sm
-              text-gray-300
-            "
-          >
-
-            {/* 24/7 */}
-
-            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-
-              <div className="text-2xl mb-2">
-                🤖
-              </div>
-
-              <h4 className="font-bold text-white mb-1">
-                24/7 AI Support
-              </h4>
-
-              <p className="text-xs leading-5 text-white/45">
-                Instantly reply to customers and keep your business active around the clock.
-              </p>
-
-            </div>
-
-            {/* REVENUE */}
-
-            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-
-              <div className="text-2xl mb-2">
-                📈
-              </div>
-
-              <h4 className="font-bold text-white mb-1">
-                Increase Revenue
-              </h4>
-
-              <p className="text-xs leading-5 text-white/45">
-                Automate conversations, qualify leads and convert more opportunities with less manual work.
-              </p>
-
-            </div>
-
-            {/* SETUP */}
-
-            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-
-              <div className="text-2xl mb-2">
-                ⚡
-              </div>
-
-              <h4 className="font-bold text-white mb-1">
-                Quick & Easy Setup
-              </h4>
-
-              <p className="text-xs leading-5 text-white/45">
-                Connect WhatsApp in minutes and start automating your customer communication.
-              </p>
-
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      {/* =================================================
-          BUSINESS ID / FLEXIBLE PLANS
-      ================================================= */}
-
-      <div className="w-full max-w-7xl mx-auto mt-5">
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-          {/* ACTIVE BUSINESS */}
-
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-5 backdrop-blur-xl">
-
-            <p className="text-[9px] uppercase tracking-[0.25em] text-white/35 font-black mb-3">
-              Active Workspace
-            </p>
-
-            <h3 className="text-lg font-black mb-3">
-              Active Business
-            </h3>
-
-            <div className="flex flex-col gap-2">
-
-              <span className="text-xs text-white/40">
-                Business ID
-              </span>
-
-              <div className="inline-flex w-fit items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-
-                <span className="font-mono text-xs font-bold text-emerald-300 break-all">
-                  {businessId ||
-                    "Business ID unavailable"}
-                </span>
-              </div>
-
-            </div>
-          </div>
-
-          {/* FLEXIBLE */}
-
-          <div className="rounded-2xl border border-green-400/30 bg-green-400/[0.04] p-5 backdrop-blur-xl">
-
-            <div className="flex gap-4">
-
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-green-400/10 border border-green-400/20 text-2xl">
-                🛡️
-              </div>
-
-              <div>
-
-                <h3 className="font-black mb-2">
-                  Flexible Plans
-                </h3>
-
-                <div className="space-y-1.5 text-xs text-white/55">
-
-                  <p>
-                    <span className="text-green-400">
-                      ✓
-                    </span>{" "}
-                    Upgrade, downgrade or switch plans anytime.
-                  </p>
-
-                  <p>
-                    <span className="text-green-400">
-                      ✓
-                    </span>{" "}
-                    Plans continue receiving new features and improvements.
-                  </p>
-
-                  <p>
-                    <span className="text-green-400">
-                      ✓
-                    </span>{" "}
-                    Secure and built for business growth.
-                  </p>
-
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* =================================================
-          BACK BUTTON
-      ================================================= */}
-
-      <div className="text-center mt-6">
-
-        <button
-          type="button"
-          onClick={goToChannels}
-          className="
-            inline-flex
-            items-center
-            gap-2
-            rounded-xl
-            border
-            border-white/10
-            bg-white/[0.03]
-            px-4
-            py-2
-            text-xs
-            font-bold
-            text-white/55
-            hover:text-white
-            hover:bg-white/[0.07]
-            transition
-          "
-        >
-          ← Back to Channels
-        </button>
-
-      </div>
-
-      {/* =================================================
-          FOOTER
-      ================================================= */}
-
-      <div className="w-full max-w-7xl mx-auto mt-8 pt-5 border-t border-white/5">
-
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] text-white/30">
-
-          <div>
-            © 2026 Sodah.io — AI Automation Platform
-          </div>
-
-          <div className="flex items-center gap-4">
-            <span>
-              🔒 Secure
-            </span>
-
-            <span>
-              🤖 AI Powered
-            </span>
-
-            <span>
-              ⚡ Fast Setup
-            </span>
-          </div>
-
+      </header>
+
+      <div className="relative z-10 mx-auto w-full max-w-[1500px] px-4 pb-5 sm:px-7 lg:px-8">
+        <div className="mt-4 flex items-center justify-between gap-4">
+          <button type="button" onClick={() => router.push("/signup")} className="inline-flex items-center gap-2 rounded-full border border-sky-300/70 bg-sky-950/40 px-5 py-2.5 text-sm font-bold text-slate-100 transition hover:border-sky-300 hover:bg-sky-900/50 focus:outline-none focus:ring-2 focus:ring-sky-400"><span className="text-xl leading-none">←</span> Back to Sign Up</button>
+          <span className="hidden text-xs text-slate-500 sm:block">Secure plans for your business</span>
         </div>
 
-      </div>
+        <section className="mt-3 text-center">
+          <h1 className="text-4xl font-black tracking-tight sm:text-5xl">Choose <span className="bg-gradient-to-r from-sky-400 to-blue-500 bg-clip-text text-transparent">Your Plan</span></h1>
+          <p className="mt-1 text-sm text-slate-300 sm:text-lg">Automate customer conversations, coordinate your team, schedule WhatsApp messages and stay informed with daily business reports.</p>
+          <div className={`mx-auto mt-4 flex max-w-[600px] items-center gap-4 rounded-2xl border px-5 py-3 text-left ${trialActive ? "border-emerald-400/70 bg-emerald-950/45" : trialExpired ? "border-rose-400/50 bg-rose-950/30" : "border-emerald-400/70 bg-emerald-950/35"}`}>
+            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-2xl ${trialExpired ? "text-rose-300" : "text-emerald-300"}`}>{trialExpired ? "🔒" : trialActive ? "✓" : "▣"}</span>
+            <div className="min-w-0"><p className="text-sm font-extrabold">{trialActive ? "Your free trial is active" : trialExpired ? "Free trial already used" : "7-day free trial available"}</p><p className="mt-0.5 text-xs text-slate-300 sm:text-sm">{trialActive ? `Enjoy all features until ${expiryLabel}.` : trialExpired ? "Choose a paid plan below to continue." : "Start your 7-day free trial and explore all the features."}</p></div>
+          </div>
+        </section>
 
-    </div>
+        {pageError && <div role="alert" className="mx-auto mt-3 max-w-4xl rounded-xl border border-rose-400/40 bg-rose-950/50 px-4 py-3 text-sm text-rose-200">{pageError}</div>}
+        {notice && <div role="status" className="mx-auto mt-3 max-w-4xl rounded-xl border border-emerald-400/40 bg-emerald-950/50 px-4 py-3 text-sm text-emerald-200">{notice}</div>}
+
+        <section className="mt-3 grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Subscription plans">
+          <article className={`relative flex min-w-0 flex-col rounded-[25px] border p-5 shadow-xl shadow-black/20 ${trialActive ? "border-emerald-400/80 bg-gradient-to-b from-emerald-950/90 to-[#03131a]" : trialExpired ? "border-slate-700 bg-gradient-to-b from-slate-900 to-[#050b15]" : "border-emerald-500/70 bg-gradient-to-b from-emerald-950/75 to-[#03131a]"}`}>
+            <div className="mb-4 flex items-center justify-between gap-2"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/20 text-3xl text-emerald-300 ring-1 ring-emerald-400/40">♧</span><span className="rounded-full border border-emerald-400/60 bg-emerald-950/80 px-3 py-2 text-[11px] font-bold text-emerald-200">7 Days Free</span></div>
+            <h2 className="text-2xl font-extrabold">Free Trial</h2><p className="mt-1 text-4xl font-black text-emerald-300">$0</p><p className="mt-2 min-h-[42px] text-sm text-slate-300">Explore Sodah.io risk-free.</p>
+            <div className="my-4 h-px bg-emerald-100/10" />
+            <ul className="flex-1 space-y-3 text-sm leading-snug text-slate-200">{["AI replies to customers 24/7", "Send up to 20 messages at once", "Up to 100 messages per day", "5 scheduled campaigns · 5 contacts each", "Send and schedule messages for customers and team members", "Appointment booking, follow-ups and reminders", "Business dashboard and workspace", "Daily business reports available on Business and Pro"].map((feature) => <li key={feature} className="flex items-start gap-2"><span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-black text-emerald-300">✓</span><span>{feature}</span></li>)}</ul>
+            <button type="button" disabled={trialButtonDisabled} onClick={startFreeTrial} aria-busy={trialStarting} className={`mt-5 min-h-[52px] w-full rounded-2xl px-3 py-3 text-sm font-extrabold transition focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:ring-offset-2 focus:ring-offset-[#04111a] ${trialButtonDisabled ? "cursor-not-allowed border border-slate-700 bg-slate-800 text-slate-400" : "bg-gradient-to-r from-emerald-400 to-green-500 text-[#032015] shadow-lg shadow-emerald-500/20 hover:brightness-110"}`}>{trialButtonLabel}</button>
+            {trialExpired && <p className="mt-2 text-center text-[11px] text-slate-500">Trial used · {expiryLabel}</p>}
+          </article>
+
+          {PLANS.map((item) => {
+            const isBusiness = item.name === "Business";
+            const isStarter = item.name === "Starter";
+            const palette = isStarter
+              ? { border: "border-emerald-500/60", bg: "from-[#031d1b] to-[#03101a]", icon: "bg-emerald-500/20 text-emerald-300 ring-emerald-400/30", badge: "border-emerald-400/40 bg-emerald-950/80 text-emerald-200", price: "text-emerald-300", button: "from-emerald-400 to-green-500 text-[#032015] shadow-emerald-500/20" }
+              : isBusiness
+                ? { border: "border-sky-400 ring-2 ring-sky-500/80", bg: "from-[#061b43] to-[#030e22]", icon: "bg-blue-500/25 text-sky-300 ring-sky-400/40", badge: "border-sky-400/40 bg-blue-600 text-white", price: "text-sky-400", button: "from-sky-400 to-blue-600 text-white shadow-blue-500/30" }
+                : { border: "border-violet-500/50", bg: "from-[#18112f] to-[#080b19]", icon: "bg-violet-500/25 text-violet-300 ring-violet-400/30", badge: "border-violet-400/40 bg-violet-800 text-white", price: "text-violet-300", button: "from-violet-500 to-purple-600 text-white shadow-violet-500/30" };
+            return <article key={item.name} className={`relative flex min-w-0 flex-col rounded-[25px] border bg-gradient-to-b p-5 shadow-xl shadow-black/20 transition duration-200 hover:-translate-y-0.5 hover:shadow-2xl ${palette.border} ${palette.bg}`}>
+              <div className="mb-4 flex items-center justify-between gap-2"><span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-3xl ring-1 ${palette.icon}`}>{item.icon}</span><span className={`rounded-full border px-3 py-2 text-center text-[10px] font-bold leading-tight ${palette.badge}`}>{item.badge}</span></div>
+              <h2 className="text-2xl font-extrabold">{item.name}</h2><p className={`mt-1 whitespace-nowrap text-3xl font-black sm:text-[34px] ${palette.price}`}>{item.price}<span className="ml-1 text-sm font-medium text-slate-400">/ month</span></p><p className="mt-2 min-h-[42px] text-sm leading-snug text-slate-300">{item.subtitle}</p>
+              <div className="my-4 h-px bg-white/10" />
+              <ul className="flex-1 space-y-2.5 text-[13px] leading-snug text-slate-200 sm:text-sm">{item.features.map((feature) => <li key={feature} className="flex items-start gap-2"><span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-black text-emerald-400">✓</span><span>{feature}</span></li>)}</ul>
+              <button type="button" onClick={() => openCheckout(item.name)} className={`mt-5 min-h-[52px] w-full rounded-2xl bg-gradient-to-r px-3 py-3 text-sm font-extrabold shadow-lg transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/70 focus:ring-offset-2 focus:ring-offset-[#07111f] active:scale-[0.99] ${palette.button}`}>Upgrade to {item.name} <span className="ml-1 text-lg">›</span></button>
+            </article>;
+          })}
+        </section>
+
+        <section className="mt-5 grid grid-cols-2 gap-3 border-t border-sky-100/10 pt-4 sm:grid-cols-4 sm:gap-5">
+          {[{ icon: "ϟ", title: "AI Powered", detail: "Automate & Save Time" }, { icon: "▥", title: "Grow Faster", detail: "More Customers, More Sales" }, { icon: "♢", title: "Secure & Reliable", detail: "Your Data is Safe" }, { icon: "♧", title: "24/7 Support", detail: "We're Here for You" }].map((item) => <div key={item.title} className="flex items-center gap-3 px-1 py-2 sm:justify-center"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sky-900/60 text-2xl text-sky-300 ring-1 ring-sky-400/20">{item.icon}</span><div><p className="text-xs font-extrabold sm:text-sm">{item.title}</p><p className="mt-1 text-[10px] text-slate-400 sm:text-xs">{item.detail}</p></div></div>)}
+        </section>
+        <footer className="mt-2 flex flex-col items-center justify-between gap-2 border-t border-white/5 py-4 text-[10px] text-slate-500 sm:flex-row sm:text-xs"><p>© 2026 Sodah.io — AI Automation Platform</p><p>🔒 Secure checkout · WhatsApp AI · Easy setup</p></footer>
+      </div>
+    </main>
   );
 }

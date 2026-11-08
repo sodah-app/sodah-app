@@ -11,24 +11,8 @@ const SUPPORT_WHATSAPP = "https://wa.me/971544027954";
 const AI_SUPPORT_URL =
   "https://solomon-n8n.duckdns.org/webhook/a7935547-15a5-4742-8ac0-b8fab937d44c/chat";
 
-const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1556740749-887f6717d7e4?q=80&w=1800&auto=format&fit=crop";
-
-const WHATSAPP_IMAGE =
-  "https://res.cloudinary.com/djnjhphf5/image/upload/v1781713157/WhatsApp_Image_2026-06-17_at_8.18.20_PM_gyi4wt.jpg";
-
-const SETUP_IMAGE =
-  "https://res.cloudinary.com/djnjhphf5/image/upload/v1781711765/WhatsApp_Image_2026-06-17_at_7.54.25_PM_luvnxg.jpg";
-
-const LEAD_IMAGE =
-  "https://images.unsplash.com/photo-1552581234-26160f608093?q=80&w=1800&auto=format&fit=crop";
-
 const WHATSAPP_LOGO =
   "https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg";
-
-// Official Gmail product icon used by the email features.
-const GMAIL_LOGO =
-  "https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_48dp.png";
 
 const SOCIALS = [
   {
@@ -75,39 +59,120 @@ const PRIMARY_FEATURES = [
   {
     icon: "⚡",
     title: "WhatsApp Messaging",
-    text: "Send messages to your customers or team whenever you need to, directly from your Sodah workspace.",
+    text: "Send messages to your customers or team directly from your Sodah workspace.",
   },
   {
     icon: "◷",
     title: "Daily, Weekly & Monthly Scheduling",
-    text: "Schedule recurring WhatsApp messages for your customers or team on a daily, weekly or monthly basis.",
+    text: "Schedule recurring WhatsApp messages for your customers or team.",
   },
   {
     icon: "∞",
     title: "Flexible Messaging",
-    text: "Run or schedule your WhatsApp messages for customer and team communication, subject to applicable WhatsApp and service limits.",
+    text: "Run or schedule WhatsApp messages for customer and team communication.",
   },
   {
     icon: "⚙",
     title: "Update Your Business Anytime",
-    text: "Change your business information, services, promotions, packages and customer-facing details yourself whenever you need to.",
+    text: "Change your business information, services, promotions, packages and customer-facing details yourself.",
   },
   {
     icon: "✚",
     title: "New Promotions & Packages",
-    text: "Add a new promotion, service or package anytime without depending on an agent to make the update for you.",
+    text: "Add new promotions, services or packages anytime without depending on an agent.",
   },
 ];
 
 const FEATURES = [
-  { icon: "⌁", title: "Instant WhatsApp Connection", text: "Connect your existing WhatsApp by scanning a QR code. No API setup and no agency required.", arabic: "اربط واتساب مباشرة عبر مسح رمز QR، بدون إعداد API أو الحاجة إلى وكالة.", german: "Verbinden Sie Ihr bestehendes WhatsApp per QR-Code – ohne API-Einrichtung und ohne Agentur.", tone: "green" },
-  { icon: "✦", title: "AI Customer Conversations", text: "Respond professionally to customers, answer common questions and keep conversations moving automatically.", arabic: "إدارة محادثات العملاء والرد على الأسئلة الشائعة باحترافية وبشكل تلقائي.", german: "Bearbeiten Sie Kundengespräche professionell und beantworten Sie häufige Fragen automatisch.", tone: "green" },
-  { icon: "文", title: "Multi-Language AI", text: "Chat with customers in their language. Sodah understands the conversation and responds naturally.", arabic: "تواصل مع العملاء بلغتهم، ويفهم Sodah المحادثة ويرد بطريقة طبيعية.", german: "Kommunizieren Sie in der Sprache Ihrer Kunden – Sodah versteht Gespräche und antwortet natürlich.", tone: "blue" },
-  { icon: "⚙", title: "Update Your Business Anytime", text: "Update business information, services, promotions and packages yourself whenever you need to.", arabic: "حدّث معلومات نشاطك التجاري وخدماتك وعروضك وباقاتك بنفسك في أي وقت.", german: "Aktualisieren Sie Geschäftsinformationen, Leistungen, Angebote und Pakete jederzeit selbst.", tone: "mint" },
-  { icon: "◫", title: "Professional Appointment Booking", text: "Turn WhatsApp conversations into organized appointment requests and confirmations.", arabic: "حوّل محادثات واتساب إلى طلبات مواعيد منظمة وتأكيدات للحجز.", german: "Verwandeln Sie WhatsApp-Gespräche in strukturierte Terminanfragen und Bestätigungen.", tone: "blue" },
-  { icon: "↻", title: "Fast Follow-Up & Reminders", text: "Automatically follow up with customers and send timely appointment reminders.", arabic: "تابع العملاء تلقائياً وأرسل تذكيرات المواعيد في الوقت المناسب.", german: "Führen Sie automatische Nachfassaktionen durch und senden Sie rechtzeitig Terminerinnerungen.", tone: "purple" },
-  { icon: "◉", title: "WhatsApp Campaigns", text: "Create, schedule and manage WhatsApp campaigns for customers or your team.", arabic: "أنشئ وجدول وأدر حملات واتساب للعملاء أو لفريقك.", german: "Erstellen, planen und verwalten Sie WhatsApp-Kampagnen für Kunden oder Ihr Team.", tone: "green" },
-  { icon: "✉", title: "Smart Email Inbox", text: "Premium businesses can bring email conversations together and use AI-assisted replies.", arabic: "يمكن لمستخدمي Premium إدارة محادثات البريد الإلكتروني واستخدام ردود مدعومة بالذكاء الاصطناعي.", german: "Premium-Nutzer können E-Mail-Konversationen zentral verwalten und KI-gestützte Antworten nutzen.", tone: "cyan" },
+  {
+    icon: "⌁",
+    title: "Advanced AI Customer Conversations",
+    text: "Handle customer conversations naturally, answer questions and keep conversations moving toward the next useful action.",
+    arabic: "إدارة محادثات العملاء بذكاء والرد بشكل طبيعي وسريع.",
+    german: "Kundengespräche intelligent und natürlich bearbeiten.",
+    tone: "green",
+  },
+  {
+    icon: "◫",
+    title: "Appointment Booking",
+    text: "Turn conversations into organized appointment requests, availability checks and confirmations.",
+    arabic: "تحويل المحادثات إلى طلبات وحجوزات مواعيد منظمة.",
+    german: "Gespräche in strukturierte Terminbuchungen verwandeln.",
+    tone: "blue",
+  },
+  {
+    icon: "◎",
+    title: "Lead Capture & Management",
+    text: "Keep important customer opportunities organized so leads can move from conversation to action.",
+    arabic: "تنظيم العملاء المحتملين وتحويل المحادثات إلى فرص.",
+    german: "Leads aus Gesprächen erfassen und organisiert weiterführen.",
+    tone: "cyan",
+  },
+  {
+    icon: "文",
+    title: "Multi-Language AI",
+    text: "Communicate naturally with customers in their language for a smoother international customer experience.",
+    arabic: "تواصل مع العملاء بلغتهم بشكل طبيعي.",
+    german: "Natürlich mit Kunden in ihrer Sprache kommunizieren.",
+    tone: "blue",
+  },
+  {
+    logo: WHATSAPP_LOGO,
+    icon: "◉",
+    title: "WhatsApp Campaigns",
+    text: "Create, schedule and manage WhatsApp messages from the same business workspace, with powerful campaign tools for reaching customer lists efficiently.",
+    arabic: "إنشاء وجدولة وإدارة حملات واتساب من مكان واحد.",
+    german: "WhatsApp-Kampagnen zentral erstellen, planen und verwalten.",
+    tone: "green",
+  },
+  {
+    icon: "↻",
+    title: "WhatsApp History",
+    text: "Keep campaign activity and messaging history organized so you can review what has been sent and what happened.",
+    arabic: "مراجعة سجل الحملات والرسائل والأنشطة.",
+    german: "Kampagnen- und Nachrichtenverläufe übersichtlich prüfen.",
+    tone: "mint",
+  },
+  {
+    icon: "◷",
+    title: "Timesheet",
+    text: "Keep employee data and work activity organized in the same workspace as your customer operations.",
+    arabic: "تنظيم ساعات العمل وبيانات الفريق.",
+    german: "Arbeitszeiten und Teamaktivitäten zentral organisieren.",
+    tone: "blue",
+  },
+  {
+    icon: "₿",
+    title: "Cash Flow",
+    text: "Track important cash-flow information alongside the rest of your business workspace.",
+    arabic: "متابعة معلومات التدفق النقدي ضمن مساحة العمل.",
+    german: "Cashflow-Informationen im Business-Workspace verfolgen.",
+    tone: "purple",
+  },
+  {
+    icon: "⌁",
+    title: "Analytics",
+    text: "See business activity and important performance signals in one place so you can understand what is happening.",
+    arabic: "رؤية مؤشرات الأداء ونشاط العمل في مكان واحد.",
+    german: "Wichtige Leistungs- und Aktivitätsdaten zentral sehen.",
+    tone: "cyan",
+  },
+  {
+    icon: "⚙",
+    title: "Business Update AI",
+    text: "Update business information, services, promotions and packages yourself as your business changes.",
+    arabic: "تحديث معلومات وخدمات وعروض النشاط التجاري بنفسك.",
+    german: "Geschäftsinformationen, Leistungen und Angebote selbst aktualisieren.",
+    tone: "mint",
+  },
+  {
+    icon: "∞",
+    title: "Follow-Ups & Reminders",
+    text: "Keep customers moving with timely follow-ups and reminders without relying on repetitive manual work.",
+    arabic: "متابعة العملاء وإرسال التذكيرات في الوقت المناسب.",
+    german: "Automatische Nachfassaktionen und Erinnerungen unterstützen.",
+    tone: "purple",
+  },
 ];
 
 const USE_CASES = [
@@ -134,14 +199,14 @@ const PERFORMANCE_ITEMS = [
   },
   {
     title: "Bookings",
-    value: "+42%",
-    text: "More appointment opportunities",
+    value: "AUTO",
+    text: "Turn conversations into appointments",
     accent: "blue",
   },
   {
     title: "Leads",
-    value: "3X",
-    text: "More qualified opportunities",
+    value: "LIVE",
+    text: "Capture opportunities as they happen",
     accent: "cyan",
   },
   {
@@ -237,7 +302,11 @@ export default function Home() {
   }
 
   function openAIChat() {
-    window.open(AI_SUPPORT_URL, "_blank", "noopener,noreferrer");
+    window.open(
+      AI_SUPPORT_URL,
+      "_blank",
+      "noopener,noreferrer"
+    );
   }
 
   function handleSection(id) {
@@ -247,347 +316,335 @@ export default function Home() {
 
   return (
     <>
-      <main className="min-h-screen overflow-x-hidden bg-[#f2fbf5] text-slate-900">
+      <style jsx global>{`
+        html {
+          scroll-behavior: smooth;
+        }
+
+        body {
+          margin: 0;
+          background: #f2fbf5;
+        }
+
+        @keyframes sodahFloat {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+
+          50% {
+            transform: translateY(-10px);
+          }
+        }
+
+        @keyframes sodahFloatSlow {
+          0%,
+          100% {
+            transform: translateY(0) scale(1);
+          }
+
+          50% {
+            transform: translateY(-8px) scale(1.02);
+          }
+        }
+
+        @keyframes sodahZoom {
+          0%,
+          100% {
+            transform: scale(1);
+          }
+
+          50% {
+            transform: scale(1.045);
+          }
+        }
+
+        @keyframes sodahMessageIn {
+          0% {
+            opacity: 0;
+            transform: translateY(18px) scale(0.94);
+          }
+
+          70% {
+            opacity: 1;
+            transform: translateY(-2px) scale(1.01);
+          }
+
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes sodahTyping {
+          0%,
+          100% {
+            opacity: 0.3;
+            transform: translateY(0);
+          }
+
+          50% {
+            opacity: 1;
+            transform: translateY(-2px);
+          }
+        }
+
+        @keyframes sodahScan {
+          0% {
+            transform: translateY(-55%);
+            opacity: 0;
+          }
+
+          15% {
+            opacity: 1;
+          }
+
+          85% {
+            opacity: 1;
+          }
+
+          100% {
+            transform: translateY(55%);
+            opacity: 0;
+          }
+        }
+
+        @keyframes sodahRing {
+          0% {
+            transform: scale(0.7);
+            opacity: 0.75;
+          }
+
+          100% {
+            transform: scale(1.5);
+            opacity: 0;
+          }
+        }
+
+        @keyframes sodahChart {
+          from {
+            stroke-dashoffset: 283;
+          }
+
+          to {
+            stroke-dashoffset: 75;
+          }
+        }
+
+        @keyframes sodahGlow {
+          0%,
+          100% {
+            box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+          }
+
+          50% {
+            box-shadow: 0 0 45px rgba(16, 185, 129, 0.2);
+          }
+        }
+
+        .sodah-float {
+          animation: sodahFloat 5s ease-in-out infinite;
+        }
+
+        .sodah-float-slow {
+          animation: sodahFloatSlow 7s ease-in-out infinite;
+        }
+
+        .sodah-zoom {
+          animation: sodahZoom 8s ease-in-out infinite;
+        }
+
+        .sodah-message {
+          animation: sodahMessageIn 0.8s cubic-bezier(0.22, 1, 0.36, 1)
+            both;
+        }
+
+        .sodah-typing {
+          animation: sodahTyping 1.1s ease-in-out infinite;
+        }
+
+        .sodah-scan {
+          animation: sodahScan 2.8s ease-in-out infinite;
+        }
+
+        .sodah-ring {
+          animation: sodahRing 2.2s ease-out infinite;
+        }
+
+        .sodah-chart {
+          animation: sodahChart 1.7s ease-out forwards;
+        }
+
+        .sodah-glow {
+          animation: sodahGlow 4s ease-in-out infinite;
+        }
+
+        .sodah-grid {
+          background-image:
+            linear-gradient(
+              rgba(16, 185, 129, 0.045) 1px,
+              transparent 1px
+            ),
+            linear-gradient(
+              90deg,
+              rgba(16, 185, 129, 0.045) 1px,
+              transparent 1px
+            );
+          background-size: 28px 28px;
+        }
+
+        .sodah-chat-wallpaper {
+          background-color: #e6f5eb;
+          background-image:
+            radial-gradient(
+              circle at 15% 20%,
+              rgba(16, 185, 129, 0.08) 0 2px,
+              transparent 3px
+            ),
+            radial-gradient(
+              circle at 80% 30%,
+              rgba(15, 118, 110, 0.07) 0 2px,
+              transparent 3px
+            ),
+            radial-gradient(
+              circle at 35% 75%,
+              rgba(34, 197, 94, 0.055) 0 2px,
+              transparent 3px
+            ),
+            linear-gradient(
+              135deg,
+              rgba(255, 255, 255, 0.45),
+              rgba(209, 250, 229, 0.28)
+            );
+          background-size:
+            95px 95px,
+            125px 125px,
+            155px 155px,
+            auto;
+        }
+
+        .sodah-chat-wallpaper::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          opacity: 0.18;
+          background-image: repeating-linear-gradient(
+            45deg,
+            transparent 0,
+            transparent 18px,
+            rgba(6, 78, 59, 0.035) 19px,
+            transparent 20px
+          );
+          pointer-events: none;
+        }
+
+        .sodah-shadow {
+          box-shadow:
+            0 25px 70px rgba(15, 23, 42, 0.12),
+            0 8px 25px rgba(16, 185, 129, 0.08);
+        }
+
+        .sodah-deep-shadow {
+          box-shadow:
+            0 35px 100px rgba(2, 6, 23, 0.3),
+            0 10px 30px rgba(16, 185, 129, 0.08);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          *,
+          *::before,
+          *::after {
+            animation-duration: 0.001ms !important;
+            animation-iteration-count: 1 !important;
+            scroll-behavior: auto !important;
+          }
+        }
+      `}</style>
+
+      <main className="min-h-screen overflow-hidden bg-[#f2fbf5] text-slate-950">
 
         {/* =====================================================
-            GLOBAL ANIMATIONS + PREMIUM VISUAL SYSTEM
+            NAVIGATION
         ====================================================== */}
 
-        <style jsx global>{`
-          html {
-            scroll-behavior: smooth;
-          }
-
-          body {
-            margin: 0;
-            background: #f2fbf5;
-          }
-
-          @keyframes sodahFloat {
-            0%,
-            100% {
-              transform: translateY(0);
-            }
-
-            50% {
-              transform: translateY(-10px);
-            }
-          }
-
-          @keyframes sodahFloatSlow {
-            0%,
-            100% {
-              transform: translateY(0) scale(1);
-            }
-
-            50% {
-              transform: translateY(-8px) scale(1.02);
-            }
-          }
-
-          @keyframes sodahZoom {
-            0%,
-            100% {
-              transform: scale(1);
-            }
-
-            50% {
-              transform: scale(1.045);
-            }
-          }
-
-          @keyframes sodahMessageIn {
-            0% {
-              opacity: 0;
-              transform: translateY(18px) scale(0.94);
-            }
-
-            70% {
-              opacity: 1;
-              transform: translateY(-2px) scale(1.01);
-            }
-
-            100% {
-              opacity: 1;
-              transform: translateY(0) scale(1);
-            }
-          }
-
-          @keyframes sodahTyping {
-            0%,
-            100% {
-              opacity: 0.3;
-              transform: translateY(0);
-            }
-
-            50% {
-              opacity: 1;
-              transform: translateY(-2px);
-            }
-          }
-
-          @keyframes sodahScan {
-            0% {
-              transform: translateY(-55%);
-              opacity: 0;
-            }
-
-            15% {
-              opacity: 1;
-            }
-
-            85% {
-              opacity: 1;
-            }
-
-            100% {
-              transform: translateY(55%);
-              opacity: 0;
-            }
-          }
-
-          @keyframes sodahRing {
-            0% {
-              transform: scale(0.7);
-              opacity: 0.75;
-            }
-
-            100% {
-              transform: scale(1.5);
-              opacity: 0;
-            }
-          }
-
-          @keyframes sodahChart {
-            from {
-              stroke-dashoffset: 283;
-            }
-
-            to {
-              stroke-dashoffset: 75;
-            }
-          }
-
-          @keyframes sodahGlow {
-            0%,
-            100% {
-              box-shadow: 0 0 0 rgba(16, 185, 129, 0);
-            }
-
-            50% {
-              box-shadow: 0 0 45px rgba(16, 185, 129, 0.2);
-            }
-          }
-
-          .sodah-float {
-            animation: sodahFloat 5s ease-in-out infinite;
-          }
-
-          .sodah-float-slow {
-            animation: sodahFloatSlow 7s ease-in-out infinite;
-          }
-
-          .sodah-zoom {
-            animation: sodahZoom 8s ease-in-out infinite;
-          }
-
-          .sodah-message {
-            animation: sodahMessageIn 0.8s cubic-bezier(0.22, 1, 0.36, 1)
-              both;
-          }
-
-          .sodah-typing {
-            animation: sodahTyping 1.1s ease-in-out infinite;
-          }
-
-          .sodah-scan {
-            animation: sodahScan 2.8s ease-in-out infinite;
-          }
-
-          .sodah-ring {
-            animation: sodahRing 2.2s ease-out infinite;
-          }
-
-          .sodah-chart {
-            animation: sodahChart 1.7s ease-out forwards;
-          }
-
-          .sodah-glow {
-            animation: sodahGlow 4s ease-in-out infinite;
-          }
-
-          .sodah-grid {
-            background-image:
-              linear-gradient(rgba(16, 185, 129, 0.045) 1px, transparent 1px),
-              linear-gradient(
-                90deg,
-                rgba(16, 185, 129, 0.045) 1px,
-                transparent 1px
-              );
-            background-size: 28px 28px;
-          }
-
-          .sodah-chat-wallpaper {
-            background-color: #e6f5eb;
-            background-image:
-              radial-gradient(
-                circle at 15% 20%,
-                rgba(16, 185, 129, 0.08) 0 2px,
-                transparent 3px
-              ),
-              radial-gradient(
-                circle at 80% 30%,
-                rgba(15, 118, 110, 0.07) 0 2px,
-                transparent 3px
-              ),
-              radial-gradient(
-                circle at 35% 75%,
-                rgba(34, 197, 94, 0.055) 0 2px,
-                transparent 3px
-              ),
-              linear-gradient(
-                135deg,
-                rgba(255, 255, 255, 0.45),
-                rgba(209, 250, 229, 0.28)
-              );
-            background-size: 95px 95px, 125px 125px, 155px 155px, auto;
-          }
-
-          .sodah-chat-wallpaper::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            opacity: 0.18;
-            background-image:
-              repeating-linear-gradient(
-                45deg,
-                transparent 0,
-                transparent 18px,
-                rgba(6, 78, 59, 0.035) 19px,
-                transparent 20px
-              );
-            pointer-events: none;
-          }
-
-          .sodah-shadow {
-            box-shadow:
-              0 25px 70px rgba(15, 23, 42, 0.12),
-              0 8px 25px rgba(16, 185, 129, 0.08);
-          }
-
-          .sodah-deep-shadow {
-            box-shadow:
-              0 35px 100px rgba(2, 6, 23, 0.3),
-              0 10px 30px rgba(16, 185, 129, 0.08);
-          }
-
-          @media (prefers-reduced-motion: reduce) {
-            *,
-            *::before,
-            *::after {
-              animation-duration: 0.001ms !important;
-              animation-iteration-count: 1 !important;
-              scroll-behavior: auto !important;
-            }
-          }
-        `}</style>
-
-        {/* =====================================================
-            FIXED NAVIGATION — BLUE BLACK FIRST COLOR
-        ====================================================== */}
-
-        <header className="fixed inset-x-0 top-0 z-50 border-b border-slate-700/40 bg-[#071421]/96 shadow-[0_10px_40px_rgba(2,6,23,.2)] backdrop-blur-2xl">
-          <div className="mx-auto flex min-h-[74px] max-w-7xl items-center justify-between px-4 sm:px-6">
-
-            <button
-              type="button"
-              onClick={() => handleSection("home")}
-              className="flex items-center gap-3"
-            >
+        <nav className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#050b12]/95 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8">
+            <Link href="/" className="flex items-center gap-3">
               <img
                 src={LOGO_URL}
                 alt="Sodah.io"
-                className="h-10 w-10 rounded-xl object-contain"
+                className="h-9 w-auto object-contain"
               />
 
-              <div className="block">
-                <div className="text-lg font-black tracking-tight text-white sm:text-xl">
-                  Sodah<span className="text-emerald-400">.io</span>
-                </div>
+              <span className="hidden text-sm font-black tracking-tight text-white sm:block">
+                SODAH.IO
+              </span>
+            </Link>
 
-                <div className="text-[8px] font-bold uppercase tracking-[1.6px] text-slate-400 sm:text-[9px] sm:tracking-[2px]">
-                  AI Automation Service
-                </div>
-              </div>
-            </button>
-
-            <nav className="hidden items-center gap-1 lg:flex">
+            <div className="hidden items-center gap-7 lg:flex">
               <button
-                type="button"
                 onClick={() => setShowAbout(true)}
-                className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-300 transition hover:bg-white/5 hover:text-emerald-300"
+                className="text-sm font-semibold text-slate-300 transition hover:text-white"
               >
                 About Us
               </button>
 
               <button
-                type="button"
                 onClick={() => handleSection("features")}
-                className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-300 transition hover:bg-white/5 hover:text-emerald-300"
+                className="text-sm font-semibold text-slate-300 transition hover:text-white"
               >
                 Features
               </button>
 
               <button
-                type="button"
                 onClick={() => handleSection("how-it-works")}
-                className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-300 transition hover:bg-white/5 hover:text-emerald-300"
+                className="text-sm font-semibold text-slate-300 transition hover:text-white"
               >
                 How It Works
               </button>
 
               <button
-                type="button"
+                onClick={() => handleSection("platform")}
+                className="text-sm font-semibold text-slate-300 transition hover:text-white"
+              >
+                Platform
+              </button>
+
+              <button
                 onClick={() => handleSection("pricing")}
-                className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-300 transition hover:bg-white/5 hover:text-emerald-300"
+                className="text-sm font-semibold text-slate-300 transition hover:text-white"
               >
                 Pricing
               </button>
 
               <button
-                type="button"
                 onClick={() => setShowContact(true)}
-                className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-300 transition hover:bg-white/5 hover:text-emerald-300"
+                className="text-sm font-semibold text-slate-300 transition hover:text-white"
               >
                 Contact
               </button>
-            </nav>
+            </div>
 
-            <div className="hidden items-center gap-2 md:flex">
+            <div className="hidden items-center gap-3 lg:flex">
               <a
                 href={SUPPORT_WHATSAPP}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-4 py-2.5 text-sm font-bold text-emerald-300 transition hover:bg-emerald-400/10"
+                className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-4 py-2 text-xs font-black text-emerald-300 transition hover:bg-emerald-400/10"
               >
-                <img
-                  src={WHATSAPP_LOGO}
-                  alt=""
-                  className="h-5 w-5"
-                />
                 WhatsApp
               </a>
 
               <Link
                 href="/login"
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/10"
+                className="rounded-xl border border-white/10 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-white/5"
               >
                 Login
               </Link>
 
               <Link
                 href="/signup"
-                className="rounded-xl bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 px-5 py-2.5 text-sm font-black text-white shadow-[0_0_30px_rgba(16,185,129,.2)] transition hover:-translate-y-0.5"
+                className="rounded-xl bg-gradient-to-r from-emerald-400 to-green-600 px-5 py-2.5 text-sm font-black text-white shadow-lg shadow-emerald-500/20 transition hover:-translate-y-0.5"
               >
                 Start Free Trial
               </Link>
@@ -596,239 +653,314 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setMobileMenu(!mobileMenu)}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-xl text-white md:hidden"
-              aria-label="Toggle navigation"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white lg:hidden"
+              aria-label="Open menu"
             >
               {mobileMenu ? "×" : "☰"}
             </button>
           </div>
 
           {mobileMenu && (
-            <div className="border-t border-white/10 bg-[#071421]/98 p-4 backdrop-blur-2xl md:hidden">
-              <div className="mx-auto max-w-7xl space-y-2">
+            <div className="border-t border-white/10 bg-[#050b12] px-5 py-5 lg:hidden">
+              <div className="grid gap-2">
                 <button
-                  type="button"
                   onClick={() => {
-                    setMobileMenu(false);
                     setShowAbout(true);
+                    setMobileMenu(false);
                   }}
-                  className="w-full rounded-xl bg-white/5 p-3 text-left font-bold text-white"
+                  className="rounded-xl px-4 py-3 text-left text-sm font-bold text-slate-300 hover:bg-white/5"
                 >
                   About Us
                 </button>
 
                 <button
-                  type="button"
                   onClick={() => handleSection("features")}
-                  className="w-full rounded-xl bg-white/5 p-3 text-left font-bold text-white"
+                  className="rounded-xl px-4 py-3 text-left text-sm font-bold text-slate-300 hover:bg-white/5"
                 >
                   Features
                 </button>
 
                 <button
-                  type="button"
                   onClick={() => handleSection("how-it-works")}
-                  className="w-full rounded-xl bg-white/5 p-3 text-left font-bold text-white"
+                  className="rounded-xl px-4 py-3 text-left text-sm font-bold text-slate-300 hover:bg-white/5"
                 >
                   How It Works
                 </button>
 
                 <button
-                  type="button"
+                  onClick={() => handleSection("platform")}
+                  className="rounded-xl px-4 py-3 text-left text-sm font-bold text-slate-300 hover:bg-white/5"
+                >
+                  Platform
+                </button>
+
+                <button
                   onClick={() => handleSection("pricing")}
-                  className="w-full rounded-xl bg-white/5 p-3 text-left font-bold text-white"
+                  className="rounded-xl px-4 py-3 text-left text-sm font-bold text-slate-300 hover:bg-white/5"
                 >
                   Pricing
                 </button>
 
                 <button
-                  type="button"
                   onClick={() => {
-                    setMobileMenu(false);
                     setShowContact(true);
+                    setMobileMenu(false);
                   }}
-                  className="w-full rounded-xl bg-white/5 p-3 text-left font-bold text-white"
+                  className="rounded-xl px-4 py-3 text-left text-sm font-bold text-slate-300 hover:bg-white/5"
                 >
                   Contact
                 </button>
 
-                <Link
-                  href="/login"
-                  className="block rounded-xl border border-white/10 p-3 font-bold text-white"
-                >
-                  Login
-                </Link>
-
-                <Link
-                  href="/signup"
-                  className="block rounded-xl bg-gradient-to-r from-emerald-400 to-green-600 p-3 text-center font-black text-white"
-                >
-                  Start Free Trial
-                </Link>
-
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <Link href="/privacy" className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center text-xs font-bold text-slate-300 transition hover:bg-white/10 hover:text-white">
-                    Privacy Policy
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <Link
+                    href="/login"
+                    className="rounded-xl border border-white/10 px-4 py-3 text-center text-sm font-bold text-white"
+                  >
+                    Login
                   </Link>
-                  <Link href="/terms" className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center text-xs font-bold text-slate-300 transition hover:bg-white/10 hover:text-white">
-                    Terms & Conditions
+
+                  <Link
+                    href="/signup"
+                    className="rounded-xl bg-emerald-500 px-4 py-3 text-center text-sm font-black text-white"
+                  >
+                    Start Free
                   </Link>
                 </div>
               </div>
             </div>
           )}
-        </header>
+        </nav>
 
         {/* =====================================================
-            FIRST / PRIMARY HERO LAYER
-            AI POWERED MESSAGE FIRST
+            PREMIUM TEXT-ONLY HERO
+        ====================================================== */}
+
+        <section className="relative flex min-h-[850px] items-center overflow-hidden bg-[#050b12] pt-28">
+          <div className="absolute inset-0 sodah-grid opacity-60" />
+
+          <div className="absolute left-[-10%] top-[5%] h-[500px] w-[500px] rounded-full bg-emerald-500/10 blur-[130px]" />
+
+          <div className="absolute right-[-10%] bottom-[-5%] h-[500px] w-[500px] rounded-full bg-sky-500/10 blur-[140px]" />
+
+          <div className="relative mx-auto w-full max-w-6xl px-6 py-24 text-center lg:px-8 lg:py-32">
+
+            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/[0.06] px-4 py-2 text-[10px] font-black uppercase tracking-[3px] text-emerald-300">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_15px_rgba(52,211,153,.8)]" />
+              Sodah Smart Advanced AI Automation
+            </div>
+
+            <h1 className="mx-auto mt-8 max-w-5xl text-5xl font-black leading-[0.98] tracking-[-0.04em] text-white sm:text-6xl md:text-7xl lg:text-[88px]">
+              Turn Conversations
+              <br />
+              <span className="bg-gradient-to-r from-emerald-300 via-green-400 to-sky-400 bg-clip-text text-transparent">
+                Into More Bookings.
+              </span>
+            </h1>
+
+            <p className="mx-auto mt-8 max-w-3xl text-lg leading-8 text-slate-300 sm:text-xl">
+              Your business deserves an AI assistant that works 24/7.
+              Sodah understands your business, speaks with your customers,
+              captures leads, books appointments, sends follow-ups and
+              reminders, and helps turn everyday conversations into growth.
+            </p>
+
+            <div className="mx-auto mt-8 flex max-w-3xl flex-wrap items-center justify-center gap-3">
+              {[
+                "24/7 AI Customer Assistant",
+                "Multi-Language Conversations",
+                "Appointment Booking",
+                "Automatic Follow-Ups",
+                "Business Updates",
+                "WhatsApp Campaigns",
+              ].map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold text-slate-300"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+
+            {/* CTA */}
+            <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
+
+              <Link
+                href="/signup"
+                className="group rounded-2xl bg-gradient-to-r from-emerald-400 via-green-500 to-sky-500 px-8 py-4 text-sm font-black text-white shadow-[0_18px_55px_rgba(16,185,129,.22)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(16,185,129,.3)]"
+              >
+                Start Your 7-Day Free Trial
+                <span className="ml-2 transition-transform group-hover:translate-x-1">
+                  →
+                </span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => handleSection("features")}
+                className="rounded-2xl border border-white/10 bg-white/[0.04] px-8 py-4 text-sm font-black text-white transition hover:-translate-y-1 hover:bg-white/[0.08]"
+              >
+                Explore Sodah AI
+              </button>
+
+            </div>
+
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs font-bold text-slate-500">
+              <span>7 Days Completely Free</span>
+              <span className="hidden h-1 w-1 rounded-full bg-slate-700 sm:block" />
+              <span>No Complicated API Setup</span>
+              <span className="hidden h-1 w-1 rounded-full bg-slate-700 sm:block" />
+              <span>Connect WhatsApp With QR</span>
+            </div>
+
+            <div className="mx-auto mt-20 max-w-4xl border-t border-white/10 pt-8">
+              <p className="text-[10px] font-black uppercase tracking-[3px] text-slate-600">
+                Built for modern customer operations
+              </p>
+
+              <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[
+                  ["01", "Understand"],
+                  ["02", "Engage"],
+                  ["03", "Convert"],
+                  ["04", "Grow"],
+                ].map(([number, title]) => (
+                  <div
+                    key={number}
+                    className="rounded-2xl border border-white/5 bg-white/[0.025] px-4 py-5"
+                  >
+                    <p className="text-xs font-black text-emerald-400">
+                      {number}
+                    </p>
+                    <p className="mt-2 text-sm font-black text-white">
+                      {title}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* =====================================================
+            FEATURES
         ====================================================== */}
 
         <section
-          id="home"
-          className="relative overflow-hidden px-5 pb-12 pt-32 sm:px-6 lg:pt-36"
+          id="features"
+          className="bg-[#f4fbf7] px-6 py-24 lg:px-8 lg:py-32"
         >
-          {/* LIGHT GREEN PRIMARY BACKGROUND */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#dff7e8] via-[#f5fff9] to-[#e8f5ff]" />
+          <div className="mx-auto max-w-7xl">
 
-          {/* GREEN COLOR LAYERS */}
-          <div className="absolute left-[-12%] top-[12%] h-[520px] w-[520px] rounded-full bg-emerald-300/20 blur-[130px]" />
-
-          <div className="absolute right-[-12%] top-[18%] h-[560px] w-[560px] rounded-full bg-green-300/15 blur-[140px]" />
-
-          <div className="absolute bottom-[-15%] left-[35%] h-[420px] w-[420px] rounded-full bg-teal-200/15 blur-[130px]" />
-
-          <div className="relative mx-auto max-w-7xl">
-
-            {/* =================================================
-                FIRST CONTENT: AI POWERED CUSTOMER AUTOMATION
-            ================================================= */}
-
-            <div className="mx-auto max-w-5xl text-center">
-
-              <div className="sodah-glow mb-7 inline-flex items-center gap-3 rounded-full border border-emerald-400/30 bg-white/75 px-5 py-2.5 text-xs font-black uppercase tracking-[2px] text-emerald-700 shadow-sm backdrop-blur-xl">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-green-600 text-white">
-                  ✦
-                </span>
-
-                AI-powered customer automation
-              </div>
-
-              {/* MAIN BOLD HEADLINE */}
-              <h1 className="text-5xl font-black leading-[0.94] tracking-[-0.055em] text-slate-950 sm:text-6xl md:text-7xl lg:text-[82px]">
-                Turn Conversations
-                <br />
-                Into{" "}
-                <span className="bg-gradient-to-r from-emerald-600 via-green-500 to-teal-500 bg-clip-text text-transparent">
-                  Bookings, Leads
-                </span>
-                <br />
-                & Revenue With AI.
-              </h1>
-
-              <p className="mx-auto mt-8 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
-                Sodah.io brings your WhatsApp customer conversations into
-                one intelligent workflow for professional chatting, lead
-                capture, appointment booking, fast follow-up, reminders,
-                campaigns and customer support.
+            <div className="max-w-3xl">
+              <p className="text-xs font-black uppercase tracking-[3px] text-emerald-600">
+                Intelligent Business Automation
               </p>
 
-              {/* BENEFITS */}
-              <div className="mx-auto mt-7 flex max-w-5xl flex-wrap justify-center gap-x-5 gap-y-3 text-xs font-bold text-slate-600">
-                <span className="rounded-full border border-emerald-200 bg-white/65 px-3 py-2">
-                  ✓ No API Setup
+              <h2 className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
+                Everything your WhatsApp operation needs.
+                <span className="block text-emerald-600">
+                  One intelligent workspace.
                 </span>
+              </h2>
 
-                <span className="rounded-full border border-emerald-200 bg-white/65 px-3 py-2">
-                  ✓ Existing WhatsApp
-                </span>
-
-                <span className="rounded-full border border-emerald-200 bg-white/65 px-3 py-2">
-                  ✓ AI Chats In Any Language
-                </span>
-
-                <span className="rounded-full border border-emerald-200 bg-white/65 px-3 py-2">
-                  ✓ Update Business Details Yourself
-                </span>
-
-                <span className="rounded-full border border-emerald-200 bg-white/65 px-3 py-2">
-                  ✓ 7-Day Free Trial
-                </span>
-              </div>
-
-              {/* CTA */}
-              <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <Link
-                  href="/signup"
-                  className="rounded-2xl bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 px-8 py-4 font-black text-white shadow-[0_18px_45px_rgba(16,185,129,.28)] transition hover:-translate-y-1"
-                >
-                  Start Your 7-Day Free Trial →
-                </Link>
-
-                <Link
-                  href="/demo"
-                  className="rounded-2xl border border-slate-300 bg-white/80 px-8 py-4 font-black text-slate-800 shadow-sm transition hover:-translate-y-1 hover:bg-white"
-                >
-                  Watch Demo
-                </Link>
-              </div>
+              <p className="mt-6 text-lg leading-8 text-slate-500">
+                Sodah brings customer conversations, leads, appointments,
+                campaigns, follow-ups, business updates and analytics into
+                one powerful operating system.
+              </p>
             </div>
 
-              {/* =================================================
-                SYSTEM FEATURES — IMMEDIATELY AFTER FREE TRIAL
-            ====================================================== */}
-            <section id="features" className="relative mt-14 overflow-hidden rounded-[36px] border border-emerald-200 bg-[#dff7e8] px-5 py-14 shadow-[0_25px_80px_rgba(16,185,129,.10)] sm:mt-16 sm:px-8 sm:py-16">
-              <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-emerald-300/25 blur-[100px]" />
-              <div className="absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-green-300/20 blur-[110px]" />
-              <div className="relative mx-auto max-w-6xl">
-                <div className="mx-auto max-w-4xl text-center">
-                  <p className="text-xs font-black uppercase tracking-[3px] text-emerald-700">Modern System Features</p>
-                  <h2 className="mt-3 text-4xl font-black tracking-tight text-slate-950 sm:text-6xl">More than WhatsApp automation.</h2>
-                  <p className="mx-auto mt-5 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">Sodah turns WhatsApp conversations into leads, bookings, follow-ups and revenue through one intelligent workflow.</p>
-                </div>
-                <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                  {FEATURES.map((feature) => (
-                    <FeatureCard key={feature.title} icon={feature.icon} title={feature.title} text={feature.text} arabic={feature.arabic} german={feature.german} tone={feature.tone} />
-                  ))}
-                </div>
-              </div>
-            </section>
+            <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {FEATURES.map((feature) => (
+                <FeatureCard
+                  key={feature.title}
+                  {...feature}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
 
-            {/* =================================================
-                SODAH VS TRADITIONAL PROGRAM SETUP
-            ====================================================== */}
-            <section className="relative mt-14 overflow-hidden rounded-[36px] border border-slate-200 bg-white p-5 shadow-[0_25px_80px_rgba(15,23,42,.08)] sm:mt-16 sm:p-8">
-              <div className="mx-auto max-w-6xl">
-                <div className="mx-auto max-w-4xl text-center">
-                  <p className="text-xs font-black uppercase tracking-[3px] text-emerald-600">Sodah comparison</p>
-                  <h2 className="mt-3 text-4xl font-black text-slate-950 sm:text-6xl">Sodah vs. Traditional Program Setup</h2>
-                  <p className="mx-auto mt-5 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">Replace complicated, technical and agency-dependent setup with a simpler WhatsApp-first automation system.</p>
-                </div>
-                <div className="mt-12 overflow-hidden rounded-[28px] border border-slate-200">
-                  <div className="grid grid-cols-2 bg-slate-950 text-white">
-                    <div className="p-5 sm:p-6"><p className="text-xl font-black sm:text-2xl">Sodah</p><p className="mt-1 text-xs text-emerald-300">Simple • WhatsApp-first • Self-managed</p></div>
-                    <div className="border-l border-white/10 p-5 sm:p-6"><p className="text-xl font-black sm:text-2xl">Traditional Setup</p><p className="mt-1 text-xs text-slate-400">Offline • Technical • Complex</p></div>
-                  </div>
-                  <div className="divide-y divide-slate-200">
-                    {[
-                      ["WhatsApp connection", "Scan QR and connect your existing WhatsApp", "Technical setup, API work or manual configuration"],
-                      ["Business updates", "Update information, promotions and packages yourself", "Often requires technical or agency assistance"],
-                      ["Customer language", "AI understands and responds in the customer's language", "May require separate language configuration or tools"],
-                      ["Automation", "One intelligent workflow for conversations, leads, bookings and follow-up", "Multiple technical processes and disconnected tools"],
-                      ["Campaigns", "Run WhatsApp campaigns from the same system", "Often another system or additional setup"],
-                      ["Email intelligence", "Smart Email Inbox and AI-assisted replies for Premium", "Often another paid tool"],
-                      ["Business size", "Affordable for small businesses and powerful for larger businesses", "Complex setup can be difficult and costly for smaller businesses"],
-                      ["Support", "Direct access to the Sodah team", "Often dependent on an agency or technical provider"],
-                    ].map(([label, sodah, traditional]) => (
-                      <div key={label} className="grid grid-cols-2">
-                        <div className="border-r border-slate-200 bg-emerald-50/70 p-5 sm:p-6"><p className="text-xs font-black uppercase tracking-[1.5px] text-emerald-700">{label}</p><p className="mt-2 text-sm font-bold leading-6 text-slate-800">✓ {sodah}</p></div>
-                        <div className="bg-slate-50 p-5 sm:p-6"><p className="text-sm leading-6 text-slate-500">{traditional}</p></div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+        {/* =====================================================
+            VALUE PROPOSITION
+        ====================================================== */}
+
+        <section className="bg-white px-6 py-24 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+
+            <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+
+              <div>
+                <p className="text-xs font-black uppercase tracking-[3px] text-emerald-600">
+                  Built Around Your Business
+                </p>
+
+                <h2 className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
+                  Your AI should know your business.
+                </h2>
+
+                <p className="mt-6 text-base leading-8 text-slate-500">
+                  Update your services, prices, packages, promotions,
+                  products and business information whenever you want.
+                  Sodah uses that information to help your AI assistant
+                  communicate more accurately with customers.
+                </p>
+
+                <Link
+                  href="/signup"
+                  className="mt-8 inline-flex rounded-2xl bg-slate-950 px-7 py-4 text-sm font-black text-white transition hover:-translate-y-1 hover:bg-slate-800"
+                >
+                  Build Your AI Workspace →
+                </Link>
               </div>
-            </section>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {PRIMARY_FEATURES.map((feature) => (
+                  <Benefit
+                    key={feature.title}
+                    text={feature.title}
+                  />
+                ))}
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        {/* =====================================================
+            PERFORMANCE
+        ====================================================== */}
+
+        <section className="bg-[#050b12] px-6 py-24 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+
+            <div className="text-center">
+              <p className="text-xs font-black uppercase tracking-[3px] text-emerald-400">
+                Always Working
+              </p>
+
+              <h2 className="mt-4 text-4xl font-black text-white sm:text-5xl">
+                Your customer operation never has to sleep.
+              </h2>
+
+              <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-400">
+                Let Sodah handle repetitive conversations while your team
+                focuses on customers, service and growth.
+              </p>
+            </div>
+
+            <div className="mt-14 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {PERFORMANCE_ITEMS.map((item) => (
+                <PerformanceCard
+                  key={item.title}
+                  {...item}
+                />
+              ))}
+            </div>
+
+          </div>
+        </section>
 
         {/* =====================================================
             HOW IT WORKS
@@ -836,944 +968,442 @@ export default function Home() {
 
         <section
           id="how-it-works"
-          className="border-y border-emerald-100 bg-gradient-to-br from-[#dff7e8] via-[#f9fffb] to-[#e8f5ff] px-5 py-24 sm:px-6"
+          className="bg-[#f4fbf7] px-6 py-24 lg:px-8"
         >
-
           <div className="mx-auto max-w-7xl">
 
-            <div className="mx-auto max-w-3xl text-center">
-
+            <div className="text-center">
               <p className="text-xs font-black uppercase tracking-[3px] text-emerald-600">
-                Simple setup
+                Simple Setup
               </p>
 
-              <h2 className="mt-3 text-4xl font-black text-slate-950 sm:text-6xl">
-                Get Started in 4 Simple Steps
+              <h2 className="mt-4 text-4xl font-black text-slate-950 sm:text-5xl">
+                From WhatsApp to AI automation.
               </h2>
 
-              <p className="mt-5 text-lg leading-8 text-slate-600">
-                You can set up your business yourself without depending on an
-                agency for every update.
+              <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-500">
+                Connect your existing WhatsApp account with a QR code and
+                start building smarter customer conversations.
               </p>
             </div>
 
-            <div className="mt-14 grid gap-5 md:grid-cols-4">
-
+            <div className="mt-14 grid gap-5 md:grid-cols-3">
               <StepCard
                 number="01"
-                icon="⌕"
-                title="Search sodah.io"
-                text="Open your browser and search for sodah.io."
+                icon="◉"
+                title="Connect"
+                text="Connect your existing WhatsApp account by scanning a simple QR code."
               />
 
               <StepCard
                 number="02"
-                icon="✚"
-                title="Sign Up"
-                text="Create your account in seconds."
+                icon="⚙"
+                title="Configure"
+                text="Add your business information, services, products, promotions and customer-facing details."
               />
 
               <StepCard
                 number="03"
-                icon="⚙"
-                title="Fill Business Details"
-                text="Add your business information and automation settings."
+                icon="✦"
+                title="Automate"
+                text="Let Sodah AI communicate with customers, capture leads, book appointments and follow up automatically."
               />
-
-              <StepCard
-                number="04"
-                icon="▦"
-                title="Scan QR Code"
-                text="Use your WhatsApp to scan the QR code."
-              />
-            </div>
-
-            <div className="mx-auto mt-8 max-w-3xl rounded-[28px] bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 p-7 text-center text-white shadow-[0_20px_50px_rgba(16,185,129,.2)]">
-
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/15">
-                ✓
-              </div>
-
-              <h3 className="mt-4 text-2xl font-black">
-                Automation Starts
-              </h3>
-
-              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-emerald-50">
-                Your AI is live and ready to chat with customers.
-              </p>
-            </div>
-          </div>
-        </section>
-
-
-          {/* =================================================
-              SECOND HERO LAYER — QR CODE + PHONE
-          ================================================= */}
-
-            <div className="relative mx-auto mt-16 max-w-6xl">
-
-              {/* LIGHT GREEN FRAME */}
-              <div className="absolute -inset-5 rounded-[42px] bg-gradient-to-r from-emerald-300/20 via-green-200/10 to-teal-300/20 blur-2xl" />
-
-              <div className="relative rounded-[36px] border border-white/90 bg-gradient-to-br from-[#ecfff3] via-white to-[#e6f5ef] p-3 shadow-[0_35px_100px_rgba(15,23,42,.14)]">
-
-                <div className="overflow-hidden rounded-[30px] border border-emerald-100/70 bg-gradient-to-br from-white via-[#f3fff7] to-[#eaf7f0]">
-
-                  <div className="grid items-center gap-8 p-5 sm:p-8 lg:grid-cols-[1fr_1.15fr] lg:p-12">
-
-                    {/* QR EXPLANATION */}
-                    <div className="text-center lg:text-left">
-
-                      <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-700">
-                        <img
-                          src={WHATSAPP_LOGO}
-                          alt="WhatsApp"
-                          className="h-5 w-5"
-                        />
-
-                        CONNECT WHATSAPP
-                      </div>
-
-                      <h2 className="mt-5 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
-                        Connect your existing WhatsApp.
-                      </h2>
-
-                      <p className="mt-4 text-sm leading-7 text-slate-600 sm:text-base">
-                        Scan the QR code and connect your WhatsApp to
-                        Sodah.io. Your AI automation can then begin handling
-                        customer conversations.
-                      </p>
-
-                      <div className="mt-6 space-y-3 text-left">
-                        <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-white/80 p-4">
-                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 font-black text-emerald-600">
-                            1
-                          </span>
-
-                          <span className="text-sm font-bold text-slate-700">
-                            Open WhatsApp on your phone.
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-white/80 p-4">
-                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-100 font-black text-green-600">
-                            2
-                          </span>
-
-                          <span className="text-sm font-bold text-slate-700">
-                            Scan the QR code displayed by Sodah.io.
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-white/80 p-4">
-                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-100 font-black text-teal-600">
-                            3
-                          </span>
-
-                          <span className="text-sm font-bold text-slate-700">
-                            Start your AI customer automation.
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700">
-                        <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-                        No need to change your WhatsApp number.
-                      </div>
-                    </div>
-
-                    {/* LAPTOP + QR */}
-                    <div className="relative min-h-[430px]">
-
-                      <div className="sodah-float-slow absolute inset-x-0 top-0 mx-auto max-w-[600px]">
-
-                        <div className="relative rounded-[28px] border border-slate-300 bg-slate-950 p-3 shadow-[0_30px_80px_rgba(15,23,42,.28)]">
-
-                          <div className="overflow-hidden rounded-[21px] bg-[#102032]">
-
-                            <div className="flex h-9 items-center gap-2 border-b border-white/10 px-4">
-                              <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
-                              <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
-                              <span className="h-2.5 w-2.5 rounded-full bg-green-400" />
-
-                              <span className="ml-3 text-[9px] font-bold text-slate-400">
-                                app.sodah.io / connect-whatsapp
-                              </span>
-                            </div>
-
-                            <div className="relative flex min-h-[350px] items-center justify-center overflow-hidden bg-gradient-to-br from-[#f5fff8] via-white to-[#e7f6ed] p-8">
-
-                              <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,.12),transparent_35%),radial-gradient(circle_at_80%_80%,rgba(34,197,94,.1),transparent_35%)]" />
-
-                              <div className="relative z-10 text-center">
-
-                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-[0_12px_30px_rgba(16,185,129,.3)]">
-                                  <img
-                                    src={WHATSAPP_LOGO}
-                                    alt="WhatsApp"
-                                    className="h-7 w-7 brightness-0 invert"
-                                  />
-                                </div>
-
-                                <h3 className="mt-5 text-2xl font-black text-slate-900">
-                                  Connect Your WhatsApp
-                                </h3>
-
-                                <p className="mt-1 text-sm text-slate-500">
-                                  Scan QR Code to connect
-                                </p>
-
-                                <div className="relative mx-auto mt-5 flex h-48 w-48 items-center justify-center rounded-2xl border-8 border-white bg-white p-3 shadow-[0_15px_45px_rgba(15,23,42,.16)]">
-
-                                  <div
-                                    className="h-full w-full rounded-lg"
-                                    style={{
-                                      backgroundImage:
-                                        "repeating-conic-gradient(#071421 0% 25%, white 0% 50%)",
-                                      backgroundSize: "14px 14px",
-                                    }}
-                                  />
-
-                                  <div className="sodah-scan absolute left-3 right-3 h-1 rounded-full bg-emerald-400 shadow-[0_0_20px_rgba(16,185,129,.8)]" />
-
-                                  <div className="absolute left-0 top-0 h-7 w-7 border-l-4 border-t-4 border-emerald-500" />
-                                  <div className="absolute right-0 top-0 h-7 w-7 border-r-4 border-t-4 border-emerald-500" />
-                                  <div className="absolute bottom-0 left-0 h-7 w-7 border-b-4 border-l-4 border-emerald-500" />
-                                  <div className="absolute bottom-0 right-0 h-7 w-7 border-b-4 border-r-4 border-emerald-500" />
-                                </div>
-
-                                <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-700">
-                                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                                  WhatsApp ready to connect
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* PHONE SCANNING */}
-                        <div className="sodah-float absolute -bottom-12 -right-3 w-[145px] sm:-right-8 sm:w-[175px]">
-                          <div className="rounded-[30px] border-[6px] border-slate-800 bg-slate-950 p-2 shadow-[0_30px_70px_rgba(2,6,23,.3)]">
-
-                            <div className="relative overflow-hidden rounded-[22px] bg-[#dff3e6]">
-
-                              <div className="flex items-center gap-2 bg-emerald-600 px-3 py-3 text-white">
-                                <img
-                                  src={WHATSAPP_LOGO}
-                                  alt="WhatsApp"
-                                  className="h-5 w-5 brightness-0 invert"
-                                />
-
-                                <span className="text-[10px] font-black">
-                                  WhatsApp
-                                </span>
-                              </div>
-
-                              <div className="relative flex h-[250px] items-center justify-center p-4">
-
-                                <div className="sodah-ring absolute h-32 w-32 rounded-full border border-emerald-400/50" />
-
-                                <div className="relative flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-white bg-white shadow-xl">
-                                  <div
-                                    className="h-16 w-16 rounded-md"
-                                    style={{
-                                      backgroundImage:
-                                        "repeating-conic-gradient(#071421 0% 25%, white 0% 50%)",
-                                      backgroundSize: "8px 8px",
-                                    }}
-                                  />
-                                </div>
-
-                                <div className="absolute bottom-5 rounded-full bg-emerald-600 px-3 py-1.5 text-[8px] font-black text-white shadow-lg">
-                                  SCANNING...
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* =================================================
-                THIRD HERO LAYER — GREEN IMAGE STRIP
-            ================================================= */}
-
-            <div className="mt-12">
-              <div className="rounded-[34px] border border-emerald-200/80 bg-gradient-to-r from-emerald-100 via-white to-green-50 p-2 shadow-[0_25px_70px_rgba(16,185,129,.1)]">
-
-                <div className="relative overflow-hidden rounded-[28px]">
-
-                  <img
-                    src={HERO_IMAGE}
-                    alt="Sodah.io business automation"
-                    className="sodah-zoom h-[260px] w-full object-cover sm:h-[340px]"
-                  />
-
-                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/55 via-emerald-900/10 to-green-950/35" />
-
-                  <div className="absolute bottom-5 left-5 right-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-
-                    <div className="rounded-2xl border border-white/20 bg-slate-950/65 px-5 py-4 text-white backdrop-blur-xl">
-                      <p className="text-xs font-black uppercase tracking-[2px] text-emerald-300">
-                        One connected workspace
-                      </p>
-
-                      <p className="mt-1 text-lg font-black sm:text-xl">
-                        Conversations → Leads → Bookings → Revenue
-                      </p>
-                    </div>
-
-                    <div className="rounded-full border border-emerald-300/30 bg-emerald-500/85 px-4 py-2 text-xs font-black text-white shadow-lg backdrop-blur">
-                      AI AUTOMATION ACTIVE
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
 
           </div>
         </section>
 
         {/* =====================================================
-            WHATSAPP CONVERSATION LAYER
+            PLATFORM
         ====================================================== */}
 
-        <section className="relative overflow-hidden border-y border-emerald-200/70 bg-gradient-to-br from-[#d9f5e5] via-[#f7fffa] to-[#e0f1f8] px-5 py-12 sm:px-6">
-          <div className="absolute right-[-10%] top-[-20%] h-80 w-80 rounded-full bg-emerald-300/20 blur-3xl" />
+        <section
+          id="platform"
+          className="bg-[#071421] px-6 py-24 lg:px-8"
+        >
+          <div className="mx-auto max-w-7xl">
 
-          <div className="relative mx-auto max-w-7xl">
-            <div className="mb-7 text-center">
-              <p className="text-xs font-black uppercase tracking-[3px] text-emerald-700">
-                WhatsApp automation
-              </p>
-
-              <h2 className="mt-2 text-3xl font-black text-slate-950 sm:text-4xl">
-                Professional WhatsApp conversations. One intelligent workflow.
-              </h2>
-            </div>
-
-            <div className="sodah-shadow overflow-hidden rounded-[30px] border border-white/90 bg-white/80 backdrop-blur-xl">
-              <div className="sodah-chat-wallpaper relative overflow-hidden">
-                <div className="relative mx-auto max-w-4xl p-4 sm:p-8">
-                  <div className="overflow-hidden rounded-[26px] border border-white/90 bg-white/80 shadow-[0_25px_70px_rgba(15,23,42,.12)] backdrop-blur-xl">
-
-                    <div className="flex items-center justify-between bg-gradient-to-r from-[#075e54] via-emerald-600 to-green-600 px-5 py-4 text-white">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15">
-                          <img
-                            src={WHATSAPP_LOGO}
-                            alt="WhatsApp"
-                            className="h-6 w-6 brightness-0 invert"
-                          />
-                        </div>
-
-                        <div>
-                          <p className="text-sm font-black">
-                            WhatsApp Business
-                          </p>
-
-                          <p className="text-[10px] text-emerald-100">
-                            online • AI assistant active
-                          </p>
-                        </div>
-                      </div>
-
-                      <span className="rounded-full bg-white/10 px-3 py-1 text-[9px] font-black">
-                        LIVE
-                      </span>
-                    </div>
-
-                    <div className="space-y-4 p-5 sm:p-8">
-                      <div
-                        className="sodah-message mr-auto max-w-[88%] sm:max-w-[64%]"
-                        style={{ animationDelay: "0.15s" }}
-                      >
-                        <div className="rounded-2xl rounded-tl-md border border-white/80 bg-white px-4 py-3 shadow-sm">
-                          <div className="mb-1 text-[9px] font-black text-emerald-700">
-                            CUSTOMER
-                          </div>
-
-                          <p className="text-sm leading-6 text-slate-700">
-                            Hi! I would like to book an appointment for
-                            tomorrow.
-                          </p>
-
-                          <div className="mt-1 text-right text-[9px] text-slate-400">
-                            2:41 PM
-                          </div>
-                        </div>
-                      </div>
-
-                      <div
-                        className="sodah-message ml-auto max-w-[90%] sm:max-w-[68%]"
-                        style={{ animationDelay: "0.45s" }}
-                      >
-                        <div className="rounded-2xl rounded-tr-md bg-gradient-to-br from-emerald-500 via-green-500 to-teal-600 px-4 py-3 text-white shadow-lg">
-                          <div className="mb-1 flex items-center gap-2 text-[9px] font-black text-emerald-100">
-                            AI ASSISTANT
-                            <span className="rounded-full bg-white/15 px-1.5 py-0.5">
-                              AI
-                            </span>
-                          </div>
-
-                          <p className="text-sm leading-6">
-                            Absolutely, Sarah. I can help you with that.
-                            What time would work best for you?
-                          </p>
-
-                          <div className="mt-1 text-right text-[9px] text-emerald-100">
-                            2:42 PM ✓✓
-                          </div>
-                        </div>
-                      </div>
-
-                      <div
-                        className="sodah-message mr-auto max-w-[80%] sm:max-w-[55%]"
-                        style={{ animationDelay: "0.75s" }}
-                      >
-                        <div className="rounded-2xl rounded-tl-md border border-white/80 bg-white px-4 py-3 shadow-sm">
-                          <div className="mb-1 text-[9px] font-black text-slate-400">
-                            SARAH
-                          </div>
-
-                          <p className="text-sm leading-6 text-slate-700">
-                            Around 3:00 PM would be perfect.
-                          </p>
-
-                          <div className="mt-1 text-right text-[9px] text-slate-400">
-                            2:43 PM
-                          </div>
-                        </div>
-                      </div>
-
-                      <div
-                        className="sodah-message ml-auto max-w-[90%] sm:max-w-[68%]"
-                        style={{ animationDelay: "1.05s" }}
-                      >
-                        <div className="rounded-2xl rounded-tr-md bg-gradient-to-br from-emerald-500 to-teal-600 px-4 py-3 text-white shadow-lg">
-                          <div className="mb-1 text-[9px] font-black text-emerald-100">
-                            AI ASSISTANT
-                          </div>
-
-                          <p className="text-sm leading-6">
-                            3:00 PM is available. I can reserve that
-                            appointment for you now.
-                          </p>
-
-                          <div className="mt-1 text-right text-[9px] text-emerald-100">
-                            2:43 PM ✓✓
-                          </div>
-                        </div>
-                      </div>
-
-                      <div
-                        className="sodah-message mx-auto max-w-sm"
-                        style={{ animationDelay: "1.45s" }}
-                      >
-                        <div className="rounded-2xl border border-emerald-300 bg-gradient-to-r from-emerald-50 to-green-100 p-4 text-center shadow-[0_10px_30px_rgba(16,185,129,.12)]">
-                          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-xl text-white">
-                            ✓
-                          </div>
-
-                          <p className="mt-2 text-sm font-black text-emerald-800">
-                            Appointment Confirmed
-                          </p>
-
-                          <p className="mt-1 text-xs text-emerald-700">
-                            Tomorrow • 3:00 PM
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-xs text-slate-400">
-                        <span className="flex gap-1 rounded-full bg-white/90 px-3 py-2 shadow-sm">
-                          <span className="sodah-typing h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                          <span
-                            className="sodah-typing h-1.5 w-1.5 rounded-full bg-emerald-500"
-                            style={{ animationDelay: "0.15s" }}
-                          />
-                          <span
-                            className="sodah-typing h-1.5 w-1.5 rounded-full bg-emerald-500"
-                            style={{ animationDelay: "0.3s" }}
-                          />
-                        </span>
-
-                        AI is ready for the next customer
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* =====================================================
-            PERFORMANCE LAYER
-        ====================================================== */}
-
-        <section className="relative overflow-hidden bg-gradient-to-r from-[#071421] via-[#0b2030] to-[#071421] px-5 py-10 text-white sm:px-6">
-
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_50%,rgba(16,185,129,.13),transparent_30%),radial-gradient(circle_at_80%_50%,rgba(37,99,235,.12),transparent_30%)]" />
-
-          <div className="relative mx-auto grid max-w-7xl gap-px overflow-hidden rounded-[28px] border border-white/10 bg-white/10 md:grid-cols-4">
-
-            {PERFORMANCE_ITEMS.map((item) => (
-              <PerformanceCard
-                key={item.title}
-                title={item.title}
-                value={item.value}
-                text={item.text}
-                accent={item.accent}
-              />
-            ))}
-          </div>
-        </section>
-
-        {/* =====================================================
-            BUSINESS OVERVIEW
-        ====================================================== */}
-
-        <section className="relative overflow-hidden bg-gradient-to-br from-[#071421] via-[#0b2534] to-[#071421] px-5 py-24 text-white sm:px-6">
-
-          <div className="sodah-grid absolute inset-0 opacity-50" />
-
-          <div className="absolute left-[-10%] top-[-10%] h-80 w-80 rounded-full bg-emerald-500/10 blur-[100px]" />
-
-          <div className="absolute right-[-10%] bottom-[-10%] h-96 w-96 rounded-full bg-blue-500/10 blur-[110px]" />
-
-          <div className="relative mx-auto max-w-7xl">
-
-            <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
+            <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
 
               <div>
                 <p className="text-xs font-black uppercase tracking-[3px] text-emerald-400">
-                  Business Overview
+                  Sodah Platform
                 </p>
 
-                <h2 className="mt-2 text-4xl font-black sm:text-5xl">
-                  All your important metrics in one place.
+                <h2 className="mt-4 text-4xl font-black text-white sm:text-5xl">
+                  One workspace.
+                  <span className="block text-emerald-300">
+                    Complete visibility.
+                  </span>
                 </h2>
 
-                <p className="mt-3 text-slate-400">
-                  See what is happening across your customer workflow.
+                <p className="mt-6 text-base leading-8 text-slate-400">
+                  See your conversations, appointments, leads, campaigns,
+                  business activity and customer operations from one
+                  centralized workspace.
                 </p>
+
+                <div className="mt-8 grid gap-3 sm:grid-cols-2">
+                  <MiniFeature
+                    icon="💬"
+                    text="AI conversations"
+                  />
+
+                  <MiniFeature
+                    icon="📅"
+                    text="Appointments"
+                  />
+
+                  <MiniFeature
+                    icon="👥"
+                    text="Lead management"
+                  />
+
+                  <MiniFeature
+                    icon="📊"
+                    text="Analytics"
+                  />
+
+                  <MiniFeature
+                    icon="📣"
+                    text="WhatsApp campaigns"
+                  />
+
+                  <MiniFeature
+                    icon="🔄"
+                    text="Follow-ups"
+                  />
+                </div>
               </div>
 
-              <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-xs font-black text-emerald-300">
-                LIVE AUTOMATION
-              </div>
-            </div>
+              <div className="sodah-deep-shadow rounded-[32px] border border-white/10 bg-white/[0.045] p-5">
 
-            <div className="mt-12 grid gap-5 lg:grid-cols-[1fr_380px]">
+                <div className="rounded-[25px] border border-white/10 bg-[#050b12] p-5">
 
-              <div className="grid gap-4 sm:grid-cols-2">
-
-                <DarkMetric
-                  label="New Leads"
-                  value="248"
-                  change="+18.5%"
-                  color="green"
-                />
-
-                <DarkMetric
-                  label="Bookings"
-                  value="162"
-                  change="+12.7%"
-                  color="blue"
-                />
-
-                <DarkMetric
-                  label="Follow-Ups"
-                  value="312"
-                  change="+9.3%"
-                  color="cyan"
-                />
-
-                <DarkMetric
-                  label="Conversion Rate"
-                  value="68.4%"
-                  change="+15.2%"
-                  color="purple"
-                />
-
-                <div className="sodah-deep-shadow rounded-[26px] border border-white/10 bg-white/[0.045] p-6 sm:col-span-2">
-
-                  <div className="flex items-center justify-between">
-
+                  <div className="flex items-center justify-between border-b border-white/10 pb-5">
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-[2px] text-slate-500">
-                        Customer activity
+                      <p className="text-xs font-black uppercase tracking-[2px] text-slate-500">
+                        Sodah Workspace
                       </p>
 
-                      <h3 className="mt-1 text-xl font-black">
-                        Weekly workflow
-                      </h3>
+                      <p className="mt-1 text-lg font-black text-white">
+                        Business Overview
+                      </p>
                     </div>
 
                     <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-[10px] font-black text-emerald-300">
-                      +24.8%
+                      LIVE
                     </span>
                   </div>
 
-                  <div className="mt-8 flex h-36 items-end gap-2">
-                    {[35, 48, 42, 62, 55, 76, 68, 88, 72, 96, 82, 100].map(
-                      (height, index) => (
-                        <div
-                          key={`${height}-${index}`}
-                          className="group relative flex-1"
-                        >
-                          <div
-                            className="rounded-t-lg bg-gradient-to-t from-emerald-600 via-green-400 to-cyan-300 transition duration-500 group-hover:from-emerald-400 group-hover:to-white"
-                            style={{ height: `${height}%` }}
-                          />
-                        </div>
-                      )
-                    )}
+                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                    <DarkMetric
+                      label="Conversations"
+                      value="24/7"
+                      change="+18%"
+                      color="green"
+                    />
+
+                    <DarkMetric
+                      label="Appointments"
+                      value="128"
+                      change="+24%"
+                      color="blue"
+                    />
+
+                    <DarkMetric
+                      label="Leads"
+                      value="342"
+                      change="+31%"
+                      color="cyan"
+                    />
+
+                    <DarkMetric
+                      label="Follow-Ups"
+                      value="91%"
+                      change="AUTO"
+                      color="purple"
+                    />
                   </div>
+
+                  <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-black uppercase tracking-[2px] text-slate-500">
+                        Automation Status
+                      </p>
+
+                      <p className="text-xs font-black text-emerald-300">
+                        Active
+                      </p>
+                    </div>
+
+                    <div className="mt-5 space-y-3">
+                      <LegendItem
+                        color="bg-emerald-400"
+                        text="AI Customer Assistant"
+                      />
+
+                      <LegendItem
+                        color="bg-sky-400"
+                        text="Appointment Automation"
+                      />
+
+                      <LegendItem
+                        color="bg-cyan-400"
+                        text="Lead Follow-Up"
+                      />
+
+                      <LegendItem
+                        color="bg-purple-400"
+                        text="Campaign Automation"
+                      />
+                    </div>
+                  </div>
+
                 </div>
               </div>
 
-              <div className="sodah-deep-shadow rounded-[28px] border border-white/10 bg-white/[0.045] p-7">
-
-                <div className="flex items-center justify-between">
-
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[2px] text-slate-500">
-                      Analytics
-                    </p>
-
-                    <h3 className="mt-1 text-xl font-black">
-                      Performance Overview
-                    </h3>
-                  </div>
-
-                  <div className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,.8)]" />
-                </div>
-
-                <div className="relative mx-auto mt-8 h-56 w-56">
-
-                  <svg
-                    viewBox="0 0 120 120"
-                    className="h-full w-full -rotate-90"
-                  >
-                    <circle
-                      cx="60"
-                      cy="60"
-                      r="45"
-                      fill="none"
-                      stroke="rgba(255,255,255,.06)"
-                      strokeWidth="12"
-                    />
-
-                    <circle
-                      cx="60"
-                      cy="60"
-                      r="45"
-                      fill="none"
-                      stroke="#10b981"
-                      strokeWidth="12"
-                      strokeDasharray="283"
-                      strokeDashoffset="75"
-                      strokeLinecap="round"
-                      className="sodah-chart"
-                    />
-
-                    <circle
-                      cx="60"
-                      cy="60"
-                      r="35"
-                      fill="none"
-                      stroke="#3b82f6"
-                      strokeWidth="8"
-                      strokeDasharray="220"
-                      strokeDashoffset="75"
-                      strokeLinecap="round"
-                    />
-
-                    <circle
-                      cx="60"
-                      cy="60"
-                      r="25"
-                      fill="none"
-                      stroke="#22d3ee"
-                      strokeWidth="7"
-                      strokeDasharray="157"
-                      strokeDashoffset="62"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-4xl font-black">84%</span>
-
-                    <span className="text-[10px] font-bold uppercase tracking-[2px] text-slate-500">
-                      Performance
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-6 space-y-3">
-                  <LegendItem color="bg-emerald-400" text="Conversations" />
-                  <LegendItem color="bg-blue-400" text="Bookings" />
-                  <LegendItem color="bg-cyan-400" text="Leads" />
-                  <LegendItem color="bg-purple-400" text="Follow-Ups" />
-                </div>
-              </div>
             </div>
           </div>
         </section>
 
         {/* =====================================================
-            LIGHT GREEN TRUST LAYER
+            TRUST
         ====================================================== */}
 
-        <section className="border-y border-emerald-100 bg-gradient-to-r from-[#dff8e8] via-white to-[#e9f6ff] px-5 py-8 sm:px-6">
+        <section className="bg-white px-6 py-24 lg:px-8">
+          <div className="mx-auto max-w-7xl">
 
-          <div className="mx-auto grid max-w-7xl gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="text-center">
+              <p className="text-xs font-black uppercase tracking-[3px] text-emerald-600">
+                Why Sodah
+              </p>
 
-            {TRUST_ITEMS.map(([icon, title, text]) => (
-              <div
-                key={title}
-                className="rounded-2xl border border-white/90 bg-white/75 p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-              >
-                <div className="flex gap-3">
+              <h2 className="mt-4 text-4xl font-black text-slate-950 sm:text-5xl">
+                Automation designed around growth.
+              </h2>
+            </div>
 
-                  <span className="text-xl">
-                    {icon}
-                  </span>
+            <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+              {TRUST_ITEMS.map(([icon, title, text]) => (
+                <ConversionCard
+                  key={title}
+                  icon={icon}
+                  title={title}
+                  text={text}
+                />
+              ))}
+            </div>
 
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900">
-                      {title}
-                    </h3>
-
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                      {text}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </section>
 
         {/* =====================================================
-            WHATSAPP AUTOMATION
+            WHATSAPP CAMPAIGNS
         ====================================================== */}
 
         <section
           id="campaigns"
-          className="relative overflow-hidden bg-gradient-to-br from-[#e0fae9] via-white to-[#eaf6ff] px-5 py-24 sm:px-6"
+          className="bg-[#f4fbf7] px-6 py-24 lg:px-8"
         >
+          <div className="mx-auto max-w-7xl">
 
-          <div className="mx-auto grid max-w-7xl gap-14 lg:grid-cols-2 lg:items-center">
+            <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
 
-            <div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-[3px] text-emerald-600">
+                  WhatsApp Campaigns
+                </p>
 
-              <p className="text-xs font-black uppercase tracking-[3px] text-emerald-600">
-                WhatsApp Automation
-              </p>
+                <h2 className="mt-4 text-4xl font-black text-slate-950 sm:text-5xl">
+                  Reach more customers.
+                  <span className="block text-emerald-600">
+                    Without doing everything manually.
+                  </span>
+                </h2>
 
-              <h2 className="mt-3 text-4xl font-black leading-tight text-slate-950 sm:text-6xl">
-                Keep WhatsApp working for your business.
-              </h2>
+                <p className="mt-6 text-base leading-8 text-slate-500">
+                  Create campaigns, schedule messages, manage your customer
+                  lists and keep your messaging history organized from the
+                  same Sodah workspace.
+                </p>
 
-              <p className="mt-6 text-lg leading-8 text-slate-600">
-                Manage customer conversations, reminders, follow-ups,
-                booking requests and planned outreach from one workflow.
-              </p>
-
-              <div className="mt-8 space-y-3">
-
-                <Benefit text="Organize customer conversations." />
-                <Benefit text="Capture leads from incoming messages." />
-                <Benefit text="Automate follow-up and reminders." />
-                <Benefit text="Support booking and appointment workflows." />
-                <Benefit text="Create WhatsApp campaigns." />
-                <Benefit text="Update business details yourself." />
+                <div className="mt-8 grid gap-3">
+                  <Benefit text="Send campaigns to large customer lists from one workflow." />
+                  <Benefit text="Schedule daily, weekly or monthly messages." />
+                  <Benefit text="Follow up with customers using the same connected WhatsApp number." />
+                  <Benefit text="Review campaign history and messaging activity." />
+                </div>
               </div>
 
-              <div className="mt-9 flex flex-wrap gap-3">
+              <div className="rounded-[32px] border border-emerald-100 bg-white p-6 shadow-[0_30px_90px_rgba(16,185,129,.1)]">
 
-                <Link
-                  href="/signup"
-                  className="rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 px-7 py-4 font-black text-white shadow-lg transition hover:-translate-y-1"
-                >
-                  Start Automation
-                </Link>
+                <div className="rounded-[26px] bg-[#071421] p-7 text-white">
 
-                <a
-                  href={SUPPORT_WHATSAPP}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-white px-7 py-4 font-bold text-slate-800 transition hover:bg-emerald-50"
-                >
-                  <img
-                    src={WHATSAPP_LOGO}
-                    alt=""
-                    className="h-5 w-5"
-                  />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[2px] text-slate-500">
+                        Campaign
+                      </p>
 
-                  Talk to Support
-                </a>
-              </div>
-            </div>
+                      <h3 className="mt-2 text-2xl font-black">
+                        Summer Promotion
+                      </h3>
+                    </div>
 
-            <div className="relative">
+                    <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-[10px] font-black text-emerald-300">
+                      READY
+                    </span>
+                  </div>
 
-              <div className="absolute -inset-6 rounded-[40px] bg-emerald-400/15 blur-3xl" />
+                  <div className="mt-7 rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+                    <p className="text-sm leading-7 text-slate-300">
+                      Hi! We have a new promotion available for you.
+                      Would you like to learn more?
+                    </p>
+                  </div>
 
-              <div className="relative overflow-hidden rounded-[32px] border border-white bg-white p-3 shadow-[0_25px_70px_rgba(16,185,129,.14)]">
+                  <div className="mt-5 grid grid-cols-3 gap-3">
+                    <div className="rounded-2xl bg-white/[0.04] p-4">
+                      <p className="text-[9px] uppercase tracking-[1.5px] text-slate-500">
+                        Audience
+                      </p>
+                      <p className="mt-2 text-xl font-black">
+                        200+
+                      </p>
+                    </div>
 
-                <div className="overflow-hidden rounded-[24px]">
+                    <div className="rounded-2xl bg-white/[0.04] p-4">
+                      <p className="text-[9px] uppercase tracking-[1.5px] text-slate-500">
+                        Status
+                      </p>
+                      <p className="mt-2 text-xl font-black text-emerald-300">
+                        Live
+                      </p>
+                    </div>
 
-                  <img
-                    src={WHATSAPP_IMAGE}
-                    alt="WhatsApp connection workflow"
-                    className="sodah-zoom w-full rounded-[24px] object-cover"
-                    loading="lazy"
-                  />
+                    <div className="rounded-2xl bg-white/[0.04] p-4">
+                      <p className="text-[9px] uppercase tracking-[1.5px] text-slate-500">
+                        Follow-Up
+                      </p>
+                      <p className="mt-2 text-xl font-black text-sky-300">
+                        Auto
+                      </p>
+                    </div>
+                  </div>
 
                 </div>
               </div>
+
             </div>
           </div>
         </section>
 
         {/* =====================================================
-            BUSINESS SETUP
+            BUSINESS UPDATES
         ====================================================== */}
 
-        <section className="border-y border-slate-200 bg-gradient-to-br from-[#071421] via-[#0d2533] to-[#071421] px-5 py-24 text-white sm:px-6">
+        <section className="bg-[#050b12] px-6 py-24 lg:px-8">
+          <div className="mx-auto max-w-7xl">
 
-          <div className="mx-auto grid max-w-7xl gap-14 lg:grid-cols-2 lg:items-center">
+            <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
 
-            <div className="order-2 overflow-hidden rounded-[32px] border border-white/10 bg-white/5 p-2 lg:order-1">
+              <div className="order-2 lg:order-1">
+                <div className="rounded-[32px] border border-white/10 bg-white/[0.04] p-6">
 
-              <div className="overflow-hidden rounded-[26px]">
+                  <div className="rounded-[25px] border border-white/10 bg-[#071421] p-6">
 
-                <img
-                  src={SETUP_IMAGE}
-                  alt="Sodah business setup"
-                  className="sodah-zoom h-full w-full object-cover"
-                  loading="lazy"
-                />
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-400/10 text-xl">
+                        ⚙
+                      </div>
 
+                      <div>
+                        <p className="text-xs font-black text-white">
+                          Business Knowledge
+                        </p>
+
+                        <p className="text-[10px] text-slate-500">
+                          Updated by you
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 space-y-3">
+                      <MiniFeature
+                        icon="✓"
+                        text="New service added"
+                      />
+
+                      <MiniFeature
+                        icon="✓"
+                        text="Promotion updated"
+                      />
+
+                      <MiniFeature
+                        icon="✓"
+                        text="Product image added"
+                      />
+
+                      <MiniFeature
+                        icon="✓"
+                        text="Business hours updated"
+                      />
+                    </div>
+
+                    <div className="mt-5 rounded-2xl border border-emerald-400/10 bg-emerald-400/[0.04] p-4">
+                      <p className="text-xs leading-6 text-emerald-200">
+                        Sodah AI can use your updated business information
+                        when communicating with customers.
+                      </p>
+                    </div>
+
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div className="order-1 lg:order-2">
-
-              <p className="text-xs font-black uppercase tracking-[3px] text-emerald-400">
-                Flexible automation
-              </p>
-
-              <h2 className="mt-3 text-4xl font-black leading-tight sm:text-5xl">
-                Build a workflow that fits your business.
-              </h2>
-
-              <p className="mt-6 text-lg leading-8 text-slate-400">
-                Configure customer communication around the way your
-                business actually works instead of forcing your team into
-                a complicated process.
-              </p>
-
-              <div className="mt-8 grid gap-3 sm:grid-cols-2">
-
-                <MiniFeature icon="💬" text="Customer conversations" />
-                <MiniFeature icon="🎯" text="Lead management" />
-                <MiniFeature icon="📅" text="Booking workflows" />
-                <MiniFeature icon="🔔" text="Reminders" />
-                <MiniFeature icon="📢" text="WhatsApp campaigns" />
-                <MiniFeature icon="🤖" text="AI assistance" />
-
-              </div>
-
-              <div className="mt-7 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-5">
-
-                <p className="font-black text-emerald-300">
-                  No agency required for every update.
+              <div className="order-1 lg:order-2">
+                <p className="text-xs font-black uppercase tracking-[3px] text-emerald-400">
+                  Business Control
                 </p>
 
-                <p className="mt-2 text-sm leading-6 text-slate-400">
-                  Update your business information and workflow settings
-                  yourself whenever your business changes.
+                <h2 className="mt-4 text-4xl font-black text-white sm:text-5xl">
+                  Your business changes.
+                  <span className="block text-emerald-300">
+                    Your AI changes with it.
+                  </span>
+                </h2>
+
+                <p className="mt-6 text-base leading-8 text-slate-400">
+                  Add products, promotional images, new services, packages,
+                  offers and other business information yourself. Keep your
+                  AI assistant aligned with what your business is offering
+                  today.
                 </p>
+
+                <div className="mt-8 grid gap-3">
+                  <MiniFeature
+                    icon="🖼️"
+                    text="Add promotional and product images"
+                  />
+
+                  <MiniFeature
+                    icon="✦"
+                    text="Let AI introduce offers professionally"
+                  />
+
+                  <MiniFeature
+                    icon="⚡"
+                    text="Update your business information anytime"
+                  />
+
+                  <MiniFeature
+                    icon="🌍"
+                    text="Communicate naturally across languages"
+                  />
+                </div>
               </div>
-            </div>
-          </div>
-        </section>
 
-        {/* =====================================================
-            LEAD CONVERSION
-        ====================================================== */}
-
-        <section className="bg-gradient-to-r from-[#e8faee] via-white to-[#edf7ff] px-5 py-24 sm:px-6">
-
-          <div className="mx-auto grid max-w-7xl gap-14 lg:grid-cols-2 lg:items-center">
-
-            <div>
-
-              <p className="text-xs font-black uppercase tracking-[3px] text-emerald-600">
-                Lead conversion
-              </p>
-
-              <h2 className="mt-3 text-4xl font-black text-slate-950 sm:text-6xl">
-                Make every conversation easier to act on.
-              </h2>
-
-              <p className="mt-6 text-lg leading-8 text-slate-600">
-                A good customer conversation should not disappear into a
-                busy inbox. Sodah.io helps move customer activity toward
-                the next useful action.
-              </p>
-
-              <div className="mt-9 grid gap-4 sm:grid-cols-2">
-
-                <ConversionCard
-                  icon="⚡"
-                  title="Instant Response"
-                  text="Keep customers moving while interest is high."
-                />
-
-                <ConversionCard
-                  icon="🎯"
-                  title="Lead Focus"
-                  text="Know which conversations deserve attention."
-                />
-
-                <ConversionCard
-                  icon="📅"
-                  title="Booking Flow"
-                  text="Move appointment requests into an organized workflow."
-                />
-
-                <ConversionCard
-                  icon="📈"
-                  title="Growth"
-                  text="Build repeatable customer processes that can scale."
-                />
-              </div>
-            </div>
-
-            <div className="sodah-shadow overflow-hidden rounded-[32px] border border-white bg-white p-2">
-
-              <div className="overflow-hidden rounded-[26px]">
-
-                <img
-                  src={LEAD_IMAGE}
-                  alt="Lead conversion and business workflow"
-                  className="sodah-zoom min-h-[420px] w-full object-cover"
-                  loading="lazy"
-                />
-
-              </div>
             </div>
           </div>
         </section>
@@ -1782,38 +1412,42 @@ export default function Home() {
             INDUSTRIES
         ====================================================== */}
 
-        <section className="border-y border-emerald-100 bg-gradient-to-br from-[#dff7e8] via-white to-[#eaf5ff] px-5 py-24 sm:px-6">
-
+        <section className="bg-white px-6 py-24 lg:px-8">
           <div className="mx-auto max-w-7xl">
 
-            <div className="mx-auto max-w-3xl text-center">
-
+            <div className="text-center">
               <p className="text-xs font-black uppercase tracking-[3px] text-emerald-600">
-                Built for Every Industry
+                Built For Business
               </p>
 
-              <h2 className="mt-3 text-4xl font-black text-slate-950 sm:text-5xl">
-                One automation platform. Many business workflows.
+              <h2 className="mt-4 text-4xl font-black text-slate-950 sm:text-5xl">
+                One AI platform.
+                <span className="block text-emerald-600">
+                  Many industries.
+                </span>
               </h2>
+
+              <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-500">
+                Sodah adapts to the way your business communicates,
+                schedules, sells and follows up.
+              </p>
             </div>
 
-            <div className="mt-12 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-
-              {USE_CASES.map(([icon, name]) => (
+            <div className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {USE_CASES.map(([icon, title]) => (
                 <div
-                  key={name}
-                  className="group rounded-2xl border border-white/90 bg-white/75 p-5 shadow-sm transition hover:-translate-y-1 hover:border-emerald-300 hover:shadow-md"
+                  key={title}
+                  className="group rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50"
                 >
-                  <span className="text-2xl text-emerald-600">
-                    {icon}
-                  </span>
+                  <span className="text-2xl">{icon}</span>
 
-                  <h3 className="mt-3 font-black text-slate-900">
-                    {name}
-                  </h3>
+                  <p className="mt-4 text-sm font-black text-slate-900">
+                    {title}
+                  </p>
                 </div>
               ))}
             </div>
+
           </div>
         </section>
 
@@ -1823,58 +1457,138 @@ export default function Home() {
 
         <section
           id="pricing"
-          className="border-y border-emerald-100 bg-gradient-to-br from-[#e1f8e9] via-white to-[#e9f5ff] px-5 py-24 sm:px-6"
+          className="bg-[#f4fbf7] px-6 py-24 lg:px-8"
         >
+          <div className="mx-auto max-w-7xl">
 
-          <div className="mx-auto max-w-5xl text-center">
-
-            <p className="text-xs font-black uppercase tracking-[3px] text-emerald-600">
-              Start without complexity
-            </p>
-
-            <h2 className="mt-3 text-4xl font-black text-slate-950 sm:text-6xl">
-              Start your 7-day free trial.
-            </h2>
-
-            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-              Explore the customer automation workflow, connect your business
-              and see how Sodah.io fits into your operation.
-            </p>
-
-            <div className="mx-auto mt-10 max-w-md rounded-[30px] border border-emerald-200 bg-white p-8 shadow-[0_25px_70px_rgba(16,185,129,.12)]">
-
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600">
-                <img
-                  src={WHATSAPP_LOGO}
-                  alt="WhatsApp"
-                  className="h-8 w-8 brightness-0 invert"
-                />
-              </div>
-
-              <h3 className="mt-5 text-2xl font-black text-slate-950">
-                7-Day Free Trial
-              </h3>
-
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                Start exploring the platform and build your customer workflow.
+            <div className="text-center">
+              <p className="text-xs font-black uppercase tracking-[3px] text-emerald-600">
+                Simple Pricing
               </p>
 
-              <div className="mt-6 space-y-3 text-left">
+              <h2 className="mt-4 text-4xl font-black text-slate-950 sm:text-5xl">
+                Start free.
+                <span className="text-emerald-600">
+                  {" "}
+                  Scale when ready.
+                </span>
+              </h2>
 
-                <Benefit text="WhatsApp automation" />
-                <Benefit text="AI customer conversations" />
-                <Benefit text="Lead capture" />
-                <Benefit text="Booking workflows" />
-                <Benefit text="Campaign automation" />
+              <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-500">
+                Try Sodah completely free for 7 days, then choose the plan
+                that fits your business.
+              </p>
+            </div>
 
+            <div className="mt-14 grid gap-5 lg:grid-cols-3">
+
+              {/* STARTER */}
+              <div className="rounded-[30px] border border-slate-200 bg-white p-7 shadow-sm">
+                <p className="text-xs font-black uppercase tracking-[2px] text-slate-500">
+                  Starter
+                </p>
+
+                <h3 className="mt-4 text-3xl font-black text-slate-950">
+                  Free
+                </h3>
+
+                <p className="mt-2 text-sm text-slate-500">
+                  Try Sodah for 7 days.
+                </p>
+
+                <div className="mt-7 space-y-3">
+                  <Benefit text="7-day free trial" />
+                  <Benefit text="AI customer conversations" />
+                  <Benefit text="Business setup" />
+                  <Benefit text="WhatsApp connection" />
+                </div>
+
+                <Link
+                  href="/signup"
+                  className="mt-7 block rounded-2xl bg-slate-950 px-6 py-4 text-center text-sm font-black text-white transition hover:bg-slate-800"
+                >
+                  Start Free
+                </Link>
               </div>
 
-              <Link
-                href="/signup"
-                className="mt-7 block rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 px-6 py-4 font-black text-white shadow-lg transition hover:-translate-y-1"
-              >
-                Start Free Trial →
-              </Link>
+              {/* PRO */}
+              <div className="relative rounded-[30px] border-2 border-emerald-400 bg-[#071421] p-7 text-white shadow-[0_30px_90px_rgba(16,185,129,.15)]">
+
+                <div className="absolute right-6 top-6 rounded-full bg-emerald-400 px-3 py-1 text-[9px] font-black uppercase tracking-[1px] text-slate-950">
+                  Most Popular
+                </div>
+
+                <p className="text-xs font-black uppercase tracking-[2px] text-emerald-300">
+                  Pro
+                </p>
+
+                <div className="mt-4 flex items-end gap-2">
+                  <h3 className="text-5xl font-black">
+                    $29
+                  </h3>
+
+                  <span className="pb-2 text-sm text-slate-400">
+                    / month
+                  </span>
+                </div>
+
+                <p className="mt-2 text-sm text-slate-400">
+                  About AED 100/month.
+                </p>
+
+                <div className="mt-7 space-y-3">
+                  <Benefit text="Advanced AI automation" />
+                  <Benefit text="Appointments & follow-ups" />
+                  <Benefit text="WhatsApp campaigns" />
+                  <Benefit text="Analytics & history" />
+                  <Benefit text="Business updates" />
+                </div>
+
+                <Link
+                  href="/signup"
+                  className="mt-7 block rounded-2xl bg-gradient-to-r from-emerald-400 to-green-500 px-6 py-4 text-center text-sm font-black text-white"
+                >
+                  Start Pro →
+                </Link>
+              </div>
+
+              {/* PREMIUM */}
+              <div className="rounded-[30px] border border-slate-200 bg-white p-7 shadow-sm">
+
+                <p className="text-xs font-black uppercase tracking-[2px] text-slate-500">
+                  Premium
+                </p>
+
+                <div className="mt-4 flex items-end gap-2">
+                  <h3 className="text-5xl font-black text-slate-950">
+                    $79
+                  </h3>
+
+                  <span className="pb-2 text-sm text-slate-500">
+                    / month
+                  </span>
+                </div>
+
+                <p className="mt-2 text-sm text-slate-500">
+                  Advanced business automation.
+                </p>
+
+                <div className="mt-7 space-y-3">
+                  <Benefit text="Everything in Pro" />
+                  <Benefit text="Advanced automation" />
+                  <Benefit text="Expanded business workflows" />
+                  <Benefit text="More powerful campaign tools" />
+                  <Benefit text="Premium capabilities" />
+                </div>
+
+                <Link
+                  href="/signup"
+                  className="mt-7 block rounded-2xl bg-slate-950 px-6 py-4 text-center text-sm font-black text-white transition hover:bg-slate-800"
+                >
+                  Choose Premium →
+                </Link>
+              </div>
+
             </div>
           </div>
         </section>
@@ -1885,84 +1599,39 @@ export default function Home() {
 
         <section
           id="contact"
-          className="relative overflow-hidden px-5 py-28 sm:px-6"
+          className="relative overflow-hidden bg-[#050b12] px-6 py-28 lg:px-8"
         >
+          <div className="absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500/10 blur-[130px]" />
 
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 via-green-600 to-teal-700" />
+          <div className="relative mx-auto max-w-4xl text-center">
 
-          <div className="absolute left-[-10%] top-[-30%] h-96 w-96 rounded-full bg-white/15 blur-[100px]" />
-
-          <div className="absolute right-[-10%] bottom-[-30%] h-96 w-96 rounded-full bg-cyan-300/15 blur-[100px]" />
-
-          <div className="relative mx-auto max-w-5xl text-center text-white">
-
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl border border-white/20 bg-white/10 shadow-2xl backdrop-blur-xl">
-
-              <img
-                src={WHATSAPP_LOGO}
-                alt="WhatsApp"
-                className="h-10 w-10 brightness-0 invert"
-              />
-
-            </div>
-
-            <p className="mt-8 text-xs font-black uppercase tracking-[4px] text-emerald-100">
-              Ready when you are
+            <p className="text-xs font-black uppercase tracking-[3px] text-emerald-400">
+              Ready to automate?
             </p>
 
-            <h2 className="mt-4 text-4xl font-black leading-tight sm:text-6xl">
-              Ready to Grow Your Business 24/7?
+            <h2 className="mt-5 text-5xl font-black tracking-tight text-white sm:text-6xl">
+              Stop chasing conversations.
+              <span className="block bg-gradient-to-r from-emerald-300 to-sky-400 bg-clip-text text-transparent">
+                Start converting them.
+              </span>
             </h2>
 
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-emerald-50">
-              Search for sodah.io, sign up, and start automating today!
+            <p className="mx-auto mt-7 max-w-2xl text-lg leading-8 text-slate-400">
+              Give your business an AI assistant that can communicate,
+              book, follow up and help you grow — 24/7.
             </p>
 
-            <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+            <Link
+              href="/signup"
+              className="mt-10 inline-flex rounded-2xl bg-gradient-to-r from-emerald-400 via-green-500 to-sky-500 px-9 py-5 text-sm font-black text-white shadow-[0_20px_70px_rgba(16,185,129,.22)] transition hover:-translate-y-1"
+            >
+              Start Your 7-Day Free Trial →
+            </Link>
 
-              <Link
-                href="/signup"
-                className="rounded-2xl bg-white px-8 py-4 font-black text-emerald-700 shadow-[0_20px_50px_rgba(2,6,23,.2)] transition hover:-translate-y-1"
-              >
-                Start Free Trial Now →
-              </Link>
+            <p className="mt-5 text-xs font-bold text-slate-600">
+              7 days completely free · No complicated API setup
+            </p>
 
-              <button
-                type="button"
-                onClick={openAIChat}
-                className="rounded-2xl border border-white/20 bg-white/10 px-8 py-4 font-black text-white backdrop-blur-xl transition hover:bg-white/20"
-              >
-                Talk to AI Support
-              </button>
-
-            </div>
-
-            <div className="mx-auto mt-12 max-w-xl rounded-3xl border border-white/15 bg-white/10 p-6 backdrop-blur-xl">
-
-              <p className="text-xs font-black uppercase tracking-[3px] text-emerald-100">
-                Human support
-              </p>
-
-              <p className="mt-3 text-sm leading-6 text-emerald-50">
-                Need help getting started? Contact Sodah.io support directly
-                through WhatsApp.
-              </p>
-
-              <a
-                href={SUPPORT_WHATSAPP}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-black text-emerald-700 transition hover:-translate-y-1"
-              >
-                <img
-                  src={WHATSAPP_LOGO}
-                  alt=""
-                  className="h-5 w-5"
-                />
-
-                WhatsApp Support
-              </a>
-            </div>
           </div>
         </section>
 
@@ -1970,158 +1639,77 @@ export default function Home() {
             FOOTER
         ====================================================== */}
 
-        <footer className="border-t border-white/10 bg-[#06121e] px-5 py-10 text-white sm:px-6">
+        <footer className="border-t border-white/10 bg-[#050b12] px-6 py-12 text-white lg:px-8">
+          <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-center md:justify-between">
 
-          <div className="mx-auto max-w-7xl">
+            <div>
+              <Link href="/" className="flex items-center gap-3">
+                <img
+                  src={LOGO_URL}
+                  alt="Sodah.io"
+                  className="h-8 w-auto"
+                />
 
-            <div className="grid gap-10 md:grid-cols-4">
+                <span className="font-black">
+                  SODAH.IO
+                </span>
+              </Link>
 
-              <div className="md:col-span-2">
-
-                <div className="flex items-center gap-3">
-
-                  <img
-                    src={LOGO_URL}
-                    alt="Sodah.io"
-                    className="h-10 w-10 rounded-xl object-contain"
-                  />
-
-                  <div className="text-xl font-black">
-                    Sodah<span className="text-emerald-400">.io</span>
-                  </div>
-                </div>
-
-                <p className="mt-4 max-w-md text-sm leading-6 text-slate-400">
-                  AI-powered business automation for WhatsApp customer
-                  conversations, leads, bookings, follow-up, reminders and growth.
-                </p>
-              </div>
-
-              <div>
-
-                <h3 className="font-black text-white">
-                  Navigation
-                </h3>
-
-                <div className="mt-4 space-y-3 text-sm text-slate-400">
-
-                  <button
-                    type="button"
-                    onClick={() => setShowAbout(true)}
-                    className="block transition hover:text-emerald-300"
-                  >
-                    About Us
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSection("features")}
-                    className="block transition hover:text-emerald-300"
-                  >
-                    Features
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSection("how-it-works")}
-                    className="block transition hover:text-emerald-300"
-                  >
-                    How It Works
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowContact(true)}
-                    className="block transition hover:text-emerald-300"
-                  >
-                    Contact
-                  </button>
-
-                </div>
-              </div>
-
-              <div>
-
-                <h3 className="font-black text-white">
-                  Get Started
-                </h3>
-
-                <div className="mt-4 space-y-3 text-sm">
-
-                  <Link
-                    href="/login"
-                    className="block text-slate-400 transition hover:text-emerald-300"
-                  >
-                    Login
-                  </Link>
-
-                  <Link
-                    href="/signup"
-                    className="block text-slate-400 transition hover:text-emerald-300"
-                  >
-                    Free Trial
-                  </Link>
-
-                  <a
-                    href={SUPPORT_WHATSAPP}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-2 text-slate-400 transition hover:text-emerald-300"
-                  >
-                    <img
-                      src={WHATSAPP_LOGO}
-                      alt=""
-                      className="h-4 w-4"
-                    />
-
-                    WhatsApp Support
-                  </a>
-
-                  <Link href="/privacy" className="block text-slate-400 transition hover:text-emerald-300">
-                    Privacy Policy
-                  </Link>
-
-                  <Link href="/terms" className="block text-slate-400 transition hover:text-emerald-300">
-                    Terms & Conditions
-                  </Link>
-
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-10 flex flex-col gap-5 border-t border-white/10 pt-7 sm:flex-row sm:items-center sm:justify-between">
-
-              <p className="text-xs text-slate-500">
-                © {new Date().getFullYear()} Sodah.io. All rights reserved.
+              <p className="mt-3 max-w-md text-sm leading-6 text-slate-500">
+                Smart AI automation for modern customer conversations.
               </p>
-
-              <div className="flex items-center gap-3">
-
-                {SOCIALS.map((social) => (
-                  <a
-                    key={social.name}
-                    href={social.href}
-                    target={
-                      social.href.startsWith("http") ? "_blank" : undefined
-                    }
-                    rel={
-                      social.href.startsWith("http")
-                        ? "noreferrer"
-                        : undefined
-                    }
-                    aria-label={social.name}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] transition hover:border-emerald-400/30 hover:bg-emerald-400/10"
-                  >
-                    <img
-                      src={social.src}
-                      alt=""
-                      className="h-5 w-5 object-contain"
-                    />
-                  </a>
-                ))}
-
-              </div>
             </div>
+
+            <div className="flex flex-wrap gap-5 text-sm font-bold text-slate-400">
+              <button
+                onClick={() => setShowAbout(true)}
+                className="transition hover:text-white"
+              >
+                About
+              </button>
+
+              <button
+                onClick={() => handleSection("features")}
+                className="transition hover:text-white"
+              >
+                Features
+              </button>
+
+              <button
+                onClick={() => handleSection("pricing")}
+                className="transition hover:text-white"
+              >
+                Pricing
+              </button>
+
+              <button
+                onClick={() => setShowContact(true)}
+                className="transition hover:text-white"
+              >
+                Contact
+              </button>
+
+              <Link
+                href="/privacy"
+                className="transition hover:text-white"
+              >
+                Privacy
+              </Link>
+
+              <Link
+                href="/terms"
+                className="transition hover:text-white"
+              >
+                Terms
+              </Link>
+            </div>
+
+          </div>
+
+          <div className="mx-auto mt-10 max-w-7xl border-t border-white/5 pt-6">
+            <p className="text-xs text-slate-600">
+              © {new Date().getFullYear()} Sodah.io. All rights reserved.
+            </p>
           </div>
         </footer>
 
@@ -2132,13 +1720,10 @@ export default function Home() {
         <button
           type="button"
           onClick={openAIChat}
+          className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-sky-500 text-2xl text-white shadow-[0_15px_50px_rgba(16,185,129,.3)] transition hover:-translate-y-1"
           aria-label="Open AI support"
-          className="fixed bottom-5 right-5 z-40 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 via-green-500 to-teal-600 text-2xl text-white shadow-[0_0_45px_rgba(16,185,129,.3)] transition hover:scale-110 sm:bottom-7 sm:right-7"
         >
-          <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/20" />
-          <span className="relative">
-            🤖
-          </span>
+          🤖
         </button>
 
         {/* =====================================================
@@ -2147,53 +1732,52 @@ export default function Home() {
 
         {showAbout && (
           <Modal onClose={closeEverything}>
-
             <ModalHeader
-              eyebrow="ABOUT SODAH.IO"
-              title="Technology that works for your business."
+              eyebrow="SODAH.IO"
+              title="AI automation built for real businesses."
               onClose={closeEverything}
             />
 
-            <div className="mt-6 space-y-4 text-sm leading-7 text-slate-300">
+            <p className="mt-5 text-sm leading-7 text-slate-400">
+              Sodah.io helps businesses automate customer conversations,
+              capture leads, book appointments, send follow-ups, manage
+              campaigns and keep business information up to date.
+            </p>
 
-              <p>
-                <strong className="text-white">
-                  Sodah.io
-                </strong>{" "}
-                is an AI-powered business automation platform designed around
-                customer conversations, lead capture, bookings and follow-up.
-              </p>
+            <div className="mt-7 grid gap-3">
+              <MiniFeature
+                icon="✦"
+                text="AI-powered customer conversations"
+              />
 
-              <p>
-                Instead of spreading customer activity across disconnected
-                tools, Sodah.io brings important customer workflows into one
-                professional workspace.
-              </p>
+              <MiniFeature
+                icon="◫"
+                text="Appointment booking"
+              />
 
-              <p>
-                The platform is built around WhatsApp customer conversations,
-                AI assistance and business automation for leads, bookings,
-                follow-up and reminders.
-              </p>
+              <MiniFeature
+                icon="↻"
+                text="Follow-ups and reminders"
+              />
 
-              <p>
-                Businesses can update their own business details and workflow
-                settings without needing an agency for every small change.
-              </p>
+              <MiniFeature
+                icon="🌍"
+                text="Multi-language communication"
+              />
+
+              <MiniFeature
+                icon="📣"
+                text="WhatsApp campaign automation"
+              />
             </div>
 
-            <div className="mt-6 rounded-2xl border border-emerald-400/10 bg-emerald-400/[0.04] p-5">
-
-              <p className="font-black text-emerald-300">
-                Built around one idea
-              </p>
-
-              <p className="mt-2 text-sm leading-6 text-slate-400">
-                Make customer automation powerful enough to help a business
-                grow while keeping the experience simple enough to use every
-                day.
-              </p>
-            </div>
+            <Link
+              href="/signup"
+              onClick={closeEverything}
+              className="mt-7 block rounded-2xl bg-gradient-to-r from-emerald-400 to-green-600 px-6 py-4 text-center text-sm font-black text-white"
+            >
+              Start Your Free Trial →
+            </Link>
           </Modal>
         )}
 
@@ -2203,12 +1787,16 @@ export default function Home() {
 
         {showContact && (
           <Modal onClose={closeEverything}>
-
             <ModalHeader
-              eyebrow="CONTACT & SUPPORT"
-              title="We're here when you need us."
+              eyebrow="CONTACT SODAH.IO"
+              title="We're here to help."
               onClose={closeEverything}
             />
+
+            <p className="mt-5 text-sm leading-7 text-slate-400">
+              Need help getting started or have a question about Sodah.io?
+              Contact our support team or chat with the AI assistant.
+            </p>
 
             <div className="mt-7 grid gap-4 sm:grid-cols-2">
 
@@ -2218,18 +1806,15 @@ export default function Home() {
                 rel="noreferrer"
                 className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.05] p-6 transition hover:-translate-y-1 hover:bg-emerald-400/[0.09]"
               >
-
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-400/10">
-
                   <img
                     src={WHATSAPP_LOGO}
                     alt="WhatsApp"
                     className="h-7 w-7"
                   />
-
                 </div>
 
-                <h3 className="mt-5 font-black">
+                <h3 className="mt-5 font-black text-white">
                   WhatsApp Support
                 </h3>
 
@@ -2237,10 +1822,9 @@ export default function Home() {
                   Chat directly with Sodah.io support.
                 </p>
 
-                <span className="mt-4 inline-block text-sm font-black text-emerald-600">
+                <span className="mt-4 inline-block text-sm font-black text-emerald-400">
                   Open WhatsApp →
                 </span>
-
               </a>
 
               <button
@@ -2251,12 +1835,11 @@ export default function Home() {
                 }}
                 className="rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.05] p-6 text-left transition hover:-translate-y-1 hover:bg-cyan-400/[0.09]"
               >
-
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400/10 text-2xl">
                   🤖
                 </div>
 
-                <h3 className="mt-5 font-black">
+                <h3 className="mt-5 font-black text-white">
                   AI Support
                 </h3>
 
@@ -2264,11 +1847,11 @@ export default function Home() {
                   Open the Sodah AI support assistant.
                 </p>
 
-                <span className="mt-4 inline-block text-sm font-black text-cyan-600">
+                <span className="mt-4 inline-block text-sm font-black text-cyan-400">
                   Start AI Chat →
                 </span>
-
               </button>
+
             </div>
           </Modal>
         )}
@@ -2279,7 +1862,6 @@ export default function Home() {
 
         {showInstall && (
           <Modal onClose={closeEverything}>
-
             <ModalHeader
               eyebrow="SODAH.IO"
               title="Get started with Sodah.io."
@@ -2312,6 +1894,7 @@ export default function Home() {
             </div>
           </Modal>
         )}
+
       </main>
     </>
   );
@@ -2321,7 +1904,12 @@ export default function Home() {
    PERFORMANCE CARD
 ========================================================= */
 
-function PerformanceCard({ title, value, text, accent }) {
+function PerformanceCard({
+  title,
+  value,
+  text,
+  accent,
+}) {
   const colors = {
     green: "text-emerald-300",
     blue: "text-blue-300",
@@ -2331,12 +1919,15 @@ function PerformanceCard({ title, value, text, accent }) {
 
   return (
     <div className="bg-[#071421] p-6 transition hover:bg-white/[0.035]">
-
       <p className="text-xs font-black uppercase tracking-[2px] text-slate-500">
         {title}
       </p>
 
-      <p className={`mt-2 text-3xl font-black ${colors[accent]}`}>
+      <p
+        className={`mt-2 text-3xl font-black ${
+          colors[accent] || colors.green
+        }`}
+      >
         {value}
       </p>
 
@@ -2351,7 +1942,12 @@ function PerformanceCard({ title, value, text, accent }) {
    DARK METRIC
 ========================================================= */
 
-function DarkMetric({ label, value, change, color }) {
+function DarkMetric({
+  label,
+  value,
+  change,
+  color,
+}) {
   const colors = {
     green: "text-emerald-300 bg-emerald-400/10",
     blue: "text-blue-300 bg-blue-400/10",
@@ -2375,7 +1971,6 @@ function DarkMetric({ label, value, change, color }) {
 
   return (
     <div className="sodah-deep-shadow rounded-[26px] border border-white/10 bg-white/[0.045] p-6 transition hover:-translate-y-1 hover:bg-white/[0.065]">
-
       <div className="flex items-center justify-between">
 
         <p className="text-xs font-bold uppercase tracking-[2px] text-slate-500">
@@ -2383,10 +1978,13 @@ function DarkMetric({ label, value, change, color }) {
         </p>
 
         <span
-          className={`rounded-full px-2.5 py-1 text-[10px] font-black ${colors[color]}`}
+          className={`rounded-full px-2.5 py-1 text-[10px] font-black ${
+            colors[color] || colors.green
+          }`}
         >
           {change}
         </span>
+
       </div>
 
       <p className="mt-5 text-4xl font-black text-white">
@@ -2394,14 +1992,14 @@ function DarkMetric({ label, value, change, color }) {
       </p>
 
       <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/5">
-
         <div
-          className={`h-full rounded-full ${barColors[color]}`}
+          className={`h-full rounded-full ${
+            barColors[color] || barColors.green
+          }`}
           style={{
-            width: bars[color],
+            width: bars[color] || bars.green,
           }}
         />
-
       </div>
     </div>
   );
@@ -2411,23 +2009,27 @@ function DarkMetric({ label, value, change, color }) {
    LEGEND
 ========================================================= */
 
-function LegendItem({ color, text }) {
+function LegendItem({
+  color,
+  text,
+}) {
   return (
     <div className="flex items-center justify-between text-xs">
 
       <div className="flex items-center gap-2">
-
-        <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
+        <span
+          className={`h-2.5 w-2.5 rounded-full ${color}`}
+        />
 
         <span className="text-slate-400">
           {text}
         </span>
-
       </div>
 
       <span className="font-black text-white">
         Active
       </span>
+
     </div>
   );
 }
@@ -2447,6 +2049,7 @@ function Benefit({ text }) {
       <span className="text-sm font-semibold text-slate-700">
         {text}
       </span>
+
     </div>
   );
 }
@@ -2455,17 +2058,80 @@ function Benefit({ text }) {
    FEATURE CARD
 ========================================================= */
 
-function FeatureCard({ icon, title, text, arabic, german, tone }) {
-  const tones = { green: "from-emerald-50 to-green-50 text-emerald-600 border-emerald-100", blue: "from-blue-50 to-sky-50 text-blue-600 border-blue-100", mint: "from-green-50 to-teal-50 text-teal-600 border-teal-100", purple: "from-purple-50 to-indigo-50 text-purple-600 border-purple-100", cyan: "from-cyan-50 to-blue-50 text-cyan-600 border-cyan-100" };
+function FeatureCard({
+  logo,
+  icon,
+  title,
+  text,
+  arabic,
+  german,
+  tone,
+}) {
+  const tones = {
+    green:
+      "from-emerald-50 to-green-50 text-emerald-600 border-emerald-100",
+    blue:
+      "from-blue-50 to-sky-50 text-blue-600 border-blue-100",
+    mint:
+      "from-green-50 to-teal-50 text-teal-600 border-teal-100",
+    purple:
+      "from-purple-50 to-indigo-50 text-purple-600 border-purple-100",
+    cyan:
+      "from-cyan-50 to-blue-50 text-cyan-600 border-cyan-100",
+  };
+
   return (
-    <div className="rounded-[28px] border border-emerald-200/80 bg-white/80 p-6 shadow-sm">
-      <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border bg-gradient-to-br text-2xl font-black ${tones[tone] || tones.green}`}>{icon}</div>
-      <h3 className="mt-6 text-xl font-black text-slate-950">{title}</h3>
-      <p className="mt-3 text-sm leading-7 text-slate-600">{text}</p>
-      <div className="mt-5 border-t border-emerald-100 pt-4">
-        <p className="text-[9px] font-black uppercase tracking-[1.8px] text-emerald-700">Modern system feature</p>
-        {arabic && <p dir="rtl" lang="ar" className="mt-3 text-xs leading-6 text-slate-500">{arabic}</p>}
-        {german && <p lang="de" className="mt-2 text-xs leading-6 text-slate-500">{german}</p>}
+    <div className="group rounded-[28px] border border-white/50 bg-slate-950/90 p-6 text-white shadow-[0_20px_55px_rgba(2,6,23,.18)] backdrop-blur-xl transition duration-300 hover:-translate-y-2 hover:bg-slate-950">
+
+      <div
+        className={`flex h-14 w-14 items-center justify-center rounded-2xl border bg-gradient-to-br text-2xl font-black ${
+          tones[tone] || tones.green
+        }`}
+      >
+        {logo ? (
+          <img
+            src={logo}
+            alt=""
+            className="h-8 w-8 object-contain"
+          />
+        ) : (
+          icon
+        )}
+      </div>
+
+      <h3 className="mt-6 text-xl font-black text-white">
+        {title}
+      </h3>
+
+      <p className="mt-3 text-sm leading-7 text-slate-300">
+        {text}
+      </p>
+
+      <div className="mt-5 border-t border-white/10 pt-4">
+
+        <p className="text-[9px] font-black uppercase tracking-[1.8px] text-emerald-300">
+          English · العربية · Deutsch
+        </p>
+
+        {arabic && (
+          <p
+            dir="rtl"
+            lang="ar"
+            className="mt-3 text-xs leading-6 text-slate-400"
+          >
+            {arabic}
+          </p>
+        )}
+
+        {german && (
+          <p
+            lang="de"
+            className="mt-2 text-xs leading-6 text-slate-400"
+          >
+            {german}
+          </p>
+        )}
+
       </div>
     </div>
   );
@@ -2475,7 +2141,12 @@ function FeatureCard({ icon, title, text, arabic, german, tone }) {
    STEP CARD
 ========================================================= */
 
-function StepCard({ number, icon, title, text }) {
+function StepCard({
+  number,
+  icon,
+  title,
+  text,
+}) {
   return (
     <div className="relative rounded-[28px] border border-white bg-white/80 p-7 shadow-sm transition hover:-translate-y-2 hover:shadow-xl">
 
@@ -2498,6 +2169,7 @@ function StepCard({ number, icon, title, text }) {
       <p className="mt-3 text-sm leading-7 text-slate-500">
         {text}
       </p>
+
     </div>
   );
 }
@@ -2506,7 +2178,10 @@ function StepCard({ number, icon, title, text }) {
    MINI FEATURE
 ========================================================= */
 
-function MiniFeature({ icon, text }) {
+function MiniFeature({
+  icon,
+  text,
+}) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.035] p-4">
 
@@ -2526,7 +2201,11 @@ function MiniFeature({ icon, text }) {
    CONVERSION CARD
 ========================================================= */
 
-function ConversionCard({ icon, title, text }) {
+function ConversionCard({
+  icon,
+  title,
+  text,
+}) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
 
@@ -2550,7 +2229,10 @@ function ConversionCard({ icon, title, text }) {
    MODAL
 ========================================================= */
 
-function Modal({ children, onClose }) {
+function Modal({
+  children,
+  onClose,
+}) {
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md"
@@ -2558,7 +2240,9 @@ function Modal({ children, onClose }) {
     >
       <div
         className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[30px] border border-emerald-400/15 bg-[#071421] p-7 text-white shadow-[0_30px_120px_rgba(0,0,0,.75)] sm:p-9"
-        onMouseDown={(event) => event.stopPropagation()}
+        onMouseDown={(event) =>
+          event.stopPropagation()
+        }
       >
         {children}
       </div>
@@ -2570,7 +2254,11 @@ function Modal({ children, onClose }) {
    MODAL HEADER
 ========================================================= */
 
-function ModalHeader({ eyebrow, title, onClose }) {
+function ModalHeader({
+  eyebrow,
+  title,
+  onClose,
+}) {
   return (
     <div className="flex items-start justify-between gap-5">
 
@@ -2594,6 +2282,7 @@ function ModalHeader({ eyebrow, title, onClose }) {
       >
         ×
       </button>
+
     </div>
   );
 }

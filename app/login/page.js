@@ -33,7 +33,6 @@ export default function AuthPage() {
   const [success, setSuccess] = useState("");
   const [shake, setShake] = useState(false);
   const [hideGoogle, setHideGoogle] = useState(false);
-  const [maintenanceSeconds, setMaintenanceSeconds] = useState(60 * 60);
 
   const [form, setForm] = useState({
     fullName: "",
@@ -64,32 +63,6 @@ export default function AuthPage() {
   useEffect(() => {
     setHideGoogle(detectRestrictedBrowser());
   }, []);
-
-  /*
-   * ============================================================
-   * MAINTENANCE COUNTDOWN
-   * ============================================================
-   */
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMaintenanceSeconds((previous) =>
-        previous > 0 ? previous - 1 : 0
-      );
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const formatMaintenanceTime = (totalSeconds) => {
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
-    return [hours, minutes, seconds]
-      .map((value) => String(value).padStart(2, "0"))
-      .join(":");
-  };
 
   /*
    * ============================================================
@@ -898,36 +871,6 @@ export default function AuthPage() {
         }`}
       >
         <div className="bg-black/40 border border-white/10 backdrop-blur-2xl rounded-[32px] p-5 sm:p-6 md:p-8 lg:p-10 shadow-[0_0_80px_rgba(34,197,94,0.15)]">
-
-          {/* SYSTEM MAINTENANCE */}
-
-          <div className="mb-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-center shadow-[0_0_30px_rgba(245,158,11,0.08)]">
-            <div className="flex items-center justify-center gap-2">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-amber-300" />
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-300">
-                System Maintenance
-              </p>
-            </div>
-
-            <p className="mt-2 text-sm font-semibold text-white">
-              Our system is currently under maintenance.
-            </p>
-
-            <p className="mt-1 text-xs leading-5 text-white/55">
-              Our features are temporarily unavailable while we complete maintenance.
-              We are sorry for the inconvenience and will get back to you shortly.
-            </p>
-
-            <div className="mt-4 inline-flex rounded-xl border border-white/10 bg-black/20 px-4 py-2">
-              <span className="font-mono text-lg font-black tracking-wider text-amber-200">
-                {formatMaintenanceTime(maintenanceSeconds)}
-              </span>
-            </div>
-
-            <p className="mt-1 text-[10px] uppercase tracking-[0.15em] text-white/35">
-              Estimated return
-            </p>
-          </div>
 
           {/* LOGO */}
 

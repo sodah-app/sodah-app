@@ -1,51 +1,52 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 function adminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error(
+      "Supabase admin configuration is missing. Check NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
+    );
+  }
+
+  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
 }
 
 async function getAuthenticatedUser(request) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error("Supabase public configuration is missing.");
+  }
+
   const token = (request.headers.get("authorization") || "")
     .replace(/^Bearer\s+/i, "")
     .trim();
 
   if (!token) return null;
 
-  const client = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+  const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`,
       },
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+    },
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
 
   const { data, error } = await client.auth.getUser();
 
   if (error) {
-    console.error("Authentication error:", error);
+    console.error("Authentication error:", error.message);
     return null;
   }
 
@@ -53,7 +54,51 @@ async function getAuthenticatedUser(request) {
 }
 
 function generateBusinessId() {
-  return "BIZ-" + Date.now();
+  return `BIZ-${Date.now()}`;
+}
+
+function cleanString(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+async function completeOnboarding(admin, user, email, businessName) {
+  const { data: existingOnboarding, error: lookupError } = await admin
+    .from("sodah_onboarding")
+    .select("followup_stage")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (lookupError) {
+    console.error("Onboarding lookup failed:", lookupError);
+  }
+
+  const followupStage = existingOnboarding?.followup_stage ?? 0;
+
+  // full_name is retained ONLY for sodah_onboarding, not businesses.
+  const onboardingFullName =
+    user.user_metadata?.full_name ||
+    user.user_metadata?.name ||
+    businessName ||
+    "";
+
+  const { error } = await admin
+    .from("sodah_onboarding")
+    .upsert(
+      {
+        user_id: user.id,
+        email: email || user.email || "",
+        full_name: onboardingFullName,
+        status: "completed",
+        followup_stage: followupStage,
+      },
+      { onConflict: "user_id" }
+    );
+
+  if (error) {
+    console.error("Onboarding completion update failed:", error);
+  }
+
+  return !error;
 }
 
 export async function POST(request) {
@@ -65,10 +110,7 @@ export async function POST(request) {
 
     if (!authenticatedUser) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Authentication required.",
-        },
+        { success: false, message: "Authentication required." },
         { status: 401 }
       );
     }
@@ -76,23 +118,23 @@ export async function POST(request) {
     // ==========================================================
     // 2. READ REQUEST
     // ==========================================================
-    const body = await request.json();
+    let body;
 
-    console.log("REQUEST BODY:", body);
-    console.log("PRICE:", body.priceRange);
-    console.log("AI:", body.aiNumber);
-    console.log("SUPPORT:", body.supportNumber);
-    console.log("WORKING:", body.workingDays);
-    console.log("FULL NAME:", body.fullName);
-    console.log("BUSINESS:", body.businessName);
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, message: "Request body must be valid JSON." },
+        { status: 400 }
+      );
+    }
 
     // ==========================================================
-    // 3. EXTRACT REQUEST DATA
+    // 3. EXTRACT AND NORMALIZE REQUEST DATA
     // ==========================================================
     const {
       email,
       businessName,
-      fullName,
       industry,
       location,
       priceRange,
@@ -101,52 +143,68 @@ export async function POST(request) {
       workingDays,
       hours,
       capabilities,
-      personalGoal,
       setupType = "business",
       userId,
     } = body;
 
+    const businessEmail = cleanString(email) || authenticatedUser.email || "";
+    const normalizedBusinessName = cleanString(businessName);
+    const normalizedIndustry = cleanString(industry);
+    const normalizedLocation = cleanString(location);
+    const normalizedPriceRange = cleanString(priceRange);
+    const normalizedAiNumber = cleanString(aiNumber);
+    const normalizedSupportNumber =
+      cleanString(supportNumber) || normalizedAiNumber;
+    const normalizedWorkingDays = cleanString(workingDays);
+    const normalizedHours = cleanString(hours);
+    const normalizedCapabilities = cleanString(capabilities);
+    const normalizedDescription = cleanString(body.serviceDescription);
+    const normalizedSetupType = setupType === "personal" ? "personal" : "business";
+
     if (!userId) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "User ID missing.",
-        },
+        { success: false, message: "User ID missing." },
         { status: 400 }
       );
     }
 
     // ==========================================================
-    // 4. NEVER TRUST CLIENT userId
+    // 4. VERIFY CLIENT USER ID AGAINST AUTHENTICATED USER
     // ==========================================================
     if (userId !== authenticatedUser.id) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "User authentication mismatch.",
-        },
+        { success: false, message: "User authentication mismatch." },
         { status: 403 }
       );
     }
 
+    if (!normalizedBusinessName) {
+      return NextResponse.json(
+        { success: false, message: "Business name is required." },
+        { status: 400 }
+      );
+    }
+
+    if (!normalizedAiNumber) {
+      return NextResponse.json(
+        { success: false, message: "Business WhatsApp number is required." },
+        { status: 400 }
+      );
+    }
+
     // ==========================================================
-    // 5. CHECK LIVE WHATSAPP SESSION BEFORE SAVING ANY DATA
+    // 5. CHECK EXISTING WHATSAPP SESSION
     // ==========================================================
     const appUrl =
       process.env.NEXT_PUBLIC_APP_URL ||
       process.env.NEXT_PUBLIC_SITE_URL ||
       "https://sodah-app.vercel.app";
 
-    console.log("APP URL =", appUrl);
-
     try {
-      const checkResponse = await fetch(
-        `${appUrl}/api/connect-whatsapp`,
-        {
-          method: "GET",
-          cache: "no-store",
-        }
-      );
+      const checkResponse = await fetch(`${appUrl}/api/connect-whatsapp`, {
+        method: "GET",
+        cache: "no-store",
+      });
 
       if (checkResponse.ok) {
         const checkData = await checkResponse.json();
@@ -172,106 +230,65 @@ export async function POST(request) {
     } catch (sessionCheckError) {
       console.warn(
         "WhatsApp session check failed:",
-        sessionCheckError.message
+        sessionCheckError?.message || sessionCheckError
       );
     }
 
+    const admin = adminClient();
+
     // ==========================================================
-    // 6. CHECK FOR EXISTING BUSINESS
+    // 6. CHECK FOR EXISTING BUSINESS BY WHATSAPP NUMBER
     // ==========================================================
     const { data: existingBusiness, error: existingBusinessError } =
-      await supabase
+      await admin
         .from("businesses")
-        .select("*")
+        .select(
+          "id,business_id,user_id,business_name,whatsapp_connected,ai_number,support_number"
+        )
         .or(
-          `ai_number.eq.${aiNumber},support_number.eq.${supportNumber}`
+          `ai_number.eq.${normalizedAiNumber},support_number.eq.${normalizedSupportNumber}`
         )
         .maybeSingle();
 
     if (existingBusinessError) {
+      console.error("Existing business lookup failed:", existingBusinessError);
       return NextResponse.json(
-        {
-          success: false,
-          message: existingBusinessError.message,
-        },
+        { success: false, message: existingBusinessError.message },
         { status: 500 }
       );
     }
 
     // ==========================================================
-    // 7. EXISTING BUSINESS
+    // 7. HANDLE EXISTING BUSINESS
     // ==========================================================
     if (existingBusiness) {
-      // Only allow the authenticated owner to use this business.
       if (existingBusiness.user_id !== authenticatedUser.id) {
         return NextResponse.json(
           {
             success: false,
-            message:
-              "This business information belongs to another account.",
+            message: "This business information belongs to another account.",
           },
           { status: 403 }
         );
       }
 
-      // Existing business means onboarding is already complete.
-      try {
-        const admin = adminClient();
-
-        const { data: existingOnboarding } = await admin
-          .from("sodah_onboarding")
-          .select("followup_stage")
-          .eq("user_id", authenticatedUser.id)
-          .maybeSingle();
-
-        const followupStage =
-          existingOnboarding?.followup_stage ?? 0;
-
-        const { error: onboardingError } = await admin
-          .from("sodah_onboarding")
-          .upsert(
-            {
-              user_id: authenticatedUser.id,
-              email:
-                authenticatedUser.email ||
-                email ||
-                "",
-              full_name:
-                authenticatedUser.user_metadata?.full_name ||
-                fullName ||
-                "",
-              status: "completed",
-              followup_stage: followupStage,
-            },
-            {
-              onConflict: "user_id",
-            }
-          );
-
-        if (onboardingError) {
-          console.error(
-            "Onboarding completion update failed:",
-            onboardingError
-          );
-        }
-      } catch (onboardingError) {
-        console.error(
-          "Onboarding completion error:",
-          onboardingError
-        );
-      }
+      const onboardingCompleted = await completeOnboarding(
+        admin,
+        authenticatedUser,
+        businessEmail,
+        existingBusiness.business_name || normalizedBusinessName
+      );
 
       return NextResponse.json({
         success: true,
         alreadyExists: true,
-        onboarding_completed: true,
-        whatsappConnected:
-          existingBusiness.whatsapp_connected === true,
+        onboarding_completed: onboardingCompleted,
+        whatsappConnected: existingBusiness.whatsapp_connected === true,
         business_id: existingBusiness.business_id,
-        message:
-          existingBusiness.whatsapp_connected
-            ? "WhatsApp already connected."
-            : "Information already saved. Continue to connect WhatsApp.",
+        business_name: existingBusiness.business_name,
+        message: existingBusiness.whatsapp_connected
+          ? "WhatsApp already connected."
+          : "Information already saved. Continue to connect WhatsApp.",
       });
     }
 
@@ -281,80 +298,45 @@ export async function POST(request) {
     const business_id = generateBusinessId();
 
     // ==========================================================
-    // 9. FREE TRIAL SUBSCRIPTION (7 DAYS)
+    // 9. CREATE SEVEN-DAY FREE TRIAL DATES
     // ==========================================================
     const subscriptionPlan = "free_trial";
     const subscriptionStatus = "active";
-
     const subscriptionStart = new Date();
-
     const subscriptionExpiry = new Date(subscriptionStart);
     subscriptionExpiry.setDate(subscriptionExpiry.getDate() + 7);
-
     const renewalDate = new Date(subscriptionExpiry);
 
     // ==========================================================
     // 10. INSERT BUSINESS
     // ==========================================================
-    const { data, error } = await supabase
+    // businesses uses business_name. There is NO full_name column
+    // in this insert, and personal_goal is omitted because it is
+    // not in the businesses schema supplied for this fix.
+    const { data, error } = await admin
       .from("businesses")
       .insert([
         {
           user_id: authenticatedUser.id,
-
           business_id,
-
-          setup_type: setupType,
-
-          business_name:
-            setupType === "business"
-              ? businessName
-              : fullName,
-
-          full_name: fullName,
-
-          industry,
-          email,
-          location,
-
-          price_range: priceRange,
-
-          services_description:
-            body.serviceDescription,
-
-          ai_number: aiNumber,
-
-          support_number:
-            supportNumber,
-
-          working_days:
-            workingDays,
-
-          hours,
-
-          capabilities,
-
-          personal_goal:
-            personalGoal,
-
-          subscription_plan:
-            subscriptionPlan,
-
-          subscription_status:
-            subscriptionStatus,
-
-          subscription_start:
-            subscriptionStart,
-
-          subscription_expiry:
-            subscriptionExpiry,
-
-          renewal_date:
-            renewalDate,
-
-          whatsapp_connected:
-            false,
-
+          setup_type: normalizedSetupType,
+          business_name: normalizedBusinessName,
+          industry: normalizedIndustry || null,
+          email: businessEmail,
+          location: normalizedLocation,
+          price_range: normalizedPriceRange,
+          services_description: normalizedDescription,
+          ai_number: normalizedAiNumber,
+          support_number: normalizedSupportNumber,
+          working_days: normalizedWorkingDays,
+          hours: normalizedHours,
+          capabilities: normalizedCapabilities,
+          subscription_plan: subscriptionPlan,
+          subscription_status: subscriptionStatus,
+          subscription_start: subscriptionStart.toISOString(),
+          subscription_expiry: subscriptionExpiry.toISOString(),
+          renewal_date: renewalDate.toISOString(),
+          whatsapp_connected: false,
           status: "active",
         },
       ])
@@ -365,7 +347,7 @@ export async function POST(request) {
     // 11. HANDLE BUSINESS INSERT ERROR
     // ==========================================================
     if (error) {
-      console.error("Supabase error:", error);
+      console.error("Supabase business insert error:", error);
 
       if (
         error.code === "23505" ||
@@ -383,66 +365,22 @@ export async function POST(request) {
       }
 
       return NextResponse.json(
-        {
-          success: false,
-          message: error.message,
-        },
+        { success: false, message: error.message },
         { status: 500 }
       );
     }
 
     // ==========================================================
-    // 12. BUSINESS CREATED SUCCESSFULLY
-    //     NOW COMPLETE ONBOARDING
+    // 12. MARK ONBOARDING COMPLETE
     // ==========================================================
-    const admin = adminClient();
+    const onboardingCompleted = await completeOnboarding(
+      admin,
+      authenticatedUser,
+      businessEmail,
+      data.business_name
+    );
 
-    const { data: existingOnboarding, error: onboardingLookupError } =
-      await admin
-        .from("sodah_onboarding")
-        .select("followup_stage")
-        .eq("user_id", authenticatedUser.id)
-        .maybeSingle();
-
-    if (onboardingLookupError) {
-      console.error(
-        "Onboarding lookup failed:",
-        onboardingLookupError
-      );
-    }
-
-    const followupStage =
-      existingOnboarding?.followup_stage ?? 0;
-
-    const { error: onboardingError } = await admin
-      .from("sodah_onboarding")
-      .upsert(
-        {
-          user_id: authenticatedUser.id,
-          email:
-            authenticatedUser.email ||
-            email ||
-            "",
-          full_name:
-            authenticatedUser.user_metadata?.full_name ||
-            fullName ||
-            "",
-          status: "completed",
-          followup_stage: followupStage,
-        },
-        {
-          onConflict: "user_id",
-        }
-      );
-
-    if (onboardingError) {
-      console.error(
-        "Failed to mark onboarding completed:",
-        onboardingError
-      );
-
-      // Business was successfully created.
-      // Return success, but expose that onboarding update failed.
+    if (!onboardingCompleted) {
       return NextResponse.json({
         success: true,
         alreadyExists: false,
@@ -450,6 +388,7 @@ export async function POST(request) {
         onboarding_update_failed: true,
         message: "Business setup saved successfully.",
         business_id: data.business_id,
+        business_name: data.business_name,
         data,
       });
     }
@@ -463,6 +402,7 @@ export async function POST(request) {
       onboarding_completed: true,
       message: "Business setup saved successfully.",
       business_id: data.business_id,
+      business_name: data.business_name,
       data,
     });
   } catch (error) {
@@ -471,9 +411,7 @@ export async function POST(request) {
     return NextResponse.json(
       {
         success: false,
-        message:
-          error.message ||
-          "An unexpected error occurred.",
+        message: error?.message || "An unexpected error occurred.",
       },
       { status: 500 }
     );

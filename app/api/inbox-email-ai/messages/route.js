@@ -70,6 +70,56 @@ function errorStatus(error) {
   );
 }
 
+function isReauthRequiredError(error) {
+  const status =
+    errorStatus(error);
+
+  const message =
+    errorMessage(error)
+      .toLowerCase();
+
+  return (
+    message.includes(
+      "invalid_grant"
+    ) ||
+    message.includes(
+      "invalid grant"
+    ) ||
+    message.includes(
+      "token has been expired"
+    ) ||
+    message.includes(
+      "token has expired"
+    ) ||
+    message.includes(
+      "token has been revoked"
+    ) ||
+    message.includes(
+      "token revoked"
+    ) ||
+    message.includes(
+      "invalid authentication credentials"
+    ) ||
+    message.includes(
+      "unauthorized client"
+    ) ||
+    (
+      status === 401 &&
+      (
+        message.includes(
+          "authentication"
+        ) ||
+        message.includes(
+          "credential"
+        ) ||
+        message.includes(
+          "token"
+        )
+      )
+    )
+  );
+}
+
 function isPermissionError(error) {
   const status =
     errorStatus(error);
@@ -79,7 +129,6 @@ function isPermissionError(error) {
       .toLowerCase();
 
   return (
-    status === 401 ||
     status === 403 ||
     message.includes(
       "insufficient permission"
@@ -89,9 +138,6 @@ function isPermissionError(error) {
     ) ||
     message.includes(
       "permission denied"
-    ) ||
-    message.includes(
-      "unauthorized"
     )
   );
 }
@@ -1167,6 +1213,42 @@ export async function GET(
         error,
       }
     );
+
+    /*
+     * ============================================================
+     * GMAIL RE-AUTHORIZATION ERROR
+     * ============================================================
+     *
+     * Access tokens are short-lived and should normally be
+     * refreshed automatically by the OAuth client.
+     *
+     * This branch is only for the case where the long-lived
+     * refresh token has itself been revoked/invalidated, or
+     * Google explicitly requires the account to authorize again.
+     */
+
+    if (
+      isReauthRequiredError(
+        error
+      )
+    ) {
+      return NextResponse.json(
+        {
+          success:
+            false,
+
+          code:
+            "GMAIL_REAUTH_REQUIRED",
+
+          message:
+            "Your connected Gmail account needs to be re-authorized. Please click Reconnect Gmail and approve the requested Inbox permissions.",
+        },
+        {
+          status:
+            401,
+        }
+      );
+    }
 
     /*
      * ============================================================

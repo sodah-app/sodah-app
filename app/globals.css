@@ -1,11 +1,743 @@
 @import "tailwindcss";
 
+/* =========================================================
+   SODAH DESIGN TOKENS
+========================================================= */
+
+:root {
+  --sodah-green: #25d366;
+  --sodah-green-dark: #16a34a;
+  --sodah-emerald: #10b981;
+  --sodah-cyan: #22d3ee;
+  --sodah-blue: #3b82f6;
+  --sodah-red: #ef4444;
+  --sodah-purple: #a78bfa;
+
+  --sodah-bg: #07110d;
+  --sodah-panel: rgba(255, 255, 255, 0.68);
+  --sodah-border: rgba(255, 255, 255, 0.72);
+
+  --sodah-shadow:
+    0 25px 80px rgba(20, 60, 45, 0.12);
+}
+
+/* =========================================================
+   GLOBAL
+========================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow-x: hidden;
+
+  background:
+    radial-gradient(
+      circle at 20% 10%,
+      rgba(37, 211, 102, 0.07),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 90% 10%,
+      rgba(34, 211, 238, 0.05),
+      transparent 25%
+    ),
+    var(--sodah-bg);
+
+  color: white;
+
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+::selection {
+  background: rgba(37, 211, 102, 0.28);
+  color: white;
+}
+
+/* =========================================================
+   FOCUS
+========================================================= */
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--sodah-green);
+  outline-offset: 3px;
+}
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(37, 211, 102, 0.22);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(37, 211, 102, 0.4);
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* =========================================================
+   SODAH GLASS
+========================================================= */
+
+.sodah-glass {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.72),
+      rgba(255, 255, 255, 0.42)
+    );
+
+  border: 1px solid rgba(255, 255, 255, 0.72);
+
+  box-shadow:
+    0 25px 80px rgba(20, 60, 45, 0.12);
+
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.sodah-glass-dark {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(7, 17, 13, 0.94),
+      rgba(8, 25, 19, 0.86)
+    );
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  box-shadow:
+    0 30px 100px rgba(0, 0, 0, 0.45);
+
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+/* =========================================================
+   SHOWCASE
+========================================================= */
+
+/*
+  Main Layer 2 showcase:
+  10 seconds per product.
+*/
+
+@keyframes showcaseProgress {
+  from {
+    width: 0%;
+  }
+
+  to {
+    width: 100%;
+  }
+}
+
+.animate-showcase-progress {
+  animation:
+    showcaseProgress
+    10s
+    linear
+    forwards;
+}
+
+/* =========================================================
+   SHOWCASE TITLE
+========================================================= */
+
+@keyframes showcaseTitle {
+  0% {
+    opacity: 0;
+    transform:
+      translateX(32px)
+      scale(0.985);
+    filter: blur(5px);
+  }
+
+  12% {
+    opacity: 1;
+    transform:
+      translateX(0)
+      scale(1);
+    filter: blur(0);
+  }
+
+  84% {
+    opacity: 1;
+    transform:
+      translateX(0)
+      scale(1);
+    filter: blur(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translateX(-24px)
+      scale(0.99);
+    filter: blur(4px);
+  }
+}
+
+.animate-showcase-title {
+  animation:
+    showcaseTitle
+    10s
+    ease
+    both;
+}
+
+/* =========================================================
+   SHOWCASE CONTENT
+========================================================= */
+
+@keyframes showcaseContent {
+  0% {
+    opacity: 0;
+    transform:
+      translateY(15px)
+      scale(0.985);
+  }
+
+  14% {
+    opacity: 1;
+    transform:
+      translateY(0)
+      scale(1);
+  }
+
+  82% {
+    opacity: 1;
+    transform:
+      translateY(0)
+      scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translateY(-12px)
+      scale(0.99);
+  }
+}
+
+.animate-showcase-content {
+  animation:
+    showcaseContent
+    10s
+    ease
+    both;
+}
+
+/* =========================================================
+   SHOWCASE SLIDE
+========================================================= */
+
+@keyframes showcaseSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(42px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-showcase-slide {
+  animation:
+    showcaseSlideIn
+    1.2s
+    cubic-bezier(
+      0.22,
+      1,
+      0.36,
+      1
+    )
+    both;
+}
+
+/* =========================================================
+   SHOWCASE VISUAL FLOAT
+========================================================= */
+
+@keyframes showcaseFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+.animate-showcase-float {
+  animation:
+    showcaseFloat
+    5s
+    ease-in-out
+    infinite;
+}
+
+/* =========================================================
+   PHONE FLOAT
+========================================================= */
+
+@keyframes phoneFloat {
+  0%,
+  100% {
+    transform:
+      translateY(0)
+      rotate(-5deg);
+  }
+
+  50% {
+    transform:
+      translateY(-9px)
+      rotate(-4deg);
+  }
+}
+
+.animate-phone-float {
+  animation:
+    phoneFloat
+    5.5s
+    ease-in-out
+    infinite;
+}
+
+/* =========================================================
+   PHONE GLOW
+========================================================= */
+
+@keyframes phoneGlow {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.45;
+    transform: scale(1.08);
+  }
+}
+
+.animate-phone-glow {
+  animation:
+    phoneGlow
+    4.5s
+    ease-in-out
+    infinite;
+}
+
+/* =========================================================
+   GENERIC UI MOTION
+========================================================= */
+
 @keyframes popup {
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(20px)
+      scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0)
+      scale(1);
+  }
+}
+
+.animate-popup {
+  animation:
+    popup
+    0.55s
+    cubic-bezier(
+      0.22,
+      1,
+      0.36,
+      1
+    )
+    both;
+}
+
+/* =========================================================
+   LOADING
+========================================================= */
+
+@keyframes loading {
+  from {
+    width: 0%;
+  }
+
+  to {
+    width: 100%;
+  }
+}
+
+.animate-loading {
+  animation:
+    loading
+    2s
+    linear
+    infinite;
+}
+
+/* =========================================================
+   SOFT FLOAT
+========================================================= */
+
+@keyframes floatSlow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-float-slow {
+  animation:
+    floatSlow
+    5s
+    ease-in-out
+    infinite;
+}
+
+/* =========================================================
+   SOFT PULSE
+========================================================= */
+
+@keyframes pulseSoft {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+.animate-pulse-soft {
+  animation:
+    pulseSoft
+    2.4s
+    ease-in-out
+    infinite;
+}
+
+/* =========================================================
+   SOFT PULSE DOT
+========================================================= */
+
+@keyframes pulseDot {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.85);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+.animate-pulse-dot {
+  animation:
+    pulseDot
+    1.8s
+    ease-in-out
+    infinite;
+}
+
+/* =========================================================
+   SLIDE LEFT
+========================================================= */
+
+@keyframes slideLeft {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-8px);
+  }
+}
+
+.animate-slide-left {
+  animation:
+    slideLeft
+    1.8s
+    ease-in-out
+    infinite
+    alternate;
+}
+
+/* =========================================================
+   SLIDE RIGHT
+========================================================= */
+
+@keyframes slideRight {
+  0% {
+    transform: translateX(8px);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-right {
+  animation:
+    slideRight
+    1.2s
+    cubic-bezier(
+      0.22,
+      1,
+      0.36,
+      1
+    )
+    both;
+}
+
+/* =========================================================
+   FADE UP
+========================================================= */
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation:
+    fadeUp
+    0.7s
+    cubic-bezier(
+      0.22,
+      1,
+      0.36,
+      1
+    )
+    both;
+}
+
+/* =========================================================
+   FADE IN
+========================================================= */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation:
+    fadeIn
+    0.6s
+    ease
+    both;
+}
+
+/* =========================================================
+   SCALE IN
+========================================================= */
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation:
+    scaleIn
+    0.55s
+    cubic-bezier(
+      0.22,
+      1,
+      0.36,
+      1
+    )
+    both;
+}
+
+/* =========================================================
+   GRADIENT SHIMMER
+========================================================= */
+
+@keyframes shimmer {
+  0% {
+    background-position:
+      200% 0;
+  }
+
+  100% {
+    background-position:
+      -200% 0;
+  }
+}
+
+.animate-shimmer {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.05) 0%,
+      rgba(255, 255, 255, 0.28) 50%,
+      rgba(255, 255, 255, 0.05) 100%
+    );
+
+  background-size:
+    200% 100%;
+
+  animation:
+    shimmer
+    2.8s
+    linear
+    infinite;
+}
+
+/* =========================================================
+   GREEN GLOW
+========================================================= */
+
+@keyframes greenGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 rgba(37, 211, 102, 0);
+  }
+
+  50% {
+    box-shadow:
+      0 0 35px rgba(37, 211, 102, 0.22);
+  }
+}
+
+.animate-green-glow {
+  animation:
+    greenGlow
+    3.5s
+    ease-in-out
+    infinite;
+}
+
+/* =========================================================
+   MODAL BACKDROP
+========================================================= */
+
+@keyframes backdropIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-backdrop-in {
+  animation:
+    backdropIn
+    0.3s
+    ease
+    both;
+}
+
+/* =========================================================
+   MODAL PANEL
+========================================================= */
+
+@keyframes modalIn {
   from {
     opacity: 0;
     transform:
       translateY(20px)
-      scale(0.92);
+      scale(0.96);
   }
 
   to {
@@ -16,12 +748,127 @@
   }
 }
 
-@keyframes loading {
-  from {
-    width: 0%;
+.animate-modal-in {
+  animation:
+    modalIn
+    0.45s
+    cubic-bezier(
+      0.22,
+      1,
+      0.36,
+      1
+    )
+    both;
+}
+
+/* =========================================================
+   CONNECTION STATUS
+========================================================= */
+
+@keyframes statusPulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    box-shadow:
+      0 0 0 rgba(37, 211, 102, 0);
   }
 
-  to {
+  50% {
+    opacity: 1;
+    box-shadow:
+      0 0 14px rgba(37, 211, 102, 0.45);
+  }
+}
+
+.animate-status-pulse {
+  animation:
+    statusPulse
+    2s
+    ease-in-out
+    infinite;
+}
+
+/* =========================================================
+   HOVER UTILITIES
+========================================================= */
+
+.sodah-hover {
+  transition:
+    transform 0.5s cubic-bezier(
+      0.22,
+      1,
+      0.36,
+      1
+    ),
+    box-shadow 0.5s ease,
+    border-color 0.5s ease,
+    background-color 0.5s ease;
+}
+
+.sodah-hover:hover {
+  transform: translateY(-4px);
+
+  box-shadow:
+    0 20px 55px rgba(16, 185, 129, 0.12);
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 767px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .sodah-glass {
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  /*
+    Keep the showcase readable on small screens.
+  */
+
+  .animate-showcase-title {
+    animation-duration: 10s;
+  }
+
+  .animate-showcase-content {
+    animation-duration: 10s;
+  }
+}
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .sodah-glass {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-showcase-progress {
     width: 100%;
   }
 }

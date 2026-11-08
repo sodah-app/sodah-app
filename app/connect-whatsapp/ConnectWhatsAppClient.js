@@ -1,40 +1,73 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const POLL_INTERVAL = 1500;
 const MAX_WAIT_TIME = 120000;
+const SODAH_CONNECTED_DISPLAY_MS = 10000;
+
+const TEST_MESSAGE =
+  "Thanks for choosing Sodah.io.";
 
 export default function ConnectWhatsAppClient() {
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   const [businessId, setBusinessId] = useState("");
+  const [businessName, setBusinessName] = useState("");
   const [qrCode, setQrCode] = useState("");
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
   const [phone, setPhone] = useState("");
+  const [testMessageStatus, setTestMessageStatus] =
+    useState("idle");
 
   const pollTimerRef = useRef(null);
   const timeoutRef = useRef(null);
+  const redirectTimerRef = useRef(null);
   const mountedRef = useRef(true);
-  const qrRef = useRef("");
 
-  /*
-  |--------------------------------------------------------------------------
-  | Keep QR ref synchronized
-  |--------------------------------------------------------------------------
-  */
+  const qrRef = useRef("");
+  const connectionHandledRef = useRef(false);
+  const testMessageSentRef = useRef(false);
 
   useEffect(() => {
     qrRef.current = qrCode;
   }, [qrCode]);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Resolve Business ID
-  |--------------------------------------------------------------------------
-  */
+  /* ============================================================
+     CLEANUP
+  ============================================================ */
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+
+      if (pollTimerRef.current) {
+        clearTimeout(pollTimerRef.current);
+      }
+
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+      }
+    };
+  }, []);
+
+  /* ============================================================
+     RESOLVE BUSINESS ID
+  ============================================================ */
 
   useEffect(() => {
     if (!searchParams) return;
@@ -53,10 +86,10 @@ export default function ConnectWhatsAppClient() {
           localStorage.getItem(
             "sodah_business_id"
           ) || "";
-      } catch (error) {
+      } catch (storageError) {
         console.error(
-          "Unable to read business ID:",
-          error
+          "[Connect WhatsApp] Unable to read business ID:",
+          storageError
         );
       }
     }
@@ -73,33 +106,9 @@ export default function ConnectWhatsAppClient() {
     }
   }, [searchParams]);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Cleanup
-  |--------------------------------------------------------------------------
-  */
-
-  useEffect(() => {
-    mountedRef.current = true;
-
-    return () => {
-      mountedRef.current = false;
-
-      if (pollTimerRef.current) {
-        clearTimeout(pollTimerRef.current);
-      }
-
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
-  /*
-  |--------------------------------------------------------------------------
-  | Clear timers
-  |--------------------------------------------------------------------------
-  */
+  /* ============================================================
+     CLEAR TIMERS
+  ============================================================ */
 
   const clearTimers = useCallback(() => {
     if (pollTimerRef.current) {
@@ -111,19 +120,215 @@ export default function ConnectWhatsAppClient() {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
+
+    if (redirectTimerRef.current) {
+      clearTimeout(redirectTimerRef.current);
+      redirectTimerRef.current = null;
+    }
   }, []);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Apply API response
-  |--------------------------------------------------------------------------
-  */
+  /* ============================================================
+     RETURN TO VOICE SETTINGS
+  ============================================================ */
+
+  const returnToVoiceSettings = useCallback(() => {
+    if (!mountedRef.current) return;
+
+    clearTimers();
+
+    const destination = businessId
+      ? `/voice-settings?businessId=${encodeURIComponent(
+          businessId
+        )}`
+      : "/voice-settings";
+
+    router.push(destination);
+  }, [businessId, clearTimers, router]);
+
+  /* ============================================================
+     SEND TEST MESSAGE
+  ============================================================ */
+
+  const sendTestMessage = useCallback(
+    async (connectedPhone = "") => {
+      if (!businessId) return;
+
+      if (testMessageSentRef.current) {
+        return;
+      }
+
+      testMessageSentRef.current = true;
+
+      if (mountedRef.current) {
+        setTestMessageStatus("sending");
+      }
+
+      try {
+        const response = await fetch(
+          "/api/connect-whatsapp",
+          {
+            method: "POST",
+            cache: "no-store",
+            headers: {
+              "Content-Type":
+                "application/json",
+              Accept:
+                "application/json",
+            },
+            body: JSON.stringify({
+              businessId,
+              action: "test_message",
+              phone:
+                connectedPhone || "",
+              message:
+                TEST_MESSAGE,
+            }),
+          }
+        );
+
+        const data =
+          await response
+            .json()
+            .catch(() => null);
+
+        console.log(
+          "[Connect WhatsApp] TEST MESSAGE:",
+          response.status,
+          data
+        );
+
+        if (
+          !response.ok ||
+          data?.success !== true
+        ) {
+          throw new Error(
+            data?.message ||
+              data?.error ||
+              "The Sodah test message could not be sent."
+          );
+        }
+
+        if (!mountedRef.current) {
+          return;
+        }
+
+        setTestMessageStatus(
+          "sent"
+        );
+      } catch (testError) {
+        console.error(
+          "[Connect WhatsApp] Test message failed:",
+          testError
+        );
+
+        if (!mountedRef.current) {
+          return;
+        }
+
+        /*
+         * The WhatsApp connection itself is still successful.
+         * We only report the test-message problem.
+         */
+        setTestMessageStatus(
+          "failed"
+        );
+      }
+    },
+    [businessId]
+  );
+
+  /* ============================================================
+     CONNECTED SUCCESS FLOW
+  ============================================================ */
+
+  const handleConnected = useCallback(
+    (data = {}) => {
+      if (!mountedRef.current) return;
+
+      /*
+       * Prevent polling from repeatedly triggering:
+       * - the test message
+       * - the 10-second redirect
+       */
+      if (connectionHandledRef.current) {
+        return;
+      }
+
+      connectionHandledRef.current = true;
+
+      clearTimers();
+
+      setQrCode("");
+      qrRef.current = "";
+      setError("");
+
+      const connectedPhone =
+        data.phone ||
+        data.phoneNumber ||
+        "";
+
+      if (connectedPhone) {
+        setPhone(
+          String(connectedPhone)
+        );
+      }
+
+      if (data.businessName) {
+        setBusinessName(
+          String(data.businessName)
+        );
+      }
+
+      /*
+       * Show the final connected screen.
+       */
+      setStatus("connected");
+
+      /*
+       * Send exactly one test message
+       * through the existing WhatsApp session.
+       */
+      sendTestMessage(
+        String(connectedPhone || "")
+      );
+
+      /*
+       * Return to Voice Settings after 10 seconds.
+       */
+      redirectTimerRef.current =
+        setTimeout(() => {
+          if (!mountedRef.current) {
+            return;
+          }
+
+          const destination =
+            businessId
+              ? `/voice-settings?businessId=${encodeURIComponent(
+                  businessId
+                )}`
+              : "/voice-settings";
+
+          router.push(destination);
+        }, SODAH_CONNECTED_DISPLAY_MS);
+    },
+    [
+      businessId,
+      clearTimers,
+      router,
+      sendTestMessage,
+    ]
+  );
+
+  /* ============================================================
+     APPLY API RESPONSE
+  ============================================================ */
 
   const applyResponse = useCallback(
     (data) => {
-      if (!mountedRef.current) return false;
-
-      if (!data) {
+      if (
+        !mountedRef.current ||
+        !data
+      ) {
         return false;
       }
 
@@ -131,40 +336,154 @@ export default function ConnectWhatsAppClient() {
         data.qrCode ||
         data.qr ||
         data.qrDataUrl ||
-        null;
+        "";
 
       const receivedStatus =
-        data.status || "";
+        String(
+          data.status || ""
+        ).toLowerCase();
+
+      const alreadyConnected =
+        data.alreadyConnected === true ||
+        receivedStatus ===
+          "already_connected";
 
       const connected =
         data.connected === true ||
         receivedStatus === "connected";
 
-      if (data.phone) {
-        setPhone(String(data.phone));
+      if (
+        data.phone ||
+        data.phoneNumber
+      ) {
+        setPhone(
+          String(
+            data.phone ||
+              data.phoneNumber
+          )
+        );
       }
 
-      /*
-       * Connected
-       */
-      if (connected) {
+      if (data.businessName) {
+        setBusinessName(
+          String(
+            data.businessName
+          )
+        );
+      }
+
+      /* ========================================================
+         BUSINESS NOT FOUND
+      ======================================================== */
+
+      if (
+        receivedStatus ===
+          "business_not_found" ||
+        data.code ===
+          "BUSINESS_NOT_FOUND"
+      ) {
         clearTimers();
 
         setQrCode("");
         qrRef.current = "";
 
-        setStatus("connected");
-        setError("");
+        setStatus(
+          "business_not_found"
+        );
+
+        setError(
+          data.message ||
+            "This business does not exist in Sodah.io. Please complete your business setup before connecting WhatsApp."
+        );
 
         return true;
       }
 
-      /*
-       * QR received
-       */
+      /* ========================================================
+         NUMBER ALREADY CONNECTED
+      ======================================================== */
+
+      if (
+        receivedStatus ===
+          "number_already_connected" ||
+        data.code ===
+          "WHATSAPP_NUMBER_ALREADY_CONNECTED"
+      ) {
+        clearTimers();
+
+        setQrCode("");
+        qrRef.current = "";
+
+        setStatus(
+          "already_connected"
+        );
+
+        setError(
+          data.message ||
+            "This WhatsApp number is already connected to Sodah.io."
+        );
+
+        return true;
+      }
+
+      /* ========================================================
+         ALREADY CONNECTED
+
+         Treat this as a successful connection too.
+         This means the existing session is reused.
+      ======================================================== */
+
+      if (alreadyConnected) {
+        handleConnected(data);
+        return true;
+      }
+
+      /* ========================================================
+         NEWLY CONNECTED
+      ======================================================== */
+
+      if (connected) {
+        handleConnected(data);
+        return true;
+      }
+
+      /* ========================================================
+         ACTIVATING
+      ======================================================== */
+
+      if (
+        receivedStatus ===
+          "connecting_to_sodah" ||
+        receivedStatus ===
+          "activating_ai" ||
+        receivedStatus ===
+          "activating"
+      ) {
+        setQrCode("");
+        qrRef.current = "";
+
+        setError("");
+        setStatus(
+          "connecting_to_sodah"
+        );
+
+        return false;
+      }
+
+      /* ========================================================
+         QR
+      ======================================================== */
+
       if (receivedQR) {
+        connectionHandledRef.current =
+          false;
+
+        testMessageSentRef.current =
+          false;
+
         setQrCode(receivedQR);
-        qrRef.current = receivedQR;
+        qrRef.current =
+          receivedQR;
 
         setStatus("qr");
         setError("");
@@ -172,13 +491,35 @@ export default function ConnectWhatsAppClient() {
         return true;
       }
 
-      /*
-       * Session is being created/connected.
-       */
+      /* ========================================================
+         WAITING FOR QR
+      ======================================================== */
+
       if (
-        receivedStatus === "connecting" ||
-        receivedStatus === "reconnecting" ||
+        receivedStatus ===
+          "qr_pending" ||
         receivedStatus === "qr"
+      ) {
+        setStatus(
+          "waiting_for_qr"
+        );
+
+        setError("");
+
+        return false;
+      }
+
+      /* ========================================================
+         CONNECTING
+      ======================================================== */
+
+      if (
+        receivedStatus ===
+          "connecting" ||
+        receivedStatus ===
+          "reconnecting" ||
+        receivedStatus ===
+          "starting"
       ) {
         setStatus("waiting");
         setError("");
@@ -186,32 +527,60 @@ export default function ConnectWhatsAppClient() {
         return false;
       }
 
-      /*
-       * Session does not exist.
-       */
-      if (receivedStatus === "not_found") {
+      /* ========================================================
+         SESSION NOT FOUND
+      ======================================================== */
+
+      if (
+        receivedStatus ===
+          "not_found" ||
+        receivedStatus ===
+          "session_not_found"
+      ) {
         setStatus("not_found");
         setError("");
+
         return false;
+      }
+
+      /* ========================================================
+         ERROR
+      ======================================================== */
+
+      if (
+        receivedStatus === "error"
+      ) {
+        setStatus("error");
+
+        setError(
+          data.message ||
+            data.error ||
+            "Unable to connect WhatsApp."
+        );
+
+        return true;
       }
 
       return false;
     },
-    [clearTimers]
+    [
+      clearTimers,
+      handleConnected,
+    ]
   );
 
-  /*
-  |--------------------------------------------------------------------------
-  | Check existing session
-  |--------------------------------------------------------------------------
-  */
+  /* ============================================================
+     GET STATUS
+  ============================================================ */
 
-  const checkExistingSession =
-    useCallback(async () => {
-      if (!businessId) return null;
+  const getStatus = useCallback(
+    async () => {
+      if (!businessId) {
+        return null;
+      }
 
-      try {
-        const response = await fetch(
+      const response =
+        await fetch(
           `/api/connect-whatsapp?businessId=${encodeURIComponent(
             businessId
           )}&_=${Date.now()}`,
@@ -219,82 +588,81 @@ export default function ConnectWhatsAppClient() {
             method: "GET",
             cache: "no-store",
             headers: {
-              Accept: "application/json",
+              Accept:
+                "application/json",
             },
           }
         );
 
-        const data =
-          await response.json().catch(() => null);
+      const data =
+        await response
+          .json()
+          .catch(() => null);
 
-        console.log(
-          "[Connect WhatsApp] GET:",
-          response.status,
-          data
-        );
+      console.log(
+        "[Connect WhatsApp] STATUS:",
+        response.status,
+        data
+      );
 
-        if (!response.ok) {
-          throw new Error(
+      if (
+        !response.ok &&
+        response.status !== 202
+      ) {
+        throw new Error(
+          data?.message ||
             data?.error ||
-              `Connect API returned HTTP ${response.status}.`
-          );
-        }
-
-        applyResponse(data);
-
-        return data;
-      } catch (err) {
-        console.error(
-          "[Connect WhatsApp] Existing session check failed:",
-          err
+            `Connect API returned HTTP ${response.status}.`
         );
-
-        throw err;
       }
-    }, [businessId, applyResponse]);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Create / Reuse WhatsApp Session
-  |--------------------------------------------------------------------------
-  */
+      return data;
+    },
+    [businessId]
+  );
 
-  const generateQRCode =
+  /* ============================================================
+     CREATE SESSION
+  ============================================================ */
+
+  const createSession =
     useCallback(async () => {
       if (!businessId) {
         setStatus("error");
         setError(
           "Business ID is missing."
         );
-        return;
+
+        return null;
       }
 
       clearTimers();
+
+      connectionHandledRef.current =
+        false;
+
+      testMessageSentRef.current =
+        false;
 
       setStatus("loading");
       setError("");
       setQrCode("");
       qrRef.current = "";
       setPhone("");
+      setBusinessName("");
+      setTestMessageStatus("idle");
 
-      try {
-        /*
-         * IMPORTANT:
-         *
-         * POST tells our API:
-         *
-         * "Use the existing session if it exists.
-         * Otherwise create it."
-         */
-        const response = await fetch(
-          `/api/connect-whatsapp`,
+      const response =
+        await fetch(
+          "/api/connect-whatsapp",
           {
             method: "POST",
             cache: "no-store",
             headers: {
               "Content-Type":
                 "application/json",
-              Accept: "application/json",
+              Accept:
+                "application/json",
             },
             body: JSON.stringify({
               businessId,
@@ -302,150 +670,136 @@ export default function ConnectWhatsAppClient() {
           }
         );
 
-        const data =
-          await response.json().catch(() => null);
+      const data =
+        await response
+          .json()
+          .catch(() => null);
 
-        console.log(
-          "[Connect WhatsApp] POST:",
-          response.status,
-          data
-        );
+      console.log(
+        "[Connect WhatsApp] CREATE:",
+        response.status,
+        data
+      );
 
-        if (!response.ok) {
-          throw new Error(
+      if (!response.ok) {
+        throw new Error(
+          data?.message ||
             data?.error ||
-              `Connect API returned HTTP ${response.status}.`
-          );
-        }
-
-        const handled =
-          applyResponse(data);
-
-        /*
-         * If POST did not yet produce QR,
-         * begin polling the existing session.
-         */
-        if (!handled || !qrRef.current) {
-          startPolling();
-        }
-      } catch (err) {
-        console.error(
-          "[Connect WhatsApp] QR generation failed:",
-          err
-        );
-
-        if (!mountedRef.current) return;
-
-        clearTimers();
-
-        setQrCode("");
-        qrRef.current = "";
-
-        setStatus("error");
-
-        setError(
-          err?.message ||
-            "Unable to generate QR code."
+            `Connect API returned HTTP ${response.status}.`
         );
       }
-    }, [
-      businessId,
-      clearTimers,
-      applyResponse,
-    ]);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Poll Existing Session
-  |--------------------------------------------------------------------------
-  */
+      return data;
+    }, [businessId, clearTimers]);
+
+  /* ============================================================
+     POLLING
+  ============================================================ */
 
   const startPolling =
     useCallback(() => {
       if (!businessId) return;
 
-      clearTimers();
+      if (pollTimerRef.current) {
+        clearTimeout(
+          pollTimerRef.current
+        );
+      }
 
-      const startedAt = Date.now();
+      const startedAt =
+        Date.now();
 
       const poll = async () => {
-        if (!mountedRef.current) return;
+        if (
+          !mountedRef.current
+        ) {
+          return;
+        }
 
-        if (Date.now() - startedAt >= MAX_WAIT_TIME) {
+        if (
+          Date.now() -
+            startedAt >=
+          MAX_WAIT_TIME
+        ) {
           setStatus("error");
+
           setError(
-            "The WhatsApp QR code did not become available. Please try again."
+            "WhatsApp connection is taking too long. Please try again."
           );
 
           return;
         }
 
+        /*
+         * Once the connection has been
+         * handled, there is no reason to
+         * continue polling.
+         */
+        if (
+          connectionHandledRef.current
+        ) {
+          return;
+        }
+
         try {
-          const response =
-            await fetch(
-              `/api/connect-whatsapp?businessId=${encodeURIComponent(
-                businessId
-              )}&_=${Date.now()}`,
-              {
-                method: "GET",
-                cache: "no-store",
-                headers: {
-                  Accept:
-                    "application/json",
-                },
-              }
-            );
-
           const data =
-            await response
-              .json()
-              .catch(() => null);
+            await getStatus();
 
-          console.log(
-            "[Connect WhatsApp] Poll:",
-            response.status,
-            data
-          );
-
-          if (!response.ok) {
-            throw new Error(
-              data?.error ||
-                `Connect API returned HTTP ${response.status}.`
-            );
+          if (
+            !mountedRef.current
+          ) {
+            return;
           }
 
           const finished =
             applyResponse(data);
 
-          if (finished) {
+          if (
+            finished &&
+            (
+              data?.connected === true ||
+              data?.alreadyConnected ===
+                true ||
+              data?.status ===
+                "already_connected" ||
+              data?.status ===
+                "connected" ||
+              data?.status ===
+                "business_not_found" ||
+              data?.status ===
+                "number_already_connected"
+            )
+          ) {
             return;
           }
-        } catch (err) {
+        } catch (pollError) {
           console.error(
             "[Connect WhatsApp] Poll failed:",
-            err
+            pollError
           );
         }
 
-        pollTimerRef.current =
-          setTimeout(
-            poll,
-            POLL_INTERVAL
-          );
+        if (
+          !connectionHandledRef.current
+        ) {
+          pollTimerRef.current =
+            setTimeout(
+              poll,
+              POLL_INTERVAL
+            );
+        }
       };
 
       poll();
     }, [
       businessId,
-      clearTimers,
+      getStatus,
       applyResponse,
     ]);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Initial Load
-  |--------------------------------------------------------------------------
-  */
+  /* ============================================================
+     INITIAL FLOW
+  ============================================================ */
 
   useEffect(() => {
     if (!businessId) return;
@@ -457,63 +811,98 @@ export default function ConnectWhatsAppClient() {
       setError("");
 
       try {
-        /*
-         * FIRST:
-         *
-         * Look for the existing session.
-         *
-         * This allows an already-generated QR
-         * to be displayed without creating
-         * another WhatsApp session.
-         */
         const data =
-          await checkExistingSession();
+          await getStatus();
 
         if (cancelled) return;
 
         if (
-          data?.connected === true ||
-          data?.status === "connected"
+          data?.businessName
         ) {
+          setBusinessName(
+            String(
+              data.businessName
+            )
+          );
+        }
+
+        if (
+          data?.connected ===
+            true ||
+          data?.alreadyConnected ===
+            true ||
+          data?.status ===
+            "connected" ||
+          data?.status ===
+            "already_connected"
+        ) {
+          applyResponse(data);
+          return;
+        }
+
+        if (
+          data?.status ===
+            "business_not_found" ||
+          data?.code ===
+            "BUSINESS_NOT_FOUND" ||
+          data?.status ===
+            "number_already_connected" ||
+          data?.code ===
+            "WHATSAPP_NUMBER_ALREADY_CONNECTED"
+        ) {
+          applyResponse(data);
           return;
         }
 
         if (
           data?.qrCode ||
-          data?.qr
+          data?.qr ||
+          data?.qrDataUrl
         ) {
+          applyResponse(data);
           return;
         }
 
         /*
-         * If the business has no provider session,
-         * create/reuse it.
+         * Only a genuine provider session-not-found
+         * causes creation.
          */
         if (
           data?.status ===
-          "not_found"
+            "not_found" ||
+          data?.status ===
+            "session_not_found"
         ) {
-          await generateQRCode();
+          const created =
+            await createSession();
+
+          if (cancelled) return;
+
+          applyResponse(created);
+          startPolling();
+
           return;
         }
 
         /*
-         * Existing session is starting.
+         * Existing session is starting/connecting.
          */
+        applyResponse(data);
         startPolling();
-      } catch (err) {
+      } catch (initializeError) {
         if (cancelled) return;
 
         console.error(
           "[Connect WhatsApp] Initialization failed:",
-          err
+          initializeError
         );
 
-        /*
-         * If GET fails, POST can still
-         * attempt to create/reuse the session.
-         */
-        await generateQRCode();
+        setStatus("error");
+
+        setError(
+          initializeError?.message ||
+            "Unable to check WhatsApp connection."
+        );
       }
     }
 
@@ -524,33 +913,70 @@ export default function ConnectWhatsAppClient() {
     };
   }, [
     businessId,
-    checkExistingSession,
-    generateQRCode,
+    getStatus,
+    createSession,
+    applyResponse,
     startPolling,
   ]);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Try Again
-  |--------------------------------------------------------------------------
-  */
+  /* ============================================================
+     RETRY
+  ============================================================ */
 
-  const handleRetry = () => {
-    generateQRCode();
-  };
+  const handleRetry =
+    async () => {
+      try {
+        const data =
+          await createSession();
 
-  /*
-  |--------------------------------------------------------------------------
-  | Render
-  |--------------------------------------------------------------------------
-  */
+        if (
+          !mountedRef.current
+        ) {
+          return;
+        }
+
+        applyResponse(data);
+        startPolling();
+      } catch (retryError) {
+        if (
+          !mountedRef.current
+        ) {
+          return;
+        }
+
+        setStatus("error");
+
+        setError(
+          retryError?.message ||
+            "Unable to start WhatsApp connection."
+        );
+      }
+    };
+
+  /* ============================================================
+     UI STATE
+  ============================================================ */
+
+  const isConnected =
+    status === "connected";
+
+  const isAlreadyConnected =
+    status ===
+    "already_connected";
+
+  const isActivating =
+    status ===
+    "connecting_to_sodah";
+
+  const isBusinessMissing =
+    status ===
+    "business_not_found";
 
   return (
     <main
       style={{
         minHeight: "100vh",
-        background:
-          "#070d1d",
+        background: "#070d1d",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -561,23 +987,28 @@ export default function ConnectWhatsAppClient() {
       <div
         style={{
           width: "100%",
-          maxWidth: "450px",
-          background:
-            "#111b2e",
+          maxWidth: "470px",
+          background: "#111b2e",
           border:
             "1px solid rgba(255,255,255,0.12)",
           borderRadius: "24px",
           padding: "34px 32px",
           textAlign: "center",
           boxSizing: "border-box",
+          boxShadow:
+            "0 30px 80px rgba(0,0,0,0.35)",
         }}
       >
-        {/* Logo */}
+        {/* ======================================================
+            LOGO
+        ====================================================== */}
+
         <div
           style={{
             marginBottom: "28px",
             display: "flex",
-            justifyContent: "center",
+            justifyContent:
+              "center",
           }}
         >
           <div
@@ -586,7 +1017,8 @@ export default function ConnectWhatsAppClient() {
               height: "48px",
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
+              justifyContent:
+                "center",
             }}
           >
             <div
@@ -598,8 +1030,7 @@ export default function ConnectWhatsAppClient() {
                 transform:
                   "rotate(45deg)",
                 display: "flex",
-                alignItems:
-                  "center",
+                alignItems: "center",
                 justifyContent:
                   "center",
               }}
@@ -616,7 +1047,10 @@ export default function ConnectWhatsAppClient() {
           </div>
         </div>
 
-        {/* Heading */}
+        {/* ======================================================
+            TITLE
+        ====================================================== */}
+
         <h1
           style={{
             margin: 0,
@@ -624,22 +1058,60 @@ export default function ConnectWhatsAppClient() {
             fontWeight: 700,
           }}
         >
-          Connect WhatsApp
+          {isConnected ||
+          isAlreadyConnected
+            ? "WhatsApp Connected"
+            : isActivating
+            ? "Connecting WhatsApp"
+            : "Connect WhatsApp"}
         </h1>
+
+        {/* ======================================================
+            DESCRIPTION
+        ====================================================== */}
 
         <p
           style={{
             margin:
               "14px 0 28px",
-            color:
-              "#aab4c7",
+            color: "#aab4c7",
             fontSize: "15px",
+            lineHeight: 1.6,
           }}
         >
-          Connect your WhatsApp account to your AI assistant.
+          {isConnected ||
+          isAlreadyConnected ? (
+            <>
+              <strong
+                style={{
+                  display: "block",
+                  color: "#ffffff",
+                  fontSize: "18px",
+                  marginBottom:
+                    "8px",
+                }}
+              >
+                Your business is connected
+                to Sodah.io.
+              </strong>
+
+              AI auto-reply,
+              appointment booking,
+              reminders and
+              follow-ups are now
+              starting.
+            </>
+          ) : isActivating ? (
+            "Connecting your business to Sodah.io AI..."
+          ) : (
+            "Connect your WhatsApp account to your AI assistant."
+          )}
         </p>
 
-        {/* QR area */}
+        {/* ======================================================
+            MAIN STATUS CARD
+        ====================================================== */}
+
         <div
           style={{
             width: "100%",
@@ -648,17 +1120,15 @@ export default function ConnectWhatsAppClient() {
             margin:
               "0 auto 24px",
             borderRadius: "16px",
-            background:
-              "#202d43",
+            background: "#202d43",
             display: "flex",
-            alignItems:
-              "center",
+            alignItems: "center",
             justifyContent:
               "center",
             overflow: "hidden",
           }}
         >
-          {status === "connected" ? (
+          {isConnected ? (
             <div
               style={{
                 padding: "24px",
@@ -666,8 +1136,142 @@ export default function ConnectWhatsAppClient() {
             >
               <div
                 style={{
-                  fontSize: "48px",
-                  marginBottom: "12px",
+                  width: "78px",
+                  height: "78px",
+                  margin:
+                    "0 auto 18px",
+                  borderRadius: "50%",
+                  background:
+                    "rgba(0,209,90,0.14)",
+                  border:
+                    "2px solid rgba(0,209,90,0.45)",
+                  display: "flex",
+                  alignItems:
+                    "center",
+                  justifyContent:
+                    "center",
+                  color: "#00d15a",
+                  fontSize: "42px",
+                  fontWeight: 800,
+                }}
+              >
+                ✓
+              </div>
+
+              <div
+                style={{
+                  fontSize: "19px",
+                  fontWeight: 700,
+                  lineHeight: 1.4,
+                }}
+              >
+                Your business is
+                connected to
+                Sodah.io
+              </div>
+
+              {businessName && (
+                <div
+                  style={{
+                    marginTop: "10px",
+                    color:
+                      "#aab4c7",
+                    fontSize:
+                      "13px",
+                  }}
+                >
+                  {businessName}
+                </div>
+              )}
+
+              {phone && (
+                <div
+                  style={{
+                    marginTop: "5px",
+                    color:
+                      "#aab4c7",
+                    fontSize:
+                      "13px",
+                  }}
+                >
+                  {phone}
+                </div>
+              )}
+
+              <div
+                style={{
+                  marginTop:
+                    "22px",
+                  padding:
+                    "12px 14px",
+                  borderRadius:
+                    "10px",
+                  background:
+                    "rgba(0,209,90,0.08)",
+                  color:
+                    "#b8f5cf",
+                  fontSize:
+                    "12px",
+                  lineHeight:
+                    1.5,
+                }}
+              >
+                AI auto-reply,
+                appointments,
+                reminders and
+                follow-ups are
+                starting.
+              </div>
+
+              <div
+                style={{
+                  marginTop:
+                    "16px",
+                  color:
+                    "#7f8ba3",
+                  fontSize:
+                    "12px",
+                  lineHeight:
+                    1.5,
+                }}
+              >
+                {testMessageStatus ===
+                "sending"
+                  ? "Sending your Sodah.io test message..."
+                  : testMessageStatus ===
+                    "sent"
+                  ? "Test message sent successfully."
+                  : testMessageStatus ===
+                    "failed"
+                  ? "WhatsApp is connected. The test message could not be sent."
+                  : "Preparing your WhatsApp test message..."}
+              </div>
+            </div>
+          ) : isAlreadyConnected ? (
+            <div
+              style={{
+                padding: "24px",
+              }}
+            >
+              <div
+                style={{
+                  width: "78px",
+                  height: "78px",
+                  margin:
+                    "0 auto 18px",
+                  borderRadius: "50%",
+                  background:
+                    "rgba(0,209,90,0.14)",
+                  border:
+                    "2px solid rgba(0,209,90,0.45)",
+                  display: "flex",
+                  alignItems:
+                    "center",
+                  justifyContent:
+                    "center",
+                  color: "#00d15a",
+                  fontSize: "42px",
+                  fontWeight: 800,
                 }}
               >
                 ✓
@@ -677,23 +1281,98 @@ export default function ConnectWhatsAppClient() {
                 style={{
                   fontSize: "18px",
                   fontWeight: 700,
+                  lineHeight: 1.4,
                 }}
               >
-                WhatsApp Connected
+                Your business is
+                connected to
+                Sodah.io
+              </div>
+
+              <div
+                style={{
+                  marginTop:
+                    "10px",
+                  color:
+                    "#aab4c7",
+                  fontSize:
+                    "13px",
+                  lineHeight:
+                    1.5,
+                }}
+              >
+                No new QR code is
+                required.
               </div>
 
               {phone && (
                 <div
                   style={{
-                    marginTop: "8px",
+                    marginTop:
+                      "8px",
                     color:
                       "#aab4c7",
-                    fontSize: "13px",
+                    fontSize:
+                      "13px",
                   }}
                 >
                   {phone}
                 </div>
               )}
+            </div>
+          ) : isActivating ? (
+            <div
+              style={{
+                padding: "30px",
+              }}
+            >
+              <div
+                style={{
+                  width: "48px",
+                  height: "48px",
+                  border:
+                    "4px solid rgba(255,255,255,0.18)",
+                  borderTopColor:
+                    "#00bfff",
+                  borderRadius:
+                    "50%",
+                  animation:
+                    "sodah-spin 0.8s linear infinite",
+                  margin:
+                    "0 auto 22px",
+                }}
+              />
+
+              <div
+                style={{
+                  fontSize: "15px",
+                  fontWeight: 600,
+                  lineHeight:
+                    1.5,
+                }}
+              >
+                Connecting your
+                business to
+                Sodah.io AI...
+              </div>
+
+              <div
+                style={{
+                  marginTop:
+                    "8px",
+                  color:
+                    "#aab4c7",
+                  fontSize:
+                    "13px",
+                  lineHeight:
+                    1.5,
+                }}
+              >
+                Activating AI,
+                appointments,
+                follow-ups and
+                reminders.
+              </div>
             </div>
           ) : qrCode ? (
             <div
@@ -708,8 +1387,7 @@ export default function ConnectWhatsAppClient() {
                 padding: "18px",
                 boxSizing:
                   "border-box",
-                background:
-                  "#ffffff",
+                background: "#fff",
               }}
             >
               <img
@@ -751,24 +1429,30 @@ export default function ConnectWhatsAppClient() {
               <div
                 style={{
                   color:
-                    status === "error"
+                    status ===
+                    "error"
                       ? "#ffb3b3"
                       : "#aab4c7",
                   fontSize: "14px",
-                  lineHeight: 1.5,
+                  lineHeight:
+                    1.5,
                 }}
               >
-                {status === "error"
-                  ? "Unable to generate QR code."
-                  : status === "not_found"
-                  ? "Starting WhatsApp connection..."
-                  : "Connecting to WhatsApp..."}
+                {status ===
+                "error"
+                  ? "Unable to connect WhatsApp."
+                  : isBusinessMissing
+                  ? "Business setup is required."
+                  : "Checking WhatsApp connection..."}
               </div>
             </div>
           )}
         </div>
 
-        {/* Error */}
+        {/* ======================================================
+            ERROR
+        ====================================================== */}
+
         {error && (
           <div
             style={{
@@ -776,8 +1460,7 @@ export default function ConnectWhatsAppClient() {
                 "1px solid #ff334f",
               background:
                 "rgba(255,51,79,0.10)",
-              borderRadius:
-                "12px",
+              borderRadius: "12px",
               padding:
                 "16px 18px",
               marginBottom:
@@ -785,64 +1468,108 @@ export default function ConnectWhatsAppClient() {
               color:
                 "#ffb5be",
               fontSize: "14px",
-              lineHeight: 1.5,
+              lineHeight:
+                1.5,
             }}
           >
             {error}
           </div>
         )}
 
-        {/* Retry */}
-        {(status === "error" ||
-          status === "not_found") && (
+        {/* ======================================================
+            RETRY
+        ====================================================== */}
+
+        {(status ===
+          "error" ||
+          status ===
+            "business_not_found") && (
           <button
             type="button"
-            onClick={handleRetry}
+            onClick={
+              handleRetry
+            }
             style={{
               width: "100%",
               border: "none",
               borderRadius:
                 "12px",
-              padding:
-                "16px",
+              padding: "16px",
               background:
                 "#00d15a",
               color: "#fff",
-              fontSize: "16px",
+              fontSize:
+                "16px",
               fontWeight: 700,
-              cursor: "pointer",
+              cursor:
+                "pointer",
             }}
           >
             Try Again
           </button>
         )}
 
-        {/* Connected information */}
-        {status === "connected" && (
+        {/* ======================================================
+            CONNECTED FOOTER
+        ====================================================== */}
+
+        {isConnected && (
           <div
             style={{
               color:
                 "#7f8ba3",
               fontSize: "13px",
+              lineHeight:
+                1.5,
             }}
           >
-            Your WhatsApp account is now connected to Sodah.
+            <strong
+              style={{
+                color:
+                  "#dce4f2",
+              }}
+            >
+              Thanks for choosing
+              Sodah.io.
+            </strong>
+            <br />
+            You will be taken to
+            Voice Settings in a few
+            seconds.
           </div>
         )}
 
-        {/* Business ID */}
+        {isAlreadyConnected && (
+          <div
+            style={{
+              color:
+                "#7f8ba3",
+              fontSize: "13px",
+              lineHeight:
+                1.5,
+            }}
+          >
+            This WhatsApp number is
+            already connected to
+            Sodah.io.
+          </div>
+        )}
+
         {businessId && (
           <div
             style={{
-              marginTop: "28px",
+              marginTop:
+                "28px",
               color:
                 "#68748b",
-              fontSize: "12px",
+              fontSize:
+                "12px",
               wordBreak:
                 "break-word",
             }}
           >
-            Business ID: {businessId}
+            Business ID:{" "}
+            {businessId}
           </div>
         )}
       </div>

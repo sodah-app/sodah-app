@@ -1,0 +1,41 @@
+{
+  "name": "sodah-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "node scripts/build.js",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@n8n/chat": "^1.28.3",
+    "@supabase/auth-helpers-nextjs": "^0.15.0",
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.3",
+    "bcryptjs": "^3.0.3",
+    "clsx": "^2.1.1",
+    "googleapis": "^171.4.0",
+    "lucide-react": "^1.16.0",
+    "mongodb": "^7.1.1",
+    "mongoose": "^9.6.2",
+    "next": "15.5.20",
+    "next-auth": "^4.24.14",
+    "openai": "^7.8.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-hot-toast": "^2.6.0",
+    "recharts": "^3.8.1",
+    "resend": "^6.25.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/node": "25.6.0",
+    "@types/react": "19.2.14",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.20",
+    "tailwindcss": "^4",
+    "typescript": "^5.8.2"
+  }
+}

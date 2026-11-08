@@ -633,12 +633,27 @@ export async function GET(request) {
      * ============================================================
      */
 
+    /*
+     * IMPORTANT:
+     * Use the preserved refreshToken variable here.
+     *
+     * Google may omit refresh_token from a later OAuth exchange,
+     * and writing tokens.refresh_token directly would erase the
+     * existing long-lived refresh token from the database.
+     */
     const payload = {
-  user_id: stateData.userId,
-  gmail_email: gmailEmail,
-  access_token: tokens.access_token,
-  refresh_token: tokens.refresh_token,
-};
+      user_id:
+        stateData.userId,
+
+      gmail_email:
+        gmailEmail,
+
+      access_token:
+        tokens.access_token,
+
+      refresh_token:
+        refreshToken,
+    };
 
     /*
      * ============================================================

@@ -1,0 +1,20 @@
+{
+  "version": "3.0",
+  "sidebar": false,
+  "inside_existing_sodah_app": true,
+  "top_controls": [
+    "Analytics",
+    "Calendar",
+    "Reports",
+    "Settings"
+  ],
+  "check_in_out_first": true,
+  "manual_checkout_min_minutes": 20,
+  "automatic_checkout_window_minutes": 20,
+  "hours_dropdown": "1-24",
+  "max_sheets": 10,
+  "ot_column": true,
+  "raw_data_sheet": true,
+  "report_text_and_ai": true,
+  "offday_absent_earning_default": 0
+}

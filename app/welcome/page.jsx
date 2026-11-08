@@ -1,24 +1,80 @@
+/* ==========================================================================
+   SODAH AUTOMATION / BUSINESS ONBOARDING
+
+   BUSINESS-ONLY ONBOARDING
+
+   FLOW
+   --------------------------------------------------------------------------
+   Existing business:
+      Active, unexpired subscription -> /channels
+      Missing/expired subscription -> /subscription
+
+   New business:
+      Login -> business onboarding -> save business -> /subscription
+      -> selected subscription -> /channels
+
+   Subscription access is enforced by the subscription and workspace routes.
+
+   IMPORTANT
+   --------------------------------------------------------------------------
+   - No Personal setup.
+   - No setup-type selector.
+   - No visible AI configuration section.
+   - AI capabilities are configured automatically when the business is saved.
+   - Business WhatsApp number automatically becomes support_number.
+   - Business description requires at least 20 words and supports up to 500 characters.
+   - New businesses are sent to subscription selection before the workspace.
+   - Existing businesses with active, unexpired subscriptions go to /channels.
+   - New businesses and businesses with missing/expired subscriptions go to /subscription.
+   - The /channels route must also enforce expiry for direct URL access.
+   ========================================================================== */
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-/* ==========================================================================
-   SODAH AUTOMATION / ONBOARDING
-   File:
-     app/update.js
+const MAX_DESCRIPTION_CHARACTERS = 500;
+const MIN_DESCRIPTION_WORDS = 20;
 
-   IMPORTANT:
-   - Existing onboarding tracking is preserved.
-   - A new authenticated user is immediately recorded in sodah_onboarding.
-   - Existing businesses are checked immediately.
-   - Existing users are sent directly to /channels.
-   - AI capabilities remain automatic and hidden from the user.
-   - Canada and USA both use +1 correctly.
-   - The phone selector uses a unique country ID instead of using the
-     duplicated +1 value as the React select key/value.
+function countWords(value) {
+  const text = String(value || "").trim();
+  return text ? text.split(/\s+/).filter(Boolean).length : 0;
+}
+
+/* ==========================================================================
+   SUBSCRIPTION ACCESS CHECK
+   --------------------------------------------------------------------------
+   Use the subscription fields stored on the business record. Missing status,
+   missing expiry, invalid dates, and expired subscriptions are not active.
    ========================================================================== */
+function hasActiveSubscription(business) {
+  if (!business) return false;
+
+  const status = String(
+    business.subscription_status || ""
+  ).trim().toLowerCase();
+
+  const allowedStatuses = new Set([
+    "active",
+    "approved",
+    "trial",
+    "trialing",
+  ]);
+
+  if (!allowedStatuses.has(status)) return false;
+
+  const expiry = business.subscription_expiry;
+  if (!expiry) return false;
+
+  const expiryTime = new Date(expiry).getTime();
+  if (!Number.isFinite(expiryTime) || expiryTime <= Date.now()) {
+    return false;
+  }
+
+  return true;
+}
 
 /* ==========================================================================
    COUNTRIES
@@ -49,16 +105,7 @@ const countries = [
   { id: "BI", code: "+257", flag: "🇧🇮", name: "Burundi" },
   { id: "KH", code: "+855", flag: "🇰🇭", name: "Cambodia" },
   { id: "CM", code: "+237", flag: "🇨🇲", name: "Cameroon" },
-
-  /*
-   * IMPORTANT:
-   * Canada and USA both use +1.
-   *
-   * They MUST have different IDs.
-   * Never use the dial code itself as the React select identity.
-   */
   { id: "CA", code: "+1", flag: "🇨🇦", name: "Canada" },
-
   { id: "CV", code: "+238", flag: "🇨🇻", name: "Cape Verde" },
   { id: "CF", code: "+236", flag: "🇨🇫", name: "Central African Republic" },
   { id: "TD", code: "+235", flag: "🇹🇩", name: "Chad" },
@@ -136,13 +183,7 @@ const countries = [
   { id: "UA", code: "+380", flag: "🇺🇦", name: "Ukraine" },
   { id: "AE", code: "+971", flag: "🇦🇪", name: "United Arab Emirates" },
   { id: "GB", code: "+44", flag: "🇬🇧", name: "United Kingdom" },
-
-  /*
-   * USA has the same +1 dial code as Canada.
-   * Its unique ID is US.
-   */
   { id: "US", code: "+1", flag: "🇺🇸", name: "United States" },
-
   { id: "UY", code: "+598", flag: "🇺🇾", name: "Uruguay" },
   { id: "VE", code: "+58", flag: "🇻🇪", name: "Venezuela" },
   { id: "VN", code: "+84", flag: "🇻🇳", name: "Vietnam" },
@@ -152,30 +193,56 @@ const countries = [
 ];
 
 /* ==========================================================================
-   OPTIONS
+   INDUSTRIES
    ========================================================================== */
 
 const industries = [
   "Healthcare",
   "Dental Clinic",
+  "Medical Center",
+  "Pharmacy",
   "Retail",
-  "Real Estate",
   "E-commerce",
+  "Real Estate",
+  "Property Management",
   "Education",
+  "Training Center",
   "Legal Services",
+  "Accounting",
+  "Financial Services",
+  "Insurance",
   "Automotive",
+  "Car Rental",
   "Beauty Salon",
+  "Barbershop",
+  "Spa",
   "Fitness Gym",
   "Restaurant",
-  "Travel Agency",
-  "Insurance",
-  "Construction",
-  "Photography",
+  "Cafe",
+  "Catering",
   "Hotel",
+  "Travel Agency",
+  "Tourism",
+  "Construction",
+  "Architecture",
+  "Interior Design",
+  "Photography",
   "Cleaning Services",
   "Repair Services",
   "Consulting",
+  "Marketing Agency",
+  "IT Services",
+  "Software",
+  "Logistics",
+  "Transportation",
+  "Manufacturing",
+  "Wholesale",
+  "Other / Add industry",
 ];
+
+/* ==========================================================================
+   PRICE OPTIONS
+   ========================================================================== */
 
 const priceRanges = [
   "$1 - $50",
@@ -184,8 +251,12 @@ const priceRanges = [
   "$500 - $1,000",
   "$1,000 - $5,000",
   "$5,000+",
-  "Custom Pricing",
+  "Custom pricing",
 ];
+
+/* ==========================================================================
+   WORKING DAYS
+   ========================================================================== */
 
 const workingDaysList = [
   "Monday",
@@ -197,13 +268,17 @@ const workingDaysList = [
   "Sunday",
 ];
 
-/*
- * These are intentionally NOT displayed to the user.
- *
- * Business automation capabilities are selected automatically.
- */
+/* ==========================================================================
+   AI CAPABILITIES
+   INTERNAL ONLY
+   --------------------------------------------------------------------------
+   These are automatically stored on the business record.
+   They are deliberately NOT displayed on the onboarding page.
+   ========================================================================== */
+
 const BUSINESS_CAPABILITIES = [
   "Appointment Booking",
+  "AI Reply",
   "Follow-up Messages",
   "Order Handling",
   "Lead Capture",
@@ -219,20 +294,6 @@ const BUSINESS_CAPABILITIES = [
   "Sales Automation",
 ];
 
-/*
- * Personal automation capabilities are also selected automatically.
- */
-const PERSONAL_CAPABILITIES = [
-  "Appointment Booking",
-  "Receive Unknown Messages",
-  "Auto Reply",
-  "Reminder Messages",
-  "Personal Assistant",
-  "Follow-up Messages",
-  "Task Notifications",
-  "Event Reminders",
-];
-
 /* ==========================================================================
    HELPERS
    ========================================================================== */
@@ -242,41 +303,45 @@ function cleanPhoneNumber(value) {
 }
 
 function normalizeCountryId(value) {
-  const id = String(value || "").trim().toUpperCase();
+  const id = String(value || "")
+    .trim()
+    .toUpperCase();
 
-  if (countries.some((country) => country.id === id)) {
-    return id;
-  }
-
-  return "AE";
+  return countries.some(
+    (country) => country.id === id
+  )
+    ? id
+    : "AE";
 }
 
 function countryById(id) {
   return (
     countries.find(
-      (country) => country.id === normalizeCountryId(id)
-    ) || countries.find((country) => country.id === "AE")
+      (country) =>
+        country.id === normalizeCountryId(id)
+    ) ||
+    countries.find(
+      (country) => country.id === "AE"
+    )
   );
 }
 
-function formatInternationalNumber(countryId, number) {
+function formatInternationalNumber(
+  countryId,
+  number
+) {
   const country = countryById(countryId);
 
-  const code = country?.code || "+971";
-  const localNumber = cleanPhoneNumber(number);
-
-  return `${code}${localNumber}`;
+  return `${country?.code || "+971"}${cleanPhoneNumber(
+    number
+  )}`;
 }
 
-/*
- * NANP countries such as Canada and USA both use +1.
- *
- * We therefore validate the local number as a 10-digit number
- * when either CA or US is selected.
- */
-function isValidPhoneNumber(countryId, number) {
+function isValidPhoneNumber(
+  countryId,
+  number
+) {
   const clean = cleanPhoneNumber(number);
-
   const id = normalizeCountryId(countryId);
 
   if (id === "CA" || id === "US") {
@@ -286,6 +351,69 @@ function isValidPhoneNumber(countryId, number) {
   return clean.length >= 5;
 }
 
+function isGoogleMapsLocation(value) {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  return (
+    normalized.includes(
+      "google.com/maps"
+    ) ||
+    normalized.includes(
+      "maps.google.com"
+    ) ||
+    normalized.includes(
+      "maps.app.goo.gl"
+    ) ||
+    normalized.includes(
+      "goo.gl/maps"
+    )
+  );
+}
+
+function isDetailedBusinessLocation(value) {
+  const normalized = String(value || "")
+    .trim()
+    .replace(/\s+/g, " ");
+
+  if (normalized.length < 25) {
+    return false;
+  }
+
+  if (isGoogleMapsLocation(normalized)) {
+    return true;
+  }
+
+  const detailWords =
+    /\b(building|tower|floor|unit|office|suite|shop|street|st|road|rd|avenue|ave|lane|ln|block|district|area|mall|landmark|near|opposite|behind|next to|beside|plot|villa|warehouse|center|centre)\b/i;
+
+  const hasDetailWord =
+    detailWords.test(normalized);
+
+  const hasEnoughWords =
+    normalized
+      .split(/\s+/)
+      .filter(Boolean).length >= 5;
+
+  return (
+    hasDetailWord &&
+    hasEnoughWords
+  );
+}
+
+function locationErrorMessage(value) {
+  if (!String(value || "").trim()) {
+    return "Please enter the exact business location or paste the Google Maps link.";
+  }
+
+  if (!isDetailedBusinessLocation(value)) {
+    return "Please paste a Google Maps location link or enter the exact business address.";
+  }
+
+  return "";
+}
+
 /* ==========================================================================
    PAGE
    ========================================================================== */
@@ -293,67 +421,50 @@ function isValidPhoneNumber(countryId, number) {
 export default function AutomationPage() {
   const router = useRouter();
 
-  const [darkMode, setDarkMode] = useState(false);
-
   const [loading, setLoading] = useState(false);
-  const [checkingAccount, setCheckingAccount] = useState(true);
-  const [initializing, setInitializing] = useState(true);
+  const [checkingAccount, setCheckingAccount] =
+    useState(true);
+  const [initializing, setInitializing] =
+    useState(true);
+
+  const [loginName, setLoginName] =
+    useState("");
 
   const [error, setError] = useState("");
   const [shake, setShake] = useState(false);
-  const [invalidFields, setInvalidFields] = useState([]);
+  const [invalidFields, setInvalidFields] =
+    useState([]);
 
-  const [userName, setUserName] = useState("");
-  const [userEmail, setUserEmail] = useState("");
-
-  const [showDaysDropdown, setShowDaysDropdown] = useState(false);
+  const [showDaysDropdown, setShowDaysDropdown] =
+    useState(false);
 
   const daysRef = useRef(null);
 
-  /* ------------------------------------------------------------------------
-     FORM
-     ------------------------------------------------------------------------ */
-
   const [form, setForm] = useState({
-    setupType: "business",
-
-    fullName: "",
-    personalGoal: "Auto Reply",
-
     businessName: "",
     industry: "",
+    customIndustry: "",
+
     email: "",
     location: "",
+
     priceRange: "",
     customPrice: "",
-    serviceDescription: "",
 
-    /*
-     * Country ID is separate from dial code.
-     *
-     * This fixes Canada/USA because both have +1.
-     */
     aiCountry: "AE",
     aiCode: "+971",
     aiNumber: "",
 
-    /*
-     * Support number remains available for business automation.
-     *
-     * If the user leaves it empty, the AI number becomes the support
-     * number automatically.
-     */
-    supportCountry: "AE",
-    supportCode: "+971",
-    supportNumber: "",
-
     workingDays: [],
+
     hours: "",
     customHours: "",
 
+    serviceDescription: "",
+
     /*
+     * Internal only.
      * Never displayed in the UI.
-     * Automatically populated before submission.
      */
     capabilities: BUSINESS_CAPABILITIES,
   });
@@ -364,21 +475,20 @@ export default function AutomationPage() {
 
   useEffect(() => {
     try {
-      const savedTheme = localStorage.getItem("theme");
+      const savedTheme =
+        localStorage.getItem("theme");
 
-      if (savedTheme === "dark") {
-        setDarkMode(true);
+      if (savedTheme) {
+        document.documentElement.dataset.sodahTheme =
+          savedTheme;
       }
-    } catch (err) {
-      console.warn(
-        "[Sodah Update] Could not load theme:",
-        err
-      );
+    } catch {
+      // Theme preference is optional.
     }
   }, []);
 
   /* ==========================================================================
-     INITIAL AUTHENTICATION + ONBOARDING + EXISTING BUSINESS CHECK
+     ACCOUNT INITIALIZATION
      ========================================================================== */
 
   useEffect(() => {
@@ -389,12 +499,6 @@ export default function AutomationPage() {
       setCheckingAccount(true);
 
       try {
-        /*
-         * ---------------------------------------------------------------
-         * 1. GET CURRENT SESSION
-         * ---------------------------------------------------------------
-         */
-
         const {
           data: { session },
           error: sessionError,
@@ -412,203 +516,148 @@ export default function AutomationPage() {
         }
 
         /*
-         * ---------------------------------------------------------------
-         * 2. USER DETAILS
-         * ---------------------------------------------------------------
+         * Load the logged-in user's display name.
+         *
+         * Priority:
+         * 1. full_name
+         * 2. name
+         * 3. email username
          */
-
-        const metadata = user.user_metadata || {};
-
-        const name =
-          metadata.full_name ||
-          metadata.name ||
-          metadata.display_name ||
-          metadata.user_name ||
+        const displayName =
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
           user.email?.split("@")[0] ||
           "there";
 
-        const email = user.email || "";
+        if (mounted) {
+          setLoginName(displayName);
+        }
+
+        const email =
+          user.email || "";
 
         if (!mounted) {
           return;
         }
 
-        setUserName(name);
-        setUserEmail(email);
-
-        /*
-         * Automatically populate login email.
-         */
         setForm((previous) => ({
           ...previous,
-
-          fullName:
-            previous.fullName || name,
-
           email:
             previous.email || email,
-
-          /*
-           * Business capabilities are automatic.
-           */
-          capabilities: BUSINESS_CAPABILITIES,
-
-          /*
-           * Personal goal is automatic.
-           */
-          personalGoal: "Auto Reply",
+          capabilities:
+            BUSINESS_CAPABILITIES,
         }));
 
-        /*
-         * ---------------------------------------------------------------
-         * 3. IMMEDIATELY TRACK ONBOARDING
-         * ---------------------------------------------------------------
-         *
-         * This MUST happen as soon as the authenticated user enters
-         * the page.
-         *
-         * The existing /api/onboarding/track endpoint:
-         *
-         * - authenticates the user
-         * - checks businesses
-         * - creates/updates sodah_onboarding
-         * - preserves followup_stage
-         * - marks onboarding completed when a business already exists
-         *
-         * This keeps the existing onboarding lifecycle intact.
-         */
+        /* ====================================================================
+           EXISTING ONBOARDING TRACKING
+           ==================================================================== */
 
         let onboardingData = null;
 
         try {
-          const onboardingResponse = await fetch(
-            "/api/onboarding/track",
-            {
-              method: "POST",
-
-              headers: {
-                "Content-Type": "application/json",
-
-                Authorization: `Bearer ${session.access_token}`,
-              },
-
-              credentials: "include",
-
-              cache: "no-store",
-
-              body: JSON.stringify({
-                event: "login",
-              }),
-            }
-          );
+          const onboardingResponse =
+            await fetch(
+              "/api/onboarding/track",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                  Authorization:
+                    `Bearer ${session.access_token}`,
+                },
+                credentials: "include",
+                cache: "no-store",
+                body: JSON.stringify({
+                  event: "login",
+                }),
+              }
+            );
 
           onboardingData =
             await onboardingResponse
               .json()
               .catch(() => ({}));
-
-          if (!onboardingResponse.ok) {
-            console.warn(
-              "[Sodah Update] Onboarding tracking returned an error:",
-              onboardingData?.error ||
-                onboardingData?.message ||
-                "Unknown error"
-            );
-          }
         } catch (onboardingError) {
-          /*
-           * Do not prevent the form from opening if onboarding tracking
-           * has a temporary network problem.
-           */
           console.warn(
-            "[Sodah Update] Onboarding tracking failed:",
+            "[Sodah] Onboarding tracking failed:",
             onboardingError
           );
         }
 
-        /*
-         * ---------------------------------------------------------------
-         * 4. EXISTING BUSINESS CHECK
-         * ---------------------------------------------------------------
-         *
-         * We do an explicit businesses table check as well.
-         *
-         * This makes the page independent of whether the onboarding
-         * endpoint returned the business ID.
-         */
+        /* ====================================================================
+           CHECK FOR EXISTING BUSINESS
+           ==================================================================== */
 
         let existingBusiness = null;
 
         /*
-         * FIRST:
-         * Search by authenticated Supabase user ID.
+         * First check authenticated user ID.
          */
-
         const {
           data: businessByUser,
           error: businessUserError,
         } = await supabase
           .from("businesses")
           .select(
-            "id,business_id,user_id,business_name,whatsapp_connected"
+            "id,business_id,user_id,business_name,whatsapp_connected,subscription_plan,subscription_status,subscription_expiry"
           )
           .eq("user_id", user.id)
           .limit(1);
 
         if (businessUserError) {
           console.warn(
-            "[Sodah Update] Business user lookup failed:",
+            "[Sodah] Business user lookup failed:",
             businessUserError
           );
         } else if (
           Array.isArray(businessByUser) &&
           businessByUser.length > 0
         ) {
-          existingBusiness = businessByUser[0];
+          existingBusiness =
+            businessByUser[0];
         }
 
         /*
-         * SECOND:
-         * Search by authenticated email if user_id lookup did not
-         * return a business.
-         *
-         * The email comes from Supabase Auth, never from a browser
-         * supplied arbitrary value.
+         * Second check authenticated email.
          */
-
-        if (!existingBusiness && user.email) {
+        if (
+          !existingBusiness &&
+          user.email
+        ) {
           const {
             data: businessByEmail,
             error: businessEmailError,
           } = await supabase
             .from("businesses")
             .select(
-              "id,business_id,user_id,business_name,whatsapp_connected"
+              "id,business_id,user_id,business_name,whatsapp_connected,subscription_plan,subscription_status,subscription_expiry"
             )
             .eq("email", user.email)
             .limit(1);
 
           if (businessEmailError) {
             console.warn(
-              "[Sodah Update] Business email lookup failed:",
+              "[Sodah] Business email lookup failed:",
               businessEmailError
             );
           } else if (
-            Array.isArray(businessByEmail) &&
+            Array.isArray(
+              businessByEmail
+            ) &&
             businessByEmail.length > 0
           ) {
-            existingBusiness = businessByEmail[0];
+            existingBusiness =
+              businessByEmail[0];
           }
         }
 
         /*
-         * ---------------------------------------------------------------
-         * 5. ONBOARDING API CAN ALSO RETURN THE BUSINESS
-         * ---------------------------------------------------------------
+         * Existing onboarding API fallback.
          */
-
         const onboardingBusinessId =
-          onboardingData?.business_id || "";
+          onboardingData?.business_id ||
+          "";
 
         if (
           !existingBusiness &&
@@ -616,23 +665,55 @@ export default function AutomationPage() {
           onboardingBusinessId
         ) {
           existingBusiness = {
-            business_id: onboardingBusinessId,
+            business_id:
+              onboardingBusinessId,
           };
         }
 
-        /*
-         * ---------------------------------------------------------------
-         * 6. EXISTING BUSINESS FOUND
-         * ---------------------------------------------------------------
-         */
+        /* ====================================================================
+           EXISTING BUSINESS
+           --------------------------------------------------------------------
+           Never reopen onboarding for an existing business. Verify its saved
+           subscription before deciding between /channels and /subscription.
+           ==================================================================== */
 
-        if (
-          existingBusiness?.business_id
-        ) {
+        if (existingBusiness?.business_id) {
+          // The onboarding tracking fallback may only return a business ID.
+          // Fetch the authoritative subscription fields before routing.
+          if (
+            existingBusiness.subscription_status === undefined ||
+            existingBusiness.subscription_expiry === undefined
+          ) {
+            const { data: subscriptionBusiness, error: subscriptionLookupError } =
+              await supabase
+                .from("businesses")
+                .select("business_id,subscription_plan,subscription_status,subscription_expiry")
+                .eq("business_id", String(existingBusiness.business_id))
+                .maybeSingle();
+
+            if (subscriptionLookupError) {
+              throw new Error(
+                "Unable to verify your subscription. Please try again."
+              );
+            }
+
+            if (subscriptionBusiness) {
+              existingBusiness = {
+                ...existingBusiness,
+                ...subscriptionBusiness,
+              };
+            }
+          }
           const businessId =
             String(
               existingBusiness.business_id
             ).trim();
+
+          if (!businessId) {
+            throw new Error(
+              "Your business account was found, but no business ID is available."
+            );
+          }
 
           try {
             localStorage.setItem(
@@ -651,40 +732,40 @@ export default function AutomationPage() {
                 user.email
               );
             }
-          } catch (storageError) {
-            console.warn(
-              "[Sodah Update] Local storage unavailable:",
-              storageError
-            );
+          } catch {
+            // Local persistence is optional.
           }
 
-          /*
-           * Existing account goes directly to Channels.
-           *
-           * No need for the user to fill the setup form again.
-           */
-          router.replace(
-            `/channels?businessId=${encodeURIComponent(
-              businessId
-            )}`
-          );
+          if (hasActiveSubscription(existingBusiness)) {
+            router.replace(
+              `/channels?businessId=${encodeURIComponent(
+                businessId
+              )}`
+            );
+          } else {
+            router.replace(
+              `/subscription?businessId=${encodeURIComponent(
+                businessId
+              )}&returnTo=channels`
+            );
+          }
 
           return;
         }
 
-        /*
-         * ---------------------------------------------------------------
-         * 7. NO BUSINESS
-         * ---------------------------------------------------------------
-         *
-         * User remains on this page and can complete onboarding.
-         */
+        /* ====================================================================
+           NEW BUSINESS
+           --------------------------------------------------------------------
+           KEEP THE FORM OPEN.
+           ==================================================================== */
 
         try {
           localStorage.removeItem(
             "business_id"
           );
-        } catch {}
+        } catch {
+          // Optional cleanup.
+        }
 
         if (mounted) {
           setCheckingAccount(false);
@@ -692,7 +773,7 @@ export default function AutomationPage() {
         }
       } catch (err) {
         console.error(
-          "[Sodah Update] Initialization failed:",
+          "[Sodah] Initialization failed:",
           err
         );
 
@@ -700,9 +781,6 @@ export default function AutomationPage() {
           return;
         }
 
-        /*
-         * Only redirect when the authentication itself is missing.
-         */
         const message =
           err?.message || "";
 
@@ -729,11 +807,13 @@ export default function AutomationPage() {
   }, [router]);
 
   /* ==========================================================================
-     CLOSE DROPDOWNS
+     CLOSE WORKING-DAYS DROPDOWN
      ========================================================================== */
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
+    const handleClickOutside = (
+      event
+    ) => {
       if (
         daysRef.current &&
         !daysRef.current.contains(
@@ -758,179 +838,60 @@ export default function AutomationPage() {
   }, []);
 
   /* ==========================================================================
-     ALREADY HAVE AN ACCOUNT
+     FORM HELPERS
      ========================================================================== */
 
-  const handleAlreadyHaveAccount =
-    async () => {
-      if (
-        checkingAccount ||
-        loading
-      ) {
-        return;
-      }
-
-      setCheckingAccount(true);
-      setError("");
-
-      try {
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
-
-        if (sessionError) {
-          throw sessionError;
-        }
-
-        const user = session?.user;
-
-        if (!user) {
-          router.replace("/login");
-          return;
-        }
-
-        let business = null;
-
-        /*
-         * Check user ID first.
-         */
-        const {
-          data: byUser,
-          error: byUserError,
-        } = await supabase
-          .from("businesses")
-          .select(
-            "id,business_id,user_id,business_name,whatsapp_connected"
-          )
-          .eq("user_id", user.id)
-          .limit(1);
-
-        if (byUserError) {
-          console.warn(
-            "[Sodah Update] Existing account user lookup failed:",
-            byUserError
-          );
-        } else if (
-          Array.isArray(byUser) &&
-          byUser.length > 0
-        ) {
-          business = byUser[0];
-        }
-
-        /*
-         * Check email second.
-         */
-        if (!business && user.email) {
-          const {
-            data: byEmail,
-            error: byEmailError,
-          } = await supabase
-            .from("businesses")
-            .select(
-              "id,business_id,user_id,business_name,whatsapp_connected"
-            )
-            .eq("email", user.email)
-            .limit(1);
-
-          if (byEmailError) {
-            console.warn(
-              "[Sodah Update] Existing account email lookup failed:",
-              byEmailError
-            );
-          } else if (
-            Array.isArray(byEmail) &&
-            byEmail.length > 0
-          ) {
-            business = byEmail[0];
-          }
-        }
-
-        if (business?.business_id) {
-          const businessId =
-            String(
-              business.business_id
-            ).trim();
-
-          localStorage.setItem(
-            "business_id",
-            businessId
-          );
-
-          localStorage.setItem(
-            "user_id",
-            user.id
-          );
-
-          if (user.email) {
-            localStorage.setItem(
-              "user_email",
-              user.email
-            );
-          }
-
-          router.replace(
-            `/channels?businessId=${encodeURIComponent(
-              businessId
-            )}`
-          );
-
-          return;
-        }
-
-        setError(
-          "No existing business account was found. Please complete your setup below."
-        );
-      } catch (err) {
-        console.error(
-          "[Sodah Update] Existing account check failed:",
-          err
-        );
-
-        setError(
-          "We could not check your existing account right now. Please try again."
-        );
-      } finally {
-        setCheckingAccount(false);
-      }
-    };
-
-  /* ==========================================================================
-     MULTI SELECT
-     ========================================================================== */
-
-  const toggleSelection = (
+  const setField = (
     field,
     value
   ) => {
     setForm((previous) => ({
       ...previous,
+      [field]: value,
+    }));
 
-      [field]:
-        previous[field].includes(value)
-          ? previous[field].filter(
-              (item) => item !== value
+    setInvalidFields((previous) =>
+      previous.filter(
+        (item) => item !== field
+      )
+    );
+  };
+
+  const toggleWorkingDay = (
+    day
+  ) => {
+    setForm((previous) => ({
+      ...previous,
+
+      workingDays:
+        previous.workingDays.includes(day)
+          ? previous.workingDays.filter(
+              (item) => item !== day
             )
           : [
-              ...previous[field],
-              value,
+              ...previous.workingDays,
+              day,
             ],
     }));
+
+    setInvalidFields((previous) =>
+      previous.filter(
+        (item) =>
+          item !== "workingDays"
+      )
+    );
   };
 
-  const displaySelected = (
-    items,
-    placeholder
-  ) => {
-    if (
-      !items ||
-      !items.length
-    ) {
-      return placeholder;
-    }
+  const displaySelectedDays =
+    () => {
+      if (!form.workingDays.length) {
+        return "Choose working days";
+      }
 
-    return items.join(", ");
-  };
+      return form.workingDays.join(
+        ", "
+      );
+    };
 
   /* ==========================================================================
      SUBMIT
@@ -943,47 +904,59 @@ export default function AutomationPage() {
 
       const invalid = [];
 
-      /*
-       * Business validation.
-       */
+      /* Business name */
       if (
-        form.setupType ===
-        "business"
+        !form.businessName.trim()
       ) {
-        if (
-          !form.businessName.trim()
-        ) {
-          invalid.push(
-            "businessName"
-          );
-        }
-
-        if (!form.industry) {
-          invalid.push(
-            "industry"
-          );
-        }
+        invalid.push(
+          "businessName"
+        );
       }
 
-      /*
-       * Personal validation.
-       */
-      if (
-        form.setupType ===
-        "personal"
-      ) {
-        if (
-          !form.fullName.trim()
-        ) {
-          invalid.push(
-            "fullName"
-          );
-        }
+      /* Business email */
+      if (!form.email.trim()) {
+        invalid.push("email");
       }
 
-      /*
-       * WhatsApp number is required in both modes.
-       */
+      /* Industry */
+      if (!form.industry) {
+        invalid.push("industry");
+      }
+
+      /* Custom industry */
+      if (
+        form.industry ===
+          "Other / Add industry" &&
+        !form.customIndustry.trim()
+      ) {
+        invalid.push(
+          "customIndustry"
+        );
+      }
+
+      /* Business location */
+      if (
+        !isDetailedBusinessLocation(
+          form.location
+        )
+      ) {
+        invalid.push("location");
+      }
+
+      /* Price */
+      const finalPrice =
+        form.priceRange ===
+        "Custom pricing"
+          ? form.customPrice.trim()
+          : form.priceRange;
+
+      if (!finalPrice) {
+        invalid.push(
+          "priceRange"
+        );
+      }
+
+      /* WhatsApp number */
       if (
         !isValidPhoneNumber(
           form.aiCountry,
@@ -995,78 +968,74 @@ export default function AutomationPage() {
         );
       }
 
-      /*
-       * Business support number is optional.
-       *
-       * If supplied, validate it.
-       */
+      /* Working days */
       if (
-        form.setupType ===
-          "business" &&
-        form.supportNumber.trim() &&
-        !isValidPhoneNumber(
-          form.supportCountry,
-          form.supportNumber
-        )
+        !form.workingDays.length
       ) {
         invalid.push(
-          "supportNumber"
+          "workingDays"
         );
       }
 
+      /* Working hours */
+      const finalHours =
+        form.hours ===
+        "Custom hours"
+          ? form.customHours.trim()
+          : form.hours;
+
+      if (!finalHours) {
+        invalid.push("hours");
+      }
+
+      /* Business description: required, minimum 20 words, maximum 500 characters. */
+      const descriptionWordCount = countWords(
+        form.serviceDescription
+      );
+
+      if (
+        !form.serviceDescription.trim() ||
+        descriptionWordCount < MIN_DESCRIPTION_WORDS ||
+        form.serviceDescription.length > MAX_DESCRIPTION_CHARACTERS
+      ) {
+        invalid.push("serviceDescription");
+      }
+
+      /* ======================================================================
+         VALIDATION FAILURE
+         ====================================================================== */
+
       if (invalid.length > 0) {
-        setInvalidFields(
-          invalid
-        );
+        setInvalidFields(invalid);
 
-        if (
-          invalid.includes(
-            "aiNumber"
-          )
-        ) {
-          const selectedCountry =
-            countryById(
-              form.aiCountry
-            );
+        const locationMessage =
+          invalid.includes("location")
+            ? locationErrorMessage(
+                form.location
+              )
+            : "";
 
-          if (
-            selectedCountry?.id ===
-              "CA" ||
-            selectedCountry?.id ===
-              "US"
-          ) {
-            setError(
-              "Please enter a valid 10-digit Canada or USA WhatsApp number."
-            );
-          } else {
-            setError(
-              "Please enter a valid WhatsApp number."
-            );
-          }
-        } else {
-          setError(
-            "Please complete the required fields."
-          );
-        }
+        const message =
+          invalid.includes("serviceDescription") &&
+          descriptionWordCount < MIN_DESCRIPTION_WORDS
+            ? `Please describe your business in at least ${MIN_DESCRIPTION_WORDS} words. You currently have ${descriptionWordCount} word${descriptionWordCount === 1 ? "" : "s"}. (${form.serviceDescription.length}/${MAX_DESCRIPTION_CHARACTERS} characters).`
+            : locationMessage ||
+              (invalid.includes("serviceDescription") && form.serviceDescription.length > MAX_DESCRIPTION_CHARACTERS
+                ? `Your business description cannot exceed ${MAX_DESCRIPTION_CHARACTERS} characters.`
+                : "Please complete the required business information.");
 
+        setError(message);
         setShake(true);
 
         setTimeout(
-          () => {
-            setShake(false);
-          },
+          () => setShake(false),
           400
         );
 
-        setTimeout(
-          () => {
-            setError("");
-            setInvalidFields(
-              []
-            );
-          },
-          4000
-        );
+        setTimeout(() => {
+          setError("");
+          setInvalidFields([]);
+        }, 5000);
 
         return;
       }
@@ -1079,62 +1048,35 @@ export default function AutomationPage() {
       }
 
       setLoading(true);
-      setError("");
 
       try {
-        /*
-         * ---------------------------------------------------------------
-         * GET AUTHENTICATED USER
-         * ---------------------------------------------------------------
-         */
+        /* ====================================================================
+           CURRENT SESSION
+           ==================================================================== */
 
         const {
-          data: { user },
-          error: authError,
-        } =
-          await supabase.auth.getUser();
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
 
-        if (authError) {
-          throw authError;
+        if (sessionError) {
+          throw sessionError;
         }
 
-        if (!user) {
+        const user = session?.user;
+
+        if (
+          !user ||
+          !session?.access_token
+        ) {
           throw new Error(
             "Your session has expired. Please log in again."
           );
         }
 
-        /*
-         * ---------------------------------------------------------------
-         * AUTOMATIC CAPABILITIES
-         * ---------------------------------------------------------------
-         *
-         * The user does not choose capabilities anymore.
-         */
-
-        const automaticCapabilities =
-          form.setupType ===
-          "business"
-            ? BUSINESS_CAPABILITIES
-            : PERSONAL_CAPABILITIES;
-
-        /*
-         * ---------------------------------------------------------------
-         * AUTOMATIC PERSONAL GOAL
-         * ---------------------------------------------------------------
-         */
-
-        const automaticPersonalGoal =
-          form.setupType ===
-          "personal"
-            ? "Auto Reply"
-            : "";
-
-        /*
-         * ---------------------------------------------------------------
-         * NUMBERS
-         * ---------------------------------------------------------------
-         */
+        /* ====================================================================
+           PHONE
+           ==================================================================== */
 
         const aiNumber =
           formatInternationalNumber(
@@ -1143,63 +1085,51 @@ export default function AutomationPage() {
           );
 
         /*
-         * Business support number:
-         *
-         * If user enters one, use it.
-         *
-         * If not, use the same WhatsApp number as the AI/support
-         * number so the AI always has a support number.
+         * Business WhatsApp number is automatically
+         * used as the support number.
          */
         const supportNumber =
-          form.setupType ===
-            "business" &&
-          form.supportNumber.trim()
-            ? formatInternationalNumber(
-                form.supportCountry,
-                form.supportNumber
-              )
-            : aiNumber;
+          aiNumber;
 
-        /*
-         * ---------------------------------------------------------------
-         * BUILD PAYLOAD
-         * ---------------------------------------------------------------
-         */
+        /* ====================================================================
+           INDUSTRY
+           ==================================================================== */
+
+        const finalIndustry =
+          form.industry ===
+          "Other / Add industry"
+            ? form.customIndustry.trim()
+            : form.industry;
+
+        /* ====================================================================
+           AUTOMATIC AI CONFIGURATION
+           --------------------------------------------------------------------
+           Not shown to the user.
+           ==================================================================== */
+
+        const automaticCapabilities =
+          BUSINESS_CAPABILITIES.join(
+            ", "
+          );
+
+        /* ====================================================================
+           API PAYLOAD
+           ==================================================================== */
 
         const apiPayload = {
           userId: user.id,
 
-          setupType:
-            form.setupType,
-
           /*
-           * Personal
+           * Keep this internally for the existing
+           * onboarding API implementation.
            */
-          fullName:
-            form.fullName.trim() ||
-            user.user_metadata
-              ?.full_name ||
-            user.email
-              ?.split("@")[0] ||
-            "",
+          setupType: "business",
 
-          personalGoal:
-            automaticPersonalGoal,
-
-          /*
-           * Business
-           */
           businessName:
-            form.setupType ===
-            "business"
-              ? form.businessName.trim()
-              : form.fullName.trim(),
+            form.businessName.trim(),
 
           industry:
-            form.setupType ===
-            "business"
-              ? form.industry
-              : "Personal Use",
+            finalIndustry,
 
           email:
             form.email.trim() ||
@@ -1210,100 +1140,53 @@ export default function AutomationPage() {
             form.location.trim(),
 
           priceRange:
-            form.priceRange ===
-            "Custom Pricing"
-              ? form.customPrice.trim()
-              : form.priceRange,
+            finalPrice,
 
           serviceDescription:
             form.serviceDescription.trim(),
 
           /*
-           * Numbers
+           * Business WhatsApp.
            */
           aiNumber,
 
+          /*
+           * Automatically assigned.
+           */
           supportNumber,
 
-          /*
-           * Schedule
-           */
           workingDays:
-            Array.isArray(
-              form.workingDays
-            )
-              ? form.workingDays.join(
-                  ", "
-                )
-              : "",
-
-          hours:
-            form.hours ===
-            "Custom Hours"
-              ? form.customHours.trim()
-              : form.hours,
-
-          /*
-           * Automatic AI capabilities.
-           *
-           * Never depend on what was in the browser state.
-           */
-          capabilities:
-            automaticCapabilities.join(
+            form.workingDays.join(
               ", "
             ),
+
+          hours:
+            finalHours,
+
+          /*
+           * Automatically configured.
+           */
+          capabilities:
+            automaticCapabilities,
         };
 
-        console.log(
-          "[Sodah Update] Saving automation setup:",
-          {
-            ...apiPayload,
-            aiNumber:
-              aiNumber
-                ? `${aiNumber.slice(
-                    0,
-                    -4
-                  )}****`
-                : "",
-            supportNumber:
-              supportNumber
-                ? `${supportNumber.slice(
-                    0,
-                    -4
-                  )}****`
-                : "",
-          }
-        );
-
-        /*
-         * ---------------------------------------------------------------
-         * SAVE BUSINESS THROUGH INTERNAL API
-         * ---------------------------------------------------------------
-         */
+        /* ====================================================================
+           SAVE BUSINESS
+           ==================================================================== */
 
         const apiRes =
           await fetch(
             "/api/business/automation",
             {
               method: "POST",
-
               headers: {
                 "Content-Type":
                   "application/json",
-
-                Authorization: `Bearer ${
-                  (
-                    await supabase.auth.getSession()
-                  )?.data?.session
-                    ?.access_token || ""
-                }`,
+                Authorization:
+                  `Bearer ${session.access_token}`,
               },
-
-              credentials:
-                "include",
-
+              credentials: "include",
               cache: "no-store",
-
               body: JSON.stringify(
                 apiPayload
               ),
@@ -1321,11 +1204,9 @@ export default function AutomationPage() {
           );
         }
 
-        /*
-         * ---------------------------------------------------------------
-         * API ERROR
-         * ---------------------------------------------------------------
-         */
+        /* ====================================================================
+           BUSINESS ALREADY EXISTS
+           ==================================================================== */
 
         if (
           !apiRes.ok ||
@@ -1350,11 +1231,43 @@ export default function AutomationPage() {
               user.id
             );
 
-            router.replace(
-              `/channels?businessId=${encodeURIComponent(
-                existingBusinessId
-              )}`
-            );
+            if (user.email) {
+              localStorage.setItem(
+                "user_email",
+                user.email
+              );
+            }
+
+            /*
+             * Existing business must never return to onboarding. Verify its
+             * stored subscription status and expiry before choosing a route.
+             */
+            const { data: existingSubscription, error: existingSubscriptionError } =
+              await supabase
+                .from("businesses")
+                .select("business_id,subscription_plan,subscription_status,subscription_expiry")
+                .eq("business_id", existingBusinessId)
+                .maybeSingle();
+
+            if (existingSubscriptionError) {
+              throw new Error(
+                "Unable to verify your subscription. Please try again."
+              );
+            }
+
+            if (hasActiveSubscription(existingSubscription)) {
+              router.replace(
+                `/channels?businessId=${encodeURIComponent(
+                  existingBusinessId
+                )}`
+              );
+            } else {
+              router.replace(
+                `/subscription?businessId=${encodeURIComponent(
+                  existingBusinessId
+                )}&returnTo=channels`
+              );
+            }
 
             return;
           }
@@ -1365,11 +1278,9 @@ export default function AutomationPage() {
           );
         }
 
-        /*
-         * ---------------------------------------------------------------
-         * BUSINESS ID
-         * ---------------------------------------------------------------
-         */
+        /* ====================================================================
+           BUSINESS ID
+           ==================================================================== */
 
         const businessId =
           String(
@@ -1383,11 +1294,9 @@ export default function AutomationPage() {
           );
         }
 
-        /*
-         * ---------------------------------------------------------------
-         * STORE BUSINESS CONTEXT
-         * ---------------------------------------------------------------
-         */
+        /* ====================================================================
+           LOCAL BUSINESS CONTEXT
+           ==================================================================== */
 
         localStorage.setItem(
           "business_id",
@@ -1406,123 +1315,94 @@ export default function AutomationPage() {
           );
         }
 
-        /*
-         * ---------------------------------------------------------------
-         * WELCOME EMAIL
-         * ---------------------------------------------------------------
-         *
-         * Preserved from the existing implementation.
-         *
-         * Failure here must never undo a successful business setup.
-         */
+        /* ====================================================================
+           WELCOME EMAIL
+           --------------------------------------------------------------------
+           Non-blocking.
+           ==================================================================== */
 
         try {
-          const emailResponse =
-            await fetch(
-              "/api/auth/welcome-email",
-              {
-                method: "POST",
+          await fetch(
+            "/api/auth/welcome-email",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              credentials: "include",
+              body: JSON.stringify({
+                user_id:
+                  user.id,
 
-                headers: {
-                  "Content-Type":
-                    "application/json",
-                },
+                email:
+                  user.email ||
+                  apiPayload.email ||
+                  "",
 
-                credentials:
-                  "include",
+                full_name:
+                  user.user_metadata
+                    ?.full_name ||
+                  user.user_metadata
+                    ?.name ||
+                  user.email
+                    ?.split("@")[0] ||
+                  "",
 
-                body: JSON.stringify(
-                  {
-                    user_id:
-                      user.id,
+                business_name:
+                  apiPayload.businessName,
 
-                    email:
-                      user.email ||
-                      apiPayload.email ||
-                      "",
-
-                    full_name:
-                      apiPayload.fullName ||
-                      userName ||
-                      "",
-
-                    business_name:
-                      apiPayload.businessName ||
-                      "",
-
-                    business_id:
-                      businessId,
-                  }
-                ),
-              }
-            );
-
-          if (
-            !emailResponse.ok
-          ) {
-            const emailData =
-              await emailResponse
-                .json()
-                .catch(
-                  () => ({})
-                );
-
-            console.warn(
-              "[Sodah Update] Welcome email was not sent:",
-              emailData?.error ||
-                emailData?.message ||
-                "Unknown error"
-            );
-          }
-        } catch (
-          emailError
-        ) {
+                business_id:
+                  businessId,
+              }),
+            }
+          );
+        } catch (emailError) {
           console.warn(
-            "[Sodah Update] Welcome email request failed:",
+            "[Sodah] Welcome email failed:",
             emailError
           );
         }
 
-        /*
-         * ---------------------------------------------------------------
-         * SUCCESS
-         * ---------------------------------------------------------------
-         */
-
-        setError(
-          "Setup saved successfully."
-        );
+        /* ====================================================================
+           NEW BUSINESS
+           --------------------------------------------------------------------
+           IMPORTANT:
+           DO NOT GO DIRECTLY TO CHANNELS.
+           
+           New business:
+             1. Business saved.
+             2. Subscription page.
+             3. Subscription selected.
+             4. Subscription page sends user to workspace.
+           ==================================================================== */
 
         router.replace(
-          `/channels?businessId=${encodeURIComponent(
+          `/subscription?businessId=${encodeURIComponent(
             businessId
-          )}`
+          )}&onboarding=1`
         );
       } catch (err) {
         console.error(
-          "[Sodah Update] Submission failed:",
+          "[Sodah] Submission failed:",
           err
         );
 
         setError(
           err?.message ||
-            "Failed to save your setup. Please try again."
+            "Failed to save your business setup. Please try again."
         );
 
         setShake(true);
 
         setTimeout(
-          () => {
-            setShake(false);
-          },
+          () => setShake(false),
           400
         );
 
         setTimeout(
-          () => {
-            setError("");
-          },
-          5000
+          () => setError(""),
+          6000
         );
       } finally {
         setLoading(false);
@@ -1530,51 +1410,77 @@ export default function AutomationPage() {
     };
 
   /* ==========================================================================
-     LOADING STATE
+     INITIAL LOADING
      ========================================================================== */
 
   if (initializing) {
     return (
-      <main className="min-h-screen w-full bg-[#020617] text-white flex items-center justify-center">
-        <div className="fixed inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-green-500/10 blur-[120px]" />
-
-          <div className="absolute top-1/3 -right-40 w-[500px] h-[500px] rounded-full bg-cyan-500/10 blur-[120px]" />
-
-          <div className="absolute bottom-[-200px] left-1/3 w-[500px] h-[500px] rounded-full bg-indigo-500/10 blur-[140px]" />
+      <main className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#030712] px-6 text-white">
+        {/* Premium ambient background */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+          <div className="absolute -left-40 -top-40 h-[520px] w-[520px] rounded-full bg-emerald-400/[0.12] blur-[140px]" />
+          <div className="absolute -right-40 top-[18%] h-[520px] w-[520px] rounded-full bg-cyan-400/[0.10] blur-[150px]" />
+          <div className="absolute -bottom-64 left-[28%] h-[560px] w-[560px] rounded-full bg-blue-500/[0.10] blur-[160px]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(15,23,42,0.12),rgba(2,6,23,0.78))]" />
         </div>
 
-        <div className="relative z-10 flex flex-col items-center justify-center px-6 text-center">
-          <div className="loadingRing" />
+        <section className="relative z-10 flex w-full max-w-md flex-col items-center text-center">
+          <div className="mb-10 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-300/20 bg-white/[0.06] shadow-[0_0_40px_rgba(16,185,129,0.12)] backdrop-blur-xl">
+              <svg viewBox="0 0 24 24" className="h-6 w-6 text-emerald-300" fill="none" aria-hidden="true">
+                <path d="M5 18.5 6.3 14A7.5 7.5 0 1 1 9 17.3L5 18.5Z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M9 9.2c.4 2.2 2 3.8 4.2 4.4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+              </svg>
+            </div>
+            <div className="text-left">
+              <div className="text-xl font-semibold tracking-[-0.04em]">sodah<span className="text-emerald-300">.io</span></div>
+              <div className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.24em] text-white/40">Business automation</div>
+            </div>
+          </div>
 
-          <h2 className="mt-6 text-lg font-semibold text-white">
-            Preparing your Sodah workspace
-          </h2>
+          <div className="relative mb-8 flex h-24 w-24 items-center justify-center">
+            <div className="absolute inset-0 rounded-full border border-white/[0.06]" />
+            <div className="absolute inset-1 rounded-full border border-emerald-300/10" />
+            <div className="premiumLoadingRing" />
+            <div className="absolute inset-[19px] rounded-full bg-emerald-300/[0.07] shadow-[0_0_34px_rgba(52,211,153,0.10)]" />
+            <svg viewBox="0 0 24 24" className="relative z-10 h-7 w-7 text-emerald-300" fill="none" aria-hidden="true">
+              <path d="M5 18.5 6.3 14A7.5 7.5 0 1 1 9 17.3L5 18.5Z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M9 9.2c.4 2.2 2 3.8 4.2 4.4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+            </svg>
+          </div>
 
-          <p className="mt-2 text-sm text-white/45">
-            Checking your account and setup...
-          </p>
-        </div>
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-300/80">One moment, please</p>
+          <h2 className="text-2xl font-semibold tracking-[-0.04em] sm:text-[28px]">Preparing your workspace</h2>
+          <p className="mt-3 max-w-xs text-sm leading-6 text-slate-300/60">Checking your account and getting your business experience ready.</p>
+
+          <div className="mt-8 h-1 w-44 overflow-hidden rounded-full bg-white/[0.07]">
+            <div className="premiumLoadingBar h-full w-2/5 rounded-full bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-300" />
+          </div>
+          <p className="mt-4 text-[11px] tracking-wide text-white/30">Secure setup · Sodah.io</p>
+        </section>
 
         <style jsx>{`
-          .loadingRing {
-            width: 42px;
-            height: 42px;
-            border-radius: 999px;
-            border: 3px solid rgba(255, 255, 255, 0.1);
-            border-top-color: rgba(
-              74,
-              222,
-              128,
-              0.95
-            );
-            animation: spin 0.8s linear infinite;
+          .premiumLoadingRing {
+            position: absolute;
+            inset: 0;
+            border-radius: 9999px;
+            border: 2px solid transparent;
+            border-top-color: rgba(110, 231, 183, 0.95);
+            border-right-color: rgba(45, 212, 191, 0.45);
+            animation: sodahSpin 1.15s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite;
           }
-
-          @keyframes spin {
-            to {
-              transform: rotate(360deg);
-            }
+          .premiumLoadingBar {
+            animation: sodahProgress 1.8s ease-in-out infinite;
+            transform-origin: left center;
+          }
+          @keyframes sodahSpin { to { transform: rotate(360deg); } }
+          @keyframes sodahProgress {
+            0% { transform: translateX(-110%) scaleX(0.55); opacity: 0.55; }
+            50% { transform: translateX(90%) scaleX(1); opacity: 1; }
+            100% { transform: translateX(270%) scaleX(0.55); opacity: 0.55; }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .premiumLoadingRing, .premiumLoadingBar { animation-duration: 4s; }
           }
         `}</style>
       </main>
@@ -1582,1128 +1488,661 @@ export default function AutomationPage() {
   }
 
   /* ==========================================================================
-     RENDER
+     MAIN PAGE
      ========================================================================== */
 
   return (
     <main
-      className={`min-h-screen w-full ${
-        darkMode ? "dark" : ""
-      } bg-[#020617] text-white overflow-x-hidden`}
+      className={`min-h-screen w-full overflow-x-hidden bg-[#020617] text-white ${
+        shake ? "shake" : ""
+      }`}
     >
-      {/* =====================================================================
-          PREMIUM BACKGROUND
-          ===================================================================== */}
+      {/* ======================================================================
+          BACKGROUND
+          ====================================================================== */}
 
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-green-500/10 blur-[120px]" />
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-48 -top-48 h-[560px] w-[560px] rounded-full bg-emerald-500/[0.08] blur-[150px]" />
 
-        <div className="absolute top-1/3 -right-40 w-[500px] h-[500px] rounded-full bg-cyan-500/10 blur-[120px]" />
+        <div className="absolute -right-56 top-1/3 h-[620px] w-[620px] rounded-full bg-cyan-500/[0.07] blur-[170px]" />
 
-        <div className="absolute bottom-[-200px] left-1/3 w-[500px] h-[500px] rounded-full bg-indigo-500/10 blur-[140px]" />
+        <div className="absolute bottom-[-300px] left-1/3 h-[650px] w-[650px] rounded-full bg-blue-500/[0.06] blur-[180px]" />
       </div>
 
-      {/* =====================================================================
+      {/* ======================================================================
           HEADER
-          ===================================================================== */}
+          ====================================================================== */}
 
-      <header className="relative z-10 w-full px-6 sm:px-10 py-6">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() =>
-              router.push(
-                "/welcome"
-              )
-            }
-            className="flex items-center gap-3 group"
-          >
-            <div className="w-11 h-11 rounded-2xl bg-white/10 border border-white/10 backdrop-blur-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition">
+      <header className="relative z-10 px-5 py-5 sm:px-8">
+        <div className="mx-auto flex max-w-4xl items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06]">
               <img
                 src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
                 alt="WhatsApp"
-                className="w-7 h-7"
+                className="h-6 w-6"
               />
             </div>
 
-            <div className="text-left">
-              <div className="font-bold text-lg tracking-tight">
+            <div>
+              <div className="text-base font-black tracking-tight">
                 sodah.io
               </div>
 
-              <div className="text-xs text-white/45">
-                WhatsApp Automation
+              <div className="text-[10px] text-white/35">
+                Business Automation
               </div>
             </div>
-          </button>
-
-          <div className="hidden sm:flex items-center gap-2 text-xs text-white/45">
-            <span className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_12px_rgba(74,222,128,0.8)]" />
-
-            Secure setup
           </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              router.push("/login")
+            }
+            className="text-xs font-semibold text-white/45 transition hover:text-white"
+          >
+            Already have an account?{" "}
+            <span className="text-emerald-300">
+              Sign in
+            </span>
+          </button>
         </div>
       </header>
 
-      {/* =====================================================================
-          MAIN
-          ===================================================================== */}
+      {/* ======================================================================
+          PAGE CONTENT
+          ====================================================================== */}
 
-      <section className="relative z-10 px-4 sm:px-6 pb-10">
-        <div
-          className={`max-w-5xl mx-auto transition-all duration-300 ${
-            shake
-              ? "shake"
-              : ""
-          }`}
-        >
-          {/* =================================================================
-              GREETING
-              ================================================================= */}
+      <section className="relative z-10 px-4 pb-12 pt-7 sm:px-6">
+        <div className="mx-auto max-w-4xl">
 
-          <div className="max-w-3xl mx-auto mb-8">
-            <p className="text-white/55 text-sm sm:text-base mb-2">
-              Hello{" "}
-              {userName ||
-                "there"}{" "}
-              👋
+          {/* ==================================================================
+              WELCOME / TITLE
+              ================================================================== */}
+
+          <div className="mx-auto mb-7 max-w-3xl text-center">
+            <p className="mb-2 text-sm font-medium text-white/45">
+              Hello {loginName || "there"} 👋
             </p>
 
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">
-              Tell us more about your business
+            <h1 className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
+              Tell us about your business
             </h1>
 
-            <p className="mt-3 text-white/50 text-sm sm:text-base max-w-2xl">
-              Give us a few details so we can personalize
-              your automation experience and get everything
-              ready for you.
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-white/40">
+              Add your business details to
+              get started.
             </p>
           </div>
 
-          {/* =================================================================
-              MAIN CARD
-              ================================================================= */}
+          {/* ==================================================================
+              BUSINESS FORM
+              ================================================================== */}
 
-          <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.055] backdrop-blur-2xl shadow-[0_30px_100px_rgba(0,0,0,0.45)]">
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-green-400/70 to-transparent" />
+          <div className="rounded-[26px] border border-white/10 bg-[#0b1220]/90 shadow-[0_25px_80px_rgba(0,0,0,0.38)] backdrop-blur-xl">
+            <div className="p-5 sm:p-7 md:p-8">
 
-            <div className="p-5 sm:p-8 md:p-10">
-              {/* =============================================================
-                  SETUP TYPE
-                  ============================================================= */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <p className="text-sm font-semibold text-white">
-                      What are you setting up?
-                    </p>
+                {/* ============================================================
+                    BUSINESS NAME
+                    ============================================================ */}
 
-                    <p className="text-xs text-white/40 mt-1">
-                      Choose the setup that fits your needs.
-                    </p>
-                  </div>
+                <Field
+                  label="Business name"
+                  required
+                  error={invalidFields.includes(
+                    "businessName"
+                  )}
+                >
+                  <input
+                    className="premiumInput"
+                    placeholder="e.g. Sodah Clinic"
+                    value={
+                      form.businessName
+                    }
+                    onChange={(event) =>
+                      setField(
+                        "businessName",
+                        event.target.value
+                      )
+                    }
+                  />
+                </Field>
+
+                {/* ============================================================
+                    BUSINESS EMAIL
+                    ============================================================ */}
+
+                <Field
+                  label="Business email"
+                  required
+                  error={invalidFields.includes(
+                    "email"
+                  )}
+                >
+                  <input
+                    className="premiumInput"
+                    type="email"
+                    placeholder="business@example.com"
+                    value={form.email}
+                    onChange={(event) =>
+                      setField(
+                        "email",
+                        event.target.value
+                      )
+                    }
+                  />
+                </Field>
+
+                {/* ============================================================
+                    BUSINESS LOCATION
+                    ============================================================ */}
+
+                <Field
+                  label="Business location"
+                  required
+                  error={invalidFields.includes(
+                    "location"
+                  )}
+                >
+                  <input
+                    className="premiumInput"
+                    placeholder="Google Maps link or exact address"
+                    value={
+                      form.location
+                    }
+                    onChange={(event) =>
+                      setField(
+                        "location",
+                        event.target.value
+                      )
+                    }
+                  />
+                </Field>
+
+                {/* ============================================================
+                    INDUSTRY
+                    ============================================================ */}
+
+                <Field
+                  label="Industry"
+                  required
+                  error={invalidFields.includes(
+                    "industry"
+                  )}
+                >
+                  <select
+                    className="premiumInput"
+                    value={
+                      form.industry
+                    }
+                    onChange={(event) =>
+                      setField(
+                        "industry",
+                        event.target.value
+                      )
+                    }
+                  >
+                    <option value="">
+                      Choose your industry
+                    </option>
+
+                    {industries.map(
+                      (industry) => (
+                        <option
+                          key={industry}
+                          value={industry}
+                        >
+                          {industry}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </Field>
+
+                {/* ============================================================
+                    CUSTOM INDUSTRY
+                    ============================================================ */}
+
+                {form.industry ===
+                  "Other / Add industry" && (
+                  <Field
+                    label="Your industry"
+                    required
+                    error={invalidFields.includes(
+                      "customIndustry"
+                    )}
+                  >
+                    <input
+                      className="premiumInput"
+                      placeholder="Enter your industry"
+                      value={
+                        form.customIndustry
+                      }
+                      onChange={(event) =>
+                        setField(
+                          "customIndustry",
+                          event.target.value
+                        )
+                      }
+                    />
+                  </Field>
+                )}
+
+                {/* ============================================================
+                    BUSINESS WHATSAPP
+                    ============================================================ */}
+
+                <div className="md:col-span-2">
+                  <Field
+                    label="Business WhatsApp number"
+                    required
+                    error={invalidFields.includes(
+                      "aiNumber"
+                    )}
+                  >
+                    <PhoneInput
+                      countries={
+                        countries
+                      }
+                      valueCountry={
+                        form.aiCountry
+                      }
+                      valueCode={
+                        form.aiCode
+                      }
+                      valueNumber={
+                        form.aiNumber
+                      }
+                      placeholder="WhatsApp number"
+                      invalid={invalidFields.includes(
+                        "aiNumber"
+                      )}
+                      onCountryChange={(
+                        country
+                      ) =>
+                        setForm(
+                          (previous) => ({
+                            ...previous,
+                            aiCountry:
+                              country.id,
+                            aiCode:
+                              country.code,
+                          })
+                        )
+                      }
+                      onNumberChange={(
+                        number
+                      ) =>
+                        setField(
+                          "aiNumber",
+                          number
+                        )
+                      }
+                    />
+                  </Field>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  {/* BUSINESS */}
+                {/* ============================================================
+                    WORKING DAYS
+                    ============================================================ */}
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm(
-                        (
-                          previous
-                        ) => ({
-                          ...previous,
-
-                          setupType:
-                            "business",
-
-                          capabilities:
-                            BUSINESS_CAPABILITIES,
-                        })
-                      )
-                    }
-                    className={`group relative h-[58px] rounded-2xl border transition-all duration-200 ${
-                      form.setupType ===
-                      "business"
-                        ? "bg-green-500 border-green-400 shadow-[0_12px_30px_rgba(34,197,94,0.22)]"
-                        : "bg-white/[0.035] border-white/10 hover:bg-white/[0.07]"
-                    }`}
+                <Field
+                  label="Working days"
+                  required
+                  error={invalidFields.includes(
+                    "workingDays"
+                  )}
+                >
+                  <div
+                    className="relative"
+                    ref={daysRef}
                   >
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="text-lg">
-                        🏢
+                    <button
+                      type="button"
+                      className={`premiumInput flex items-center justify-between text-left ${
+                        invalidFields.includes(
+                          "workingDays"
+                        )
+                          ? "inputError"
+                          : ""
+                      }`}
+                      onClick={() =>
+                        setShowDaysDropdown(
+                          (current) =>
+                            !current
+                        )
+                      }
+                    >
+                      <span className="truncate">
+                        {displaySelectedDays()}
                       </span>
 
-                      <span className="font-semibold text-sm">
-                        Business
+                      <span className="text-white/35">
+                        ⌄
                       </span>
-                    </div>
+                    </button>
 
-                    {form.setupType ===
-                      "business" && (
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white">
-                        ✓
-                      </span>
+                    {showDaysDropdown && (
+                      <MultiDropdown>
+                        {workingDaysList.map(
+                          (day) => (
+                            <label
+                              key={day}
+                              className="dropdownItem"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={form.workingDays.includes(
+                                  day
+                                )}
+                                onChange={() =>
+                                  toggleWorkingDay(
+                                    day
+                                  )
+                                }
+                              />
+
+                              <span>
+                                {day}
+                              </span>
+                            </label>
+                          )
+                        )}
+
+                        <button
+                          type="button"
+                          className="daysDone"
+                          onClick={() =>
+                            setShowDaysDropdown(
+                              false
+                            )
+                          }
+                        >
+                          Done
+                        </button>
+                      </MultiDropdown>
                     )}
-                  </button>
+                  </div>
+                </Field>
 
-                  {/* PERSONAL */}
+                {/* ============================================================
+                    WORKING HOURS
+                    ============================================================ */}
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm(
-                        (
-                          previous
-                        ) => ({
-                          ...previous,
+                <Field
+                  label="Working hours"
+                  required
+                  error={invalidFields.includes(
+                    "hours"
+                  )}
+                >
+                  {form.hours ===
+                  "Custom hours" ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        className="premiumInput"
+                        placeholder="e.g. 8:00 AM - 6:00 PM"
+                        value={
+                          form.customHours
+                        }
+                        onChange={(event) =>
+                          setField(
+                            "customHours",
+                            event.target.value
+                          )
+                        }
+                      />
 
-                          setupType:
-                            "personal",
+                      <button
+                        type="button"
+                        className="customSmallButton"
+                        onClick={() =>
+                          setField(
+                            "hours",
+                            ""
+                          )
+                        }
+                      >
+                        Change
+                      </button>
+                    </div>
+                  ) : (
+                    <select
+                      className="premiumInput"
+                      value={
+                        form.hours
+                      }
+                      onChange={(event) =>
+                        setField(
+                          "hours",
+                          event.target.value
+                        )
+                      }
+                    >
+                      <option value="">
+                        Choose working hours
+                      </option>
 
-                          personalGoal:
-                            "Auto Reply",
+                      <option value="24 Hours">
+                        24 Hours
+                      </option>
 
-                          capabilities:
-                            PERSONAL_CAPABILITIES,
-                        })
-                      )
-                    }
-                    className={`group relative h-[58px] rounded-2xl border transition-all duration-200 ${
-                      form.setupType ===
-                      "personal"
-                        ? "bg-indigo-500 border-indigo-400 shadow-[0_12px_30px_rgba(99,102,241,0.22)]"
-                        : "bg-white/[0.035] border-white/10 hover:bg-white/[0.07]"
-                    }`}
+                      <option value="8 AM - 4 PM">
+                        8 AM - 4 PM
+                      </option>
+
+                      <option value="9 AM - 5 PM">
+                        9 AM - 5 PM
+                      </option>
+
+                      <option value="9 AM - 6 PM">
+                        9 AM - 6 PM
+                      </option>
+
+                      <option value="10 AM - 7 PM">
+                        10 AM - 7 PM
+                      </option>
+
+                      <option value="Custom hours">
+                        Type custom working hours
+                      </option>
+                    </select>
+                  )}
+                </Field>
+
+                {/* ============================================================
+                    PRICE RANGE
+                    ============================================================ */}
+
+                <Field
+                  label="Price range"
+                  required
+                  error={invalidFields.includes(
+                    "priceRange"
+                  )}
+                >
+                  {form.priceRange ===
+                  "Custom pricing" ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        className="premiumInput"
+                        placeholder="e.g. AED 250 - AED 1,500"
+                        value={
+                          form.customPrice
+                        }
+                        onChange={(event) =>
+                          setField(
+                            "customPrice",
+                            event.target.value
+                          )
+                        }
+                      />
+
+                      <button
+                        type="button"
+                        className="customSmallButton"
+                        onClick={() =>
+                          setField(
+                            "priceRange",
+                            ""
+                          )
+                        }
+                      >
+                        Change
+                      </button>
+                    </div>
+                  ) : (
+                    <select
+                      className="premiumInput"
+                      value={
+                        form.priceRange
+                      }
+                      onChange={(event) =>
+                        setField(
+                          "priceRange",
+                          event.target.value
+                        )
+                      }
+                    >
+                      <option value="">
+                        Choose price range
+                      </option>
+
+                      {priceRanges.map(
+                        (range) => (
+                          <option
+                            key={range}
+                            value={range}
+                          >
+                            {range}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  )}
+                </Field>
+
+                {/* ============================================================
+                    BUSINESS DESCRIPTION
+                    LAST FIELD
+                    ============================================================ */}
+
+                <div className="md:col-span-2">
+                  <Field
+                    label="What does your business do?"
+                    required
+                    hint={`${form.serviceDescription.length}/${MAX_DESCRIPTION_CHARACTERS} characters · ${countWords(form.serviceDescription)}/${MIN_DESCRIPTION_WORDS} words minimum`}
+                    error={invalidFields.includes(
+                      "serviceDescription"
+                    )}
                   >
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="text-lg">
-                        👤
-                      </span>
-
-                      <span className="font-semibold text-sm">
-                        Personal
-                      </span>
-                    </div>
-
-                    {form.setupType ===
-                      "personal" && (
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white">
-                        ✓
-                      </span>
-                    )}
-                  </button>
+                    <textarea
+                      className="premiumInput resize-none !min-h-[130px] !py-4"
+                      placeholder="Briefly describe your products, services, packages, what customers can buy or book, and anything Sodah should understand about your business."
+                      maxLength={MAX_DESCRIPTION_CHARACTERS}
+                      aria-invalid={invalidFields.includes("serviceDescription")}
+                      aria-describedby="business-description-guidance"
+                      value={
+                        form.serviceDescription
+                      }
+                      onChange={(event) =>
+                        setField(
+                          "serviceDescription",
+                          event.target.value
+                        )
+                      }
+                    />
+                    <p
+                      id="business-description-guidance"
+                      className={`mt-2 text-[10px] leading-5 ${
+                        invalidFields.includes("serviceDescription")
+                          ? "text-red-300"
+                          : "text-white/35"
+                      }`}
+                    >
+                      Include at least 20 words about your products, services, packages, and what customers can buy or book. Maximum 500 characters.
+                    </p>
+                  </Field>
                 </div>
               </div>
 
-              {/* =============================================================
-                  BUSINESS
-                  ============================================================= */}
-
-              {form.setupType ===
-                "business" && (
-                <>
-                  <SectionTitle
-                    number="01"
-                    title="Business information"
-                    subtitle="Tell us about the business you want to automate."
-                  />
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <Field
-                      label="Business name"
-                      required
-                      error={invalidFields.includes(
-                        "businessName"
-                      )}
-                    >
-                      <input
-                        className="premiumInput"
-                        placeholder="e.g. Sodah Clinic"
-                        value={
-                          form.businessName
-                        }
-                        onChange={(
-                          event
-                        ) =>
-                          setForm(
-                            (
-                              previous
-                            ) => ({
-                              ...previous,
-
-                              businessName:
-                                event
-                                  .target
-                                  .value,
-                            })
-                          )
-                        }
-                      />
-                    </Field>
-
-                    <Field
-                      label="Industry"
-                      required
-                      error={invalidFields.includes(
-                        "industry"
-                      )}
-                    >
-                      <select
-                        className="premiumInput"
-                        value={
-                          form.industry
-                        }
-                        onChange={(
-                          event
-                        ) =>
-                          setForm(
-                            (
-                              previous
-                            ) => ({
-                              ...previous,
-
-                              industry:
-                                event
-                                  .target
-                                  .value,
-                            })
-                          )
-                        }
-                      >
-                        <option value="">
-                          Choose your industry
-                        </option>
-
-                        {industries.map(
-                          (
-                            industry
-                          ) => (
-                            <option
-                              key={
-                                industry
-                              }
-                              value={
-                                industry
-                              }
-                            >
-                              {
-                                industry
-                              }
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </Field>
-
-                    <Field
-                      label="Business email"
-                      hint="Your login email is automatically added."
-                    >
-                      <input
-                        className="premiumInput"
-                        type="email"
-                        value={
-                          form.email
-                        }
-                        onChange={(
-                          event
-                        ) =>
-                          setForm(
-                            (
-                              previous
-                            ) => ({
-                              ...previous,
-
-                              email:
-                                event
-                                  .target
-                                  .value,
-                            })
-                          )
-                        }
-                      />
-                    </Field>
-
-                    <Field label="Business location">
-                      <input
-                        className="premiumInput"
-                        placeholder="e.g. Dubai, UAE"
-                        value={
-                          form.location
-                        }
-                        onChange={(
-                          event
-                        ) =>
-                          setForm(
-                            (
-                              previous
-                            ) => ({
-                              ...previous,
-
-                              location:
-                                event
-                                  .target
-                                  .value,
-                            })
-                          )
-                        }
-                      />
-                    </Field>
-
-                    <Field label="Price range">
-                      {form.priceRange ===
-                      "Custom Pricing" ? (
-                        <input
-                          type="text"
-                          className="premiumInput"
-                          placeholder="Enter your custom budget"
-                          value={
-                            form.customPrice
-                          }
-                          onChange={(
-                            event
-                          ) =>
-                            setForm(
-                              (
-                                previous
-                              ) => ({
-                                ...previous,
-
-                                customPrice:
-                                  event
-                                    .target
-                                    .value,
-                              })
-                            )
-                          }
-                        />
-                      ) : (
-                        <select
-                          className="premiumInput"
-                          value={
-                            form.priceRange
-                          }
-                          onChange={(
-                            event
-                          ) =>
-                            setForm(
-                              (
-                                previous
-                              ) => ({
-                                ...previous,
-
-                                priceRange:
-                                  event
-                                    .target
-                                    .value,
-                              })
-                            )
-                          }
-                        >
-                          <option value="">
-                            Choose price range
-                          </option>
-
-                          {priceRanges.map(
-                            (
-                              range
-                            ) => (
-                              <option
-                                key={
-                                  range
-                                }
-                                value={
-                                  range
-                                }
-                              >
-                                {
-                                  range
-                                }
-                              </option>
-                            )
-                          )}
-                        </select>
-                      )}
-                    </Field>
-
-                    <Field
-                      label="What does your business do?"
-                      hint={`${form.serviceDescription.length}/120`}
-                    >
-                      <textarea
-                        className="premiumInput !h-[52px] !py-3 resize-none"
-                        placeholder="Briefly describe your products or services..."
-                        maxLength={
-                          120
-                        }
-                        value={
-                          form.serviceDescription
-                        }
-                        onChange={(
-                          event
-                        ) =>
-                          setForm(
-                            (
-                              previous
-                            ) => ({
-                              ...previous,
-
-                              serviceDescription:
-                                event
-                                  .target
-                                  .value,
-                            })
-                          )
-                        }
-                      />
-                    </Field>
-                  </div>
-
-                  {/* =========================================================
-                      CONTACT
-                      ========================================================= */}
-
-                  <div className="mt-10">
-                    <SectionTitle
-                      number="02"
-                      title="Contact details"
-                      subtitle="Choose the WhatsApp numbers Sodah should work with."
-                    />
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <Field
-                        label="Business WhatsApp number"
-                        required
-                        error={invalidFields.includes(
-                          "aiNumber"
-                        )}
-                      >
-                        <PhoneInput
-                          countries={
-                            countries
-                          }
-                          valueCountry={
-                            form.aiCountry
-                          }
-                          valueCode={
-                            form.aiCode
-                          }
-                          valueNumber={
-                            form.aiNumber
-                          }
-                          placeholder="WhatsApp number"
-                          invalid={invalidFields.includes(
-                            "aiNumber"
-                          )}
-                          onCountryChange={(
-                            country
-                          ) =>
-                            setForm(
-                              (
-                                previous
-                              ) => ({
-                                ...previous,
-
-                                aiCountry:
-                                  country.id,
-
-                                aiCode:
-                                  country.code,
-                              })
-                            )
-                          }
-                          onNumberChange={(
-                            number
-                          ) =>
-                            setForm(
-                              (
-                                previous
-                              ) => ({
-                                ...previous,
-
-                                aiNumber:
-                                  number,
-                              })
-                            )
-                          }
-                        />
-                      </Field>
-
-                      <Field
-                        label="Support number"
-                        hint="Optional — defaults to the business WhatsApp number"
-                        error={invalidFields.includes(
-                          "supportNumber"
-                        )}
-                      >
-                        <PhoneInput
-                          countries={
-                            countries
-                          }
-                          valueCountry={
-                            form.supportCountry
-                          }
-                          valueCode={
-                            form.supportCode
-                          }
-                          valueNumber={
-                            form.supportNumber
-                          }
-                          placeholder="Support number"
-                          invalid={invalidFields.includes(
-                            "supportNumber"
-                          )}
-                          onCountryChange={(
-                            country
-                          ) =>
-                            setForm(
-                              (
-                                previous
-                              ) => ({
-                                ...previous,
-
-                                supportCountry:
-                                  country.id,
-
-                                supportCode:
-                                  country.code,
-                              })
-                            )
-                          }
-                          onNumberChange={(
-                            number
-                          ) =>
-                            setForm(
-                              (
-                                previous
-                              ) => ({
-                                ...previous,
-
-                                supportNumber:
-                                  number,
-                              })
-                            )
-                          }
-                        />
-                      </Field>
-                    </div>
-
-                    <div className="mt-4 rounded-2xl border border-green-400/10 bg-green-500/[0.035] px-4 py-3">
-                      <p className="text-xs text-white/45 leading-relaxed">
-                        Your business WhatsApp number will
-                        be used by Sodah for automation and,
-                        unless another support number is
-                        provided, as the support number for
-                        your AI.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* =========================================================
-                      SCHEDULE
-                      ========================================================= */}
-
-                  <div className="mt-10">
-                    <SectionTitle
-                      number="03"
-                      title="Business schedule"
-                      subtitle="Tell the AI when your business is available."
-                    />
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <Field label="Working days">
-                        <div
-                          className="relative"
-                          ref={
-                            daysRef
-                          }
-                        >
-                          <button
-                            type="button"
-                            className="premiumInput text-left flex items-center justify-between"
-                            onClick={() => {
-                              setShowDaysDropdown(
-                                (
-                                  current
-                                ) =>
-                                  !current
-                              );
-                            }}
-                          >
-                            <span className="truncate">
-                              {displaySelected(
-                                form.workingDays,
-                                "Choose working days"
-                              )}
-                            </span>
-
-                            <span className="text-white/40">
-                              ▾
-                            </span>
-                          </button>
-
-                          {showDaysDropdown && (
-                            <MultiDropdown>
-                              {workingDaysList.map(
-                                (
-                                  day
-                                ) => (
-                                  <label
-                                    key={
-                                      day
-                                    }
-                                    className="dropdownItem"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={form.workingDays.includes(
-                                        day
-                                      )}
-                                      onChange={() =>
-                                        toggleSelection(
-                                          "workingDays",
-                                          day
-                                        )
-                                      }
-                                    />
-
-                                    <span>
-                                      {
-                                        day
-                                      }
-                                    </span>
-                                  </label>
-                                )
-                              )}
-                            </MultiDropdown>
-                          )}
-                        </div>
-                      </Field>
-
-                      <Field label="Working hours">
-                        {form.hours ===
-                        "Custom Hours" ? (
-                          <input
-                            type="text"
-                            className="premiumInput"
-                            placeholder="e.g. 8 AM - 8 PM"
-                            value={
-                              form.customHours
-                            }
-                            onChange={(
-                              event
-                            ) =>
-                              setForm(
-                                (
-                                  previous
-                                ) => ({
-                                  ...previous,
-
-                                  customHours:
-                                    event
-                                      .target
-                                      .value,
-                                })
-                              )
-                            }
-                          />
-                        ) : (
-                          <select
-                            className="premiumInput"
-                            value={
-                              form.hours
-                            }
-                            onChange={(
-                              event
-                            ) =>
-                              setForm(
-                                (
-                                  previous
-                                ) => ({
-                                  ...previous,
-
-                                  hours:
-                                    event
-                                      .target
-                                      .value,
-                                })
-                              )
-                            }
-                          >
-                            <option value="">
-                              Choose working hours
-                            </option>
-
-                            <option value="24 Hours">
-                              24 Hours
-                            </option>
-
-                            <option value="8 AM - 4 PM">
-                              8 AM - 4 PM
-                            </option>
-
-                            <option value="9 AM - 5 PM">
-                              9 AM - 5 PM
-                            </option>
-
-                            <option value="9 AM - 6 PM">
-                              9 AM - 6 PM
-                            </option>
-
-                            <option value="10 AM - 7 PM">
-                              10 AM - 7 PM
-                            </option>
-
-                            <option value="Custom Hours">
-                              Custom Hours
-                            </option>
-                          </select>
-                        )}
-                      </Field>
-                    </div>
-                  </div>
-
-                  {/* =========================================================
-                      AUTOMATION NOTICE
-                      ========================================================= */}
-
-                  <div className="mt-10">
-                    <SectionTitle
-                      number="04"
-                      title="AI automation"
-                      subtitle="Sodah automatically configures the AI capabilities for your business."
-                    />
-
-                    <div className="rounded-2xl border border-green-400/10 bg-green-500/[0.035] p-5">
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 shrink-0 rounded-xl bg-green-500/10 border border-green-400/20 flex items-center justify-center">
-                          <span className="text-lg">
-                            ✨
-                          </span>
-                        </div>
-
-                        <div>
-                          <p className="text-sm font-semibold text-white">
-                            Automatic AI configuration
-                          </p>
-
-                          <p className="text-xs text-white/45 leading-relaxed mt-1">
-                            Sodah automatically enables the
-                            appropriate automation capabilities
-                            for your setup. You do not need to
-                            manually select them.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* =============================================================
-                  PERSONAL
-                  ============================================================= */}
-
-              {form.setupType ===
-                "personal" && (
-                <div>
-                  <SectionTitle
-                    number="01"
-                    title="Personal automation"
-                    subtitle="Set up Sodah for your personal WhatsApp workflow."
-                  />
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <Field
-                      label="Your name"
-                      required
-                      error={invalidFields.includes(
-                        "fullName"
-                      )}
-                    >
-                      <input
-                        className="premiumInput"
-                        value={
-                          form.fullName
-                        }
-                        onChange={(
-                          event
-                        ) =>
-                          setForm(
-                            (
-                              previous
-                            ) => ({
-                              ...previous,
-
-                              fullName:
-                                event
-                                  .target
-                                  .value,
-                            })
-                          )
-                        }
-                      />
-                    </Field>
-
-                    <Field label="Email">
-                      <input
-                        className="premiumInput"
-                        type="email"
-                        value={
-                          form.email
-                        }
-                        onChange={(
-                          event
-                        ) =>
-                          setForm(
-                            (
-                              previous
-                            ) => ({
-                              ...previous,
-
-                              email:
-                                event
-                                  .target
-                                  .value,
-                            })
-                          )
-                        }
-                      />
-                    </Field>
-
-                    <Field
-                      label="WhatsApp number"
-                      required
-                      error={invalidFields.includes(
-                        "aiNumber"
-                      )}
-                    >
-                      <PhoneInput
-                        countries={
-                          countries
-                        }
-                        valueCountry={
-                          form.aiCountry
-                        }
-                        valueCode={
-                          form.aiCode
-                        }
-                        valueNumber={
-                          form.aiNumber
-                        }
-                        placeholder="WhatsApp number"
-                        invalid={invalidFields.includes(
-                          "aiNumber"
-                        )}
-                        onCountryChange={(
-                          country
-                        ) =>
-                          setForm(
-                            (
-                              previous
-                            ) => ({
-                              ...previous,
-
-                              aiCountry:
-                                country.id,
-
-                              aiCode:
-                                country.code,
-                            })
-                          )
-                        }
-                        onNumberChange={(
-                          number
-                        ) =>
-                          setForm(
-                            (
-                              previous
-                            ) => ({
-                              ...previous,
-
-                              aiNumber:
-                                number,
-                            })
-                          )
-                        }
-                      />
-                    </Field>
-
-                    <Field
-                      label="Automation"
-                      hint="Automatically configured"
-                    >
-                      <div className="premiumInput flex items-center">
-                        <span className="inline-flex items-center gap-2 text-white/80 text-sm">
-                          <span className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.7)]" />
-                          Auto Reply
-                        </span>
-                      </div>
-                    </Field>
-                  </div>
-
-                  <div className="mt-8 rounded-2xl border border-indigo-400/10 bg-indigo-500/[0.035] p-5">
-                    <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 shrink-0 rounded-xl bg-indigo-500/10 border border-indigo-400/20 flex items-center justify-center">
-                        <span className="text-lg">
-                          ✨
-                        </span>
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-semibold text-white">
-                          Personal AI is configured automatically
-                        </p>
-
-                        <p className="text-xs text-white/45 leading-relaxed mt-1">
-                          Sodah automatically enables the
-                          personal automation capabilities needed
-                          for your account. There is no additional
-                          configuration required.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* =============================================================
-                  FOOTER / ACTIONS
-                  ============================================================= */}
-
-              <div className="mt-10 pt-7 border-t border-white/10">
-                <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-                  <div className="text-center sm:text-left">
-                    <p className="text-sm font-medium text-white/80">
-                      Almost there.
-                    </p>
-
-                    <p className="text-xs text-white/40 mt-1">
-                      Your setup will be saved securely.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                    {/* =====================================================
-                        ALREADY HAVE ACCOUNT
-                        ===================================================== */}
-
-                    <button
-                      type="button"
-                      onClick={
-                        handleAlreadyHaveAccount
-                      }
-                      disabled={
-                        checkingAccount ||
-                        loading
-                      }
-                      className="w-full sm:w-auto min-w-[220px] h-[54px] px-7 rounded-2xl bg-white/[0.045] border border-white/10 text-white/80 font-semibold hover:bg-white/[0.08] hover:border-white/20 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
-                    >
-                      {checkingAccount ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <span className="loader" />
-                          Checking...
-                        </span>
-                      ) : (
-                        "Already have an account"
-                      )}
-                    </button>
-
-                    {/* =====================================================
-                        SAVE & CONTINUE
-                        ===================================================== */}
-
-                    <button
-                      type="button"
-                      onClick={
-                        handleSubmit
-                      }
-                      disabled={
-                        loading ||
-                        checkingAccount
-                      }
-                      className="w-full sm:w-auto min-w-[220px] h-[54px] px-7 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold shadow-[0_15px_35px_rgba(34,197,94,0.22)] hover:from-green-400 hover:to-emerald-400 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed transition-all"
-                    >
-                      {loading ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <span className="loader" />
-                          Saving...
-                        </span>
-                      ) : (
-                        "Save & Continue →"
-                      )}
-                    </button>
-                  </div>
-                </div>
+              {/* =================================================================
+                  SUBMIT
+                  ================================================================= */}
+
+              <div className="mt-6 flex flex-col gap-3 border-t border-white/[0.07] pt-6 sm:flex-row sm:items-center sm:justify-end">
+                <button
+                  type="button"
+                  onClick={
+                    handleSubmit
+                  }
+                  disabled={
+                    loading ||
+                    checkingAccount
+                  }
+                  className="h-[52px] w-full rounded-xl bg-gradient-to-r from-emerald-400 to-green-500 px-7 text-sm font-black text-white shadow-[0_14px_35px_rgba(34,197,94,0.18)] transition hover:from-emerald-300 hover:to-green-400 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="loader" />
+                      Saving...
+                    </span>
+                  ) : (
+                    "Continue →"
+                  )}
+                </button>
               </div>
             </div>
           </div>
-
-          {/* ===============================================================
-              LOGIN EMAIL
-              =============================================================== */}
-
-          {userEmail && (
-            <div className="text-center mt-5 text-xs text-white/30">
-              Signed in as{" "}
-              {userEmail}
-            </div>
-          )}
         </div>
       </section>
 
-      {/* =====================================================================
-          ERROR / SUCCESS MESSAGE
-          ===================================================================== */}
+      {/* ======================================================================
+          ERROR MESSAGE
+          ====================================================================== */}
 
       {error && (
-        <div className="fixed inset-0 z-[999] pointer-events-none flex items-center justify-center px-5">
-          <div
-            className={`px-6 py-4 rounded-2xl backdrop-blur-xl shadow-2xl border text-sm font-semibold ${
-              error.includes(
-                "successfully"
-              )
-                ? "bg-green-500/10 border-green-400/30 text-green-300"
-                : "bg-red-500/10 border-red-400/30 text-red-300"
-            }`}
-          >
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/25 px-5" role="alertdialog" aria-modal="true" aria-live="assertive">
+          <div className="max-w-xl rounded-2xl border border-red-400/30 bg-[#111827] px-5 py-4 text-center text-sm font-semibold text-red-300 shadow-2xl backdrop-blur-xl">
             {error}
           </div>
         </div>
       )}
 
-      {/* =====================================================================
-          STYLES
-          ===================================================================== */}
+      {/* ======================================================================
+          PAGE STYLES
+          ====================================================================== */}
 
       <style jsx>{`
         .premiumInput {
           width: 100%;
-          height: 52px;
-          padding: 0 15px;
-          border-radius: 14px;
+          min-height: 50px;
+          padding: 0 14px;
+          border-radius: 12px;
           border: 1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.1
-            );
+            rgba(255, 255, 255, 0.09);
           background: rgba(
             255,
             255,
             255,
-            0.045
+            0.035
           );
           color: white;
           outline: none;
-          font-size: 14px;
-          transition: all 0.2s
-            ease;
+          font-size: 13px;
+          transition:
+            border-color 0.2s ease,
+            background 0.2s ease,
+            box-shadow 0.2s ease;
+        }
+
+        textarea.premiumInput {
+          min-height: 130px;
         }
 
         .premiumInput::placeholder {
@@ -2711,7 +2150,7 @@ export default function AutomationPage() {
             255,
             255,
             255,
-            0.28
+            0.25
           );
         }
 
@@ -2720,39 +2159,32 @@ export default function AutomationPage() {
             255,
             255,
             255,
-            0.18
-          );
-
-          background: rgba(
-            255,
-            255,
-            255,
-            0.06
+            0.15
           );
         }
 
         .premiumInput:focus {
           border-color: rgba(
-            34,
-            197,
-            94,
-            0.65
+            52,
+            211,
+            153,
+            0.62
           );
 
           background: rgba(
             255,
             255,
             255,
-            0.07
+            0.045
           );
 
           box-shadow:
-            0 0 0 4px
+            0 0 0 3px
             rgba(
-              34,
-              197,
-              94,
-              0.08
+              52,
+              211,
+              153,
+              0.07
             );
         }
 
@@ -2766,84 +2198,85 @@ export default function AutomationPage() {
             239,
             68,
             68,
-            0.9
+            0.85
           ) !important;
 
-          border-radius: 14px;
-
           box-shadow:
-            0 0 0 4px
+            0 0 0 3px
             rgba(
               239,
               68,
               68,
-              0.08
+              0.07
             );
+        }
+
+        .customSmallButton {
+          min-width: 72px;
+          border-radius: 12px;
+          border: 1px solid
+            rgba(255, 255, 255, 0.09);
+          background: rgba(
+            255,
+            255,
+            255,
+            0.045
+          );
+          color: rgba(
+            255,
+            255,
+            255,
+            0.7
+          );
+          font-size: 11px;
+          font-weight: 800;
+          transition:
+            background 0.2s ease,
+            color 0.2s ease;
+        }
+
+        .customSmallButton:hover {
+          background: rgba(
+            255,
+            255,
+            255,
+            0.08
+          );
+          color: white;
         }
 
         .dropdownBox {
           position: absolute;
           left: 0;
           right: 0;
-          top: calc(
-            100% + 8px
-          );
-
-          max-height: 260px;
-
+          top: calc(100% + 6px);
+          max-height: 280px;
           overflow-y: auto;
-
-          padding: 8px;
-
-          border-radius: 16px;
-
+          padding: 7px;
+          border-radius: 14px;
           background: #111827;
-
           border: 1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.12
-            );
-
+            rgba(255, 255, 255, 0.1);
           box-shadow:
-            0 25px 60px
-            rgba(
-              0,
-              0,
-              0,
-              0.5
-            );
-
+            0 20px 50px
+            rgba(0, 0, 0, 0.45);
           z-index: 100;
         }
 
         .dropdownItem {
           display: flex;
-
           align-items: center;
-
-          gap: 10px;
-
-          padding: 10px 11px;
-
-          border-radius: 10px;
-
+          gap: 9px;
+          padding: 9px 10px;
+          border-radius: 9px;
           color: rgba(
             255,
             255,
             255,
-            0.8
+            0.78
           );
-
-          font-size: 13px;
-
+          font-size: 12px;
           cursor: pointer;
-
-          transition:
-            background 0.15s
-            ease;
         }
 
         .dropdownItem:hover {
@@ -2851,120 +2284,87 @@ export default function AutomationPage() {
             255,
             255,
             255,
-            0.07
+            0.06
           );
         }
 
         .dropdownItem input {
-          width: 15px;
-
-          height: 15px;
-
+          width: 14px;
+          height: 14px;
           accent-color: #22c55e;
         }
 
+        .daysDone {
+          width: 100%;
+          margin-top: 5px;
+          padding: 9px;
+          border-radius: 9px;
+          background: rgba(
+            34,
+            197,
+            94,
+            0.12
+          );
+          color: #86efac;
+          font-size: 11px;
+          font-weight: 800;
+        }
+
         .loader {
-          width: 16px;
-          height: 16px;
-
+          width: 15px;
+          height: 15px;
           border-radius: 999px;
-
           border: 2px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.3
-            );
-
+            rgba(255, 255, 255, 0.3);
           border-top-color: white;
-
           animation:
-            spin 0.7s linear
-            infinite;
+            spin 0.7s linear infinite;
         }
 
         @keyframes spin {
           to {
-            transform: rotate(
-              360deg
-            );
+            transform: rotate(360deg);
           }
         }
 
         @keyframes shake {
           0%,
           100% {
-            transform: translateX(
-              0
-            );
+            transform: translateX(0);
           }
 
           20% {
-            transform: translateX(
-              -6px
-            );
+            transform: translateX(-5px);
           }
 
           40% {
-            transform: translateX(
-              6px
-            );
+            transform: translateX(5px);
           }
 
           60% {
-            transform: translateX(
-              -4px
-            );
+            transform: translateX(-3px);
           }
 
           80% {
-            transform: translateX(
-              4px
-            );
+            transform: translateX(3px);
           }
         }
 
         .shake {
-          animation:
-            shake 0.4s ease;
+          animation: shake 0.4s ease;
         }
 
         @media (max-width: 640px) {
           .premiumInput {
-            height: 50px;
+            min-height: 48px;
+          }
+
+          .customSmallButton {
+            min-width: 66px;
           }
         }
       `}</style>
     </main>
-  );
-}
-
-/* ==========================================================================
-   SECTION TITLE
-   ========================================================================== */
-
-function SectionTitle({
-  number,
-  title,
-  subtitle,
-}) {
-  return (
-    <div className="mb-5">
-      <div className="flex items-center gap-3">
-        <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-green-500/10 border border-green-400/20 text-green-400 text-xs font-bold">
-          {number}
-        </span>
-
-        <h2 className="text-lg font-bold text-white">
-          {title}
-        </h2>
-      </div>
-
-      <p className="text-xs text-white/35 mt-2 ml-10">
-        {subtitle}
-      </p>
-    </div>
   );
 }
 
@@ -2981,19 +2381,19 @@ function Field({
 }) {
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <label className="text-xs font-semibold text-white/65">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <label className="text-xs font-bold text-white/65">
           {label}
 
           {required && (
-            <span className="text-green-400 ml-1">
+            <span className="ml-1 text-emerald-400">
               *
             </span>
           )}
         </label>
 
         {hint && (
-          <span className="text-[10px] text-white/30">
+          <span className="text-right text-[10px] text-white/30">
             {hint}
           </span>
         )}
@@ -3013,7 +2413,7 @@ function Field({
 }
 
 /* ==========================================================================
-   MULTI DROPDOWN
+   MULTI SELECT DROPDOWN
    ========================================================================== */
 
 function MultiDropdown({
@@ -3040,23 +2440,6 @@ function PhoneInput({
   onNumberChange,
   invalid = false,
 }) {
-  /*
-   * The selected country is identified by its unique ID.
-   *
-   * This is the important Canada / USA fix:
-   *
-   * Canada:
-   *   id = CA
-   *   code = +1
-   *
-   * USA:
-   *   id = US
-   *   code = +1
-   *
-   * Therefore the browser never has to distinguish them by
-   * the duplicated +1 value.
-   */
-
   const selectedCountry =
     countries.find(
       (country) =>
@@ -3077,53 +2460,42 @@ function PhoneInput({
     selectedCountry?.id ||
     "AE";
 
-  const handleCountryChange =
-    (event) => {
-      const id =
-        event.target.value;
+  const handleCountryChange = (
+    event
+  ) => {
+    const country =
+      countries.find(
+        (item) =>
+          item.id ===
+          event.target.value
+      );
 
-      const country =
-        countries.find(
-          (item) =>
-            item.id === id
-        );
-
-      if (!country) {
-        return;
-      }
-
+    if (country) {
       onCountryChange(
         country
       );
-    };
+    }
+  };
 
-  const handleNumberChange =
-    (event) => {
-      /*
-       * Only numeric characters are accepted.
-       *
-       * The country code is kept completely separate from
-       * the local number.
-       */
-      const clean =
-        event.target.value.replace(
-          /\D/g,
-          ""
-        );
-
-      onNumberChange(
-        clean
-      );
-    };
+  const handleNumberChange = (
+    event
+  ) => {
+    onNumberChange(
+      event.target.value.replace(
+        /\D/g,
+        ""
+      )
+    );
+  };
 
   return (
-    <div className="flex gap-2 w-full">
+    <div className="flex w-full gap-2">
       <select
         value={selectedId}
         onChange={
           handleCountryChange
         }
-        className={`w-[125px] sm:w-[150px] h-[52px] px-2 rounded-[14px] bg-white/[0.045] text-white text-xs font-medium outline-none border ${
+        className={`h-[50px] w-[125px] rounded-xl border bg-white/[0.035] px-2 text-xs font-medium text-white outline-none sm:w-[160px] ${
           invalid
             ? "border-red-500"
             : "border-white/10"
@@ -3133,12 +2505,8 @@ function PhoneInput({
         {countries.map(
           (country) => (
             <option
-              key={
-                country.id
-              }
-              value={
-                country.id
-              }
+              key={country.id}
+              value={country.id}
               className="bg-[#111827] text-white"
             >
               {country.flag}{" "}
@@ -3159,10 +2527,10 @@ function PhoneInput({
         placeholder={
           placeholder
         }
-        className={`flex-1 h-[52px] px-4 rounded-[14px] bg-white/[0.045] text-white outline-none border transition ${
+        className={`h-[50px] flex-1 rounded-xl border bg-white/[0.035] px-4 text-white outline-none transition ${
           invalid
             ? "border-red-500"
-            : "border-white/10 focus:border-green-400/60"
+            : "border-white/10 focus:border-emerald-400/60"
         }`}
         onChange={
           handleNumberChange

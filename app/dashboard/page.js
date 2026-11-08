@@ -49,6 +49,12 @@ function DashboardContent() {
   const [darkMode, setDarkMode] =
     useState(false);
 
+  const [updatingAppointmentId, setUpdatingAppointmentId] =
+    useState(null);
+
+  const [updateMessage, setUpdateMessage] =
+    useState("");
+
   // ======================================================
   // AUTH SESSION
   // ======================================================
@@ -723,33 +729,293 @@ function DashboardContent() {
   ]);
 
   // ======================================================
+  // APPOINTMENT LIFECYCLE
+  // ======================================================
+
+  const APPOINTMENT_ACTIVE_WINDOW_HOURS = 48;
+  const NEW_LEAD_WINDOW_HOURS = 72;
+
+  const parseAppointmentDateTime = useCallback((item) => {
+    const rawDate =
+      item?.appointment_date ||
+      item?.date ||
+      item?.scheduled_date ||
+      "";
+
+    const rawTime =
+      item?.appointment_time ||
+      item?.time ||
+      item?.scheduled_time ||
+      "";
+
+    if (!rawDate) return null;
+
+    if (
+      typeof rawDate === "string" &&
+      rawDate.includes("T") &&
+      !rawTime
+    ) {
+      const direct = new Date(rawDate);
+      return Number.isNaN(direct.getTime())
+        ? null
+        : direct;
+    }
+
+    const dateText = String(rawDate).trim();
+    const timeText = String(rawTime || "").trim();
+
+    if (!timeText) {
+      const dateOnly = new Date(`${dateText}T00:00:00`);
+      if (!Number.isNaN(dateOnly.getTime())) {
+        return dateOnly;
+      }
+
+      const fallback = new Date(dateText);
+      return Number.isNaN(fallback.getTime())
+        ? null
+        : fallback;
+    }
+
+    const ampmMatch = timeText
+      .replace(/\s+/g, " ")
+      .trim()
+      .match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+
+    if (ampmMatch) {
+      let hour = Number(ampmMatch[1]);
+      const minute = Number(ampmMatch[2] || "0");
+      const meridiem = ampmMatch[3].toUpperCase();
+
+      if (hour === 12) hour = 0;
+      if (meridiem === "PM") hour += 12;
+
+      const localDate =
+        new Date(`${dateText}T00:00:00`);
+
+      if (Number.isNaN(localDate.getTime())) {
+        return null;
+      }
+
+      localDate.setHours(hour, minute, 0, 0);
+      return localDate;
+    }
+
+    const combined = new Date(
+      `${dateText}T${timeText}`
+    );
+
+    if (!Number.isNaN(combined.getTime())) {
+      return combined;
+    }
+
+    const fallback = new Date(
+      `${dateText} ${timeText}`
+    );
+
+    return Number.isNaN(fallback.getTime())
+      ? null
+      : fallback;
+  }, []);
+
+  const getLeadTimestamp = useCallback((item) => {
+    const candidates = [
+      item?.created_at,
+      item?.updated_at,
+      item?.appointment_date,
+      item?.date,
+    ].filter(Boolean);
+
+    for (const value of candidates) {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed.getTime();
+      }
+    }
+
+    return null;
+  }, []);
+
+  const bookingHistory = appointments;
+
+  /*
+   * Dashboard shows future appointments plus appointments from
+   * the previous 48 hours. Older appointments remain in Bookings.
+   */
+  const dashboardAppointments = useMemo(() => {
+    const now = Date.now();
+    const activeWindowMs =
+      APPOINTMENT_ACTIVE_WINDOW_HOURS *
+      60 *
+      60 *
+      1000;
+
+    return appointments.filter((item) => {
+      const status = String(
+        item?.Appointment_status ||
+          item?.status ||
+          item?.appointment_status ||
+          ""
+      ).toLowerCase().trim();
+
+      if (status.includes("cancel")) {
+        return false;
+      }
+
+      const scheduledAt =
+        parseAppointmentDateTime(item);
+
+      if (!scheduledAt) {
+        return true;
+      }
+
+      return (
+        scheduledAt.getTime() >= now ||
+        now - scheduledAt.getTime() <= activeWindowMs
+      );
+    });
+  }, [appointments, parseAppointmentDateTime]);
+
+  const updateAppointmentOutcome = useCallback(
+    async (appointment, nextStatus) => {
+      if (!appointment || !businessId) {
+        console.error("[Dashboard] Outcome update missing appointment or business ID.", {
+          appointmentId: appointment?.id || appointment?.appointment_id,
+          businessId,
+        });
+        setUpdateMessage("Could not update appointment: missing appointment or business ID.");
+        return;
+      }
+
+      const rowId = appointment.id ? String(appointment.id) : "";
+      const bookingId = appointment.appointment_id ? String(appointment.appointment_id) : "";
+      if (!rowId && !bookingId) {
+        setUpdateMessage("Could not update appointment: no database row ID or booking ID was loaded.");
+        return;
+      }
+
+      setUpdatingAppointmentId(rowId || bookingId);
+      setUpdateMessage("");
+
+      const now = new Date().toISOString();
+      const followupTypeMap = {
+        visited: "post_visit",
+        did_not_visit: "no_show",
+        delayed: "delayed",
+        rescheduled: "reschedule",
+        cancelled: "cancelled",
+      };
+      const updatePayload = {
+        attendance_status: nextStatus,
+        attendance_updated_at: now,
+        ai_followup_status: nextStatus === "cancelled" ? "skipped" : "pending",
+        ai_followup_type: followupTypeMap[nextStatus] || "general",
+        ai_followup_at: null,
+        ai_followup_sent_at: null,
+      };
+      if (nextStatus === "cancelled") updatePayload.status = "Cancelled";
+
+      try {
+        // The appointments table has two identifiers: UUID `id` and text `appointment_id`.
+        // Try the UUID first, then the Sodah booking ID, always scoped to this business.
+        let data = null;
+        let lastError = null;
+        const attempts = [];
+        if (rowId) attempts.push(["id", rowId]);
+        if (bookingId && bookingId !== rowId) attempts.push(["appointment_id", bookingId]);
+
+        for (const [column, value] of attempts) {
+          const result = await supabase
+            .from("appointments")
+            .update(updatePayload)
+            .eq(column, value)
+            .eq("business_id", businessId)
+            .select("*")
+            .maybeSingle();
+
+          if (result.error) {
+            lastError = result.error;
+            // A missing optional match is handled by trying the other identifier.
+            if (result.error.code === "PGRST116") continue;
+            throw result.error;
+          }
+          if (result.data) {
+            data = result.data;
+            break;
+          }
+        }
+
+        if (!data) {
+          if (lastError) throw lastError;
+          throw new Error(
+            `No appointment row matched business_id=${businessId} using id=${rowId || "(missing)"} or appointment_id=${bookingId || "(missing)"}. Check the loaded identifiers and Supabase UPDATE/RLS permissions.`
+          );
+        }
+
+        console.log("[Dashboard] Appointment outcome saved to appointments table:", {
+          id: data.id,
+          appointment_id: data.appointment_id,
+          business_id: data.business_id,
+          attendance_status: data.attendance_status,
+          ai_followup_status: data.ai_followup_status,
+          ai_followup_type: data.ai_followup_type,
+        });
+        setUpdateMessage(`Appointment updated: ${formatAttendanceLabel(nextStatus)}. AI follow-up queued.`);
+        await fetchData();
+      } catch (error) {
+        console.error("[Dashboard] Outcome update error:", {
+          message: error?.message,
+          code: error?.code,
+          details: error?.details,
+          hint: error?.hint,
+          appointmentRowId: rowId,
+          appointmentBookingId: bookingId,
+          businessId,
+        });
+        setUpdateMessage(
+          error?.code === "42501"
+            ? "Could not update appointment: Supabase denied UPDATE access. Check the appointments UPDATE RLS policy for this business."
+            : error?.message
+              ? `Could not update appointment: ${error.message}`
+              : "Could not update appointment. Check the browser console for details."
+        );
+      } finally {
+        setUpdatingAppointmentId(null);
+      }
+    },
+    [businessId, fetchData]
+  );
+
+  // ======================================================
   // MAIN STATS
   // ======================================================
 
-  const total =
-    appointments.length;
+  const total = dashboardAppointments.length;
 
-  const booked =
-    appointments.filter(
-      (a) =>
-        String(
-          a.Appointment_status ||
-            ""
-        )
-          .toLowerCase()
-          .trim() === "booked"
-    ).length;
+  const booked = dashboardAppointments.filter(
+    (a) =>
+      String(
+        a.Appointment_status ||
+          a.status ||
+          ""
+      ).toLowerCase().trim() === "booked"
+  ).length;
 
-  const pending =
-    appointments.filter(
-      (a) =>
-        String(
-          a.Appointment_status ||
-            ""
-        )
-          .toLowerCase()
-          .trim() === "pending"
-    ).length;
+  const pending = dashboardAppointments.filter(
+    (a) =>
+      String(
+        a.Appointment_status ||
+          a.status ||
+          ""
+      ).toLowerCase().trim() === "pending"
+  ).length;
+
+  const visited = bookingHistory.filter(
+    (a) => a.attendance_status === "visited"
+  ).length;
+
+  const didNotVisit = bookingHistory.filter(
+    (a) => a.attendance_status === "did_not_visit"
+  ).length;
 
   // ======================================================
   // PIE DATA
@@ -770,182 +1036,135 @@ function DashboardContent() {
   // WEEKLY ACTIVITY
   // ======================================================
 
-  const activityData =
-    useMemo(() => {
-      const weeklyActivity = [
-        {
-          name: "Mon",
-          value: 0,
-        },
-        {
-          name: "Tue",
-          value: 0,
-        },
-        {
-          name: "Wed",
-          value: 0,
-        },
-        {
-          name: "Thu",
-          value: 0,
-        },
-        {
-          name: "Fri",
-          value: 0,
-        },
-        {
-          name: "Sat",
-          value: 0,
-        },
-        {
-          name: "Sun",
-          value: 0,
-        },
-      ];
+  const activityData = useMemo(() => {
+    const weeklyActivity = [
+      { name: "Mon", value: 0 },
+      { name: "Tue", value: 0 },
+      { name: "Wed", value: 0 },
+      { name: "Thu", value: 0 },
+      { name: "Fri", value: 0 },
+      { name: "Sat", value: 0 },
+      { name: "Sun", value: 0 },
+    ];
 
-      const dayMap = {
-        1: 0,
-        2: 1,
-        3: 2,
-        4: 3,
-        5: 4,
-        6: 5,
-        0: 6,
-      };
+    const dayMap = {
+      1: 0,
+      2: 1,
+      3: 2,
+      4: 3,
+      5: 4,
+      6: 5,
+      0: 6,
+    };
 
-      appointments.forEach(
-        (item) => {
-          const rawDate =
-            item.appointment_date ||
-            item.created_at;
+    appointments.forEach((item) => {
+      const rawDate =
+        item.appointment_date ||
+        item.created_at;
 
-          if (!rawDate) {
-            return;
-          }
+      if (!rawDate) return;
 
-          const date =
-            new Date(rawDate);
+      const date = new Date(rawDate);
 
-          if (
-            Number.isNaN(
-              date.getTime()
-            )
-          ) {
-            return;
-          }
+      if (Number.isNaN(date.getTime())) return;
 
-          const index =
-            dayMap[
-              date.getDay()
-            ];
+      const index = dayMap[date.getDay()];
 
-          if (
-            index !== undefined
-          ) {
-            weeklyActivity[
-              index
-            ].value += 1;
-          }
-        }
-      );
+      if (index !== undefined) {
+        weeklyActivity[index].value += 1;
+      }
+    });
 
-      return weeklyActivity;
-    }, [appointments]);
+    return weeklyActivity;
+  }, [appointments]);
 
   // ======================================================
   // UNIQUE CUSTOMERS
   // ======================================================
 
-  const uniqueCustomers =
-    useMemo(() => {
-      const merged = [
-        ...customers,
-        ...appointments,
-      ];
+  const uniqueCustomers = useMemo(() => {
+    const merged = [
+      ...customers,
+      ...appointments,
+    ];
 
-      return Array.from(
-        new Map(
-          merged.map(
-            (
-              item,
-              index
-            ) => [
-              item.Phone ||
-                item.phone ||
-                item.id ||
-                `temp-${index}`,
-              item,
-            ]
-          )
-        ).values()
-      );
-    }, [
-      customers,
-      appointments,
-    ]);
+    return Array.from(
+      new Map(
+        merged.map((item, index) => [
+          item.Phone ||
+            item.phone ||
+            item.id ||
+            `temp-${index}`,
+          item,
+        ])
+      ).values()
+    );
+  }, [customers, appointments]);
 
   // ======================================================
   // NEW LEADS
   // ======================================================
 
-  const newLeads =
-    uniqueCustomers.filter(
-      (customer) => {
-        const status =
-          String(
-            customer.lead_status ||
-              customer.leadStatus ||
-              "new"
-          ).toLowerCase();
+  const newLeads = useMemo(() => {
+    const now = Date.now();
+    const windowMs =
+      NEW_LEAD_WINDOW_HOURS *
+      60 *
+      60 *
+      1000;
 
-        return status.includes(
-          "new"
-        );
+    return uniqueCustomers.filter((customer) => {
+      const status = String(
+        customer?.lead_status ||
+          customer?.leadStatus ||
+          ""
+      ).toLowerCase();
+
+      if (!status.includes("new")) {
+        return false;
       }
-    );
+
+      const timestamp = getLeadTimestamp(customer);
+
+      if (!timestamp) {
+        return true;
+      }
+
+      return now - timestamp <= windowMs;
+    });
+  }, [uniqueCustomers, getLeadTimestamp]);
 
   // ======================================================
   // HOT LEADS
   // ======================================================
 
-  const hotLeads =
-    uniqueCustomers.filter(
-      (customer) => {
-        const status =
-          String(
-            customer.lead_status ||
-              customer.leadStatus ||
-              ""
-          ).toLowerCase();
+  const hotLeads = useMemo(
+    () =>
+      uniqueCustomers.filter((customer) => {
+        const status = String(
+          customer.lead_status ||
+            customer.leadStatus ||
+            ""
+        ).toLowerCase();
 
-        const service =
-          String(
-            customer.service ||
-              customer.Service ||
-              customer.customer_message ||
-              ""
-          ).toLowerCase();
+        const service = String(
+          customer.service ||
+            customer.Service ||
+            customer.customer_message ||
+            ""
+        ).toLowerCase();
 
         return (
           status.includes("hot") ||
-          service.includes(
-            "price"
-          ) ||
-          service.includes(
-            "book"
-          ) ||
-          service.includes(
-            "appointment"
-          ) ||
-          service.includes(
-            "today"
-          ) ||
-          service.includes(
-            "available"
-          )
+          service.includes("price") ||
+          service.includes("book") ||
+          service.includes("appointment") ||
+          service.includes("today") ||
+          service.includes("available")
         );
-      }
-    );
+      }),
+    [uniqueCustomers]
+  );
 
   // ======================================================
   // LOADING
@@ -1052,9 +1271,21 @@ function DashboardContent() {
                 </p>
               </div>
 
+              {updateMessage ? (
+                <div
+                  className={`mb-4 rounded-xl border px-4 py-3 text-sm ${
+                    updateMessage.startsWith("Could not")
+                      ? "border-red-500/40 bg-red-500/10 text-red-300"
+                      : "border-green-500/40 bg-green-500/10 text-green-300"
+                  }`}
+                >
+                  {updateMessage}
+                </div>
+              ) : null}
+
               {/* STATS */}
 
-              <div className="grid grid-cols-4 gap-4 mb-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 <Card
                   title="Total Bookings"
                   value={total}
@@ -1085,6 +1316,33 @@ function DashboardContent() {
                       : "0%"
                   }
                   color="purple"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <MiniStat
+                  label="Visited"
+                  value={visited}
+                  darkMode={darkMode}
+                  tone="green"
+                />
+                <MiniStat
+                  label="Did Not Visit"
+                  value={didNotVisit}
+                  darkMode={darkMode}
+                  tone="red"
+                />
+                <MiniStat
+                  label="New Leads"
+                  value={newLeads.length}
+                  darkMode={darkMode}
+                  tone="blue"
+                />
+                <MiniStat
+                  label="Hot Leads"
+                  value={hotLeads.length}
+                  darkMode={darkMode}
+                  tone="orange"
                 />
               </div>
 
@@ -1175,10 +1433,18 @@ function DashboardContent() {
 
               <AppointmentsTable
                 appointments={
-                  appointments
+                  dashboardAppointments
                 }
+                title="Active Appointment Queue"
+                subtitle="Future appointments + the last 48 hours"
                 darkMode={
                   darkMode
+                }
+                onOutcomeChange={
+                  updateAppointmentOutcome
+                }
+                updatingAppointmentId={
+                  updatingAppointmentId
                 }
               />
             </>
@@ -1190,11 +1456,19 @@ function DashboardContent() {
             "Bookings" && (
             <AppointmentsTable
               appointments={
-                appointments
+                bookingHistory
               }
+              title="All Bookings"
+              subtitle="Complete appointment history"
               full
               darkMode={
                 darkMode
+              }
+              onOutcomeChange={
+                updateAppointmentOutcome
+              }
+              updatingAppointmentId={
+                updatingAppointmentId
               }
             />
           )}
@@ -1275,8 +1549,13 @@ function DashboardContent() {
               </h2>
 
               <p>
-                Total Bookings:{" "}
-                {total}
+                Active Dashboard Bookings:{" "}
+                {dashboardAppointments.length}
+              </p>
+
+              <p>
+                Total Booking History:{" "}
+                {bookingHistory.length}
               </p>
 
               <p>
@@ -1285,6 +1564,14 @@ function DashboardContent() {
 
               <p>
                 Pending: {pending}
+              </p>
+
+              <p>
+                Visited: {visited}
+              </p>
+
+              <p>
+                Did Not Visit: {didNotVisit}
               </p>
 
               <p>
@@ -1431,6 +1718,59 @@ function SidebarItem({
   );
 }
 
+function formatAttendanceLabel(status) {
+  const labels = {
+    visited: "Visited",
+    did_not_visit: "Did Not Visit",
+    delayed: "Delayed",
+    rescheduled: "Rescheduled",
+    cancelled: "Cancelled",
+  };
+
+  return labels[status] || "Updated";
+}
+
+// ======================================================
+// MINI STAT
+// ======================================================
+
+function MiniStat({
+  label,
+  value,
+  darkMode,
+  tone = "blue",
+}) {
+  const tones = {
+    green: darkMode
+      ? "border-green-500/30 bg-green-500/10 text-green-300"
+      : "border-green-200 bg-green-50 text-green-700",
+    red: darkMode
+      ? "border-red-500/30 bg-red-500/10 text-red-300"
+      : "border-red-200 bg-red-50 text-red-700",
+    blue: darkMode
+      ? "border-blue-500/30 bg-blue-500/10 text-blue-300"
+      : "border-blue-200 bg-blue-50 text-blue-700",
+    orange: darkMode
+      ? "border-orange-500/30 bg-orange-500/10 text-orange-300"
+      : "border-orange-200 bg-orange-50 text-orange-700",
+  };
+
+  return (
+    <div
+      className={`rounded-xl border px-4 py-3 ${
+        tones[tone] || tones.blue
+      }`}
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-wide opacity-80">
+        {label}
+      </p>
+      <p className="mt-1 text-xl font-bold">
+        {value}
+      </p>
+    </div>
+  );
+}
+
 // ======================================================
 // CARD
 // ======================================================
@@ -1482,85 +1822,135 @@ function CustomersTable({
 }) {
   return (
     <div
-      className={`p-6 rounded-xl shadow-xl h-full overflow-y-auto ${
-        darkMode
-          ? "bg-[#0f172a]"
-          : "bg-white"
+      className={`p-4 md:p-6 rounded-xl shadow-xl h-full overflow-hidden flex flex-col ${
+        darkMode ? "bg-[#0f172a]" : "bg-white"
       }`}
     >
-      <h2 className="font-bold mb-4 text-lg">
-        {title}
-      </h2>
-
-      <div
-        className={`grid grid-cols-4 text-sm font-bold px-3 py-2 rounded mb-2 ${
-          darkMode
-            ? "bg-[#1e293b]"
-            : "bg-gray-300"
-        }`}
-      >
-        <div>#</div>
-        <div>Name</div>
-        <div>Phone</div>
+      <div className="flex items-center justify-between gap-4 mb-4">
         <div>
-          {statusLabel
-            ? "Status"
-            : "Service"}
+          <h2 className="font-bold text-lg">
+            {title}
+          </h2>
+          <p
+            className={`text-xs mt-1 ${
+              darkMode ? "text-slate-400" : "text-slate-500"
+            }`}
+          >
+            {statusLabel
+              ? "Recent lead records"
+              : "Customer records and requested services"}
+          </p>
+        </div>
+
+        <div
+          className={`rounded-lg px-3 py-1.5 text-xs font-semibold border ${
+            darkMode
+              ? "border-slate-700 bg-slate-900 text-slate-300"
+              : "border-slate-200 bg-slate-50 text-slate-600"
+          }`}
+        >
+          {customers.length} records
         </div>
       </div>
 
-      {customers.map(
-        (
-          customer,
-          index
-        ) => (
-          <div
-            key={
-              customer.id ||
-              `${customer.Phone}-${index}`
-            }
-            className={`grid grid-cols-4 px-3 py-2 text-sm ${
+      <div className="flex-1 overflow-auto rounded-lg border border-slate-500/40">
+        <table className="w-full min-w-[720px] border-collapse text-sm">
+          <thead
+            className={`sticky top-0 z-10 ${
               darkMode
-                ? index % 2 === 0
-                  ? "bg-[#1e293b]"
-                  : "bg-[#0f172a]"
-                : index % 2 === 0
-                ? "bg-gray-100"
-                : "bg-white"
+                ? "bg-[#1e293b] text-white"
+                : "bg-blue-100 text-slate-900"
             }`}
           >
-            <div className="text-gray-400">
-              {index + 1}
-            </div>
+            <tr>
+              <th className="border border-slate-500/40 px-3 py-3 text-left w-14">
+                #
+              </th>
+              <th className="border border-slate-500/40 px-3 py-3 text-left">
+                Name
+              </th>
+              <th className="border border-slate-500/40 px-3 py-3 text-left">
+                Phone
+              </th>
+              <th className="border border-slate-500/40 px-3 py-3 text-left">
+                Service / Request
+              </th>
+              <th className="border border-slate-500/40 px-3 py-3 text-left">
+                Lead Status
+              </th>
+            </tr>
+          </thead>
 
-            <div className="font-medium">
-              {customer.Name ||
-                "Unknown"}
-            </div>
+          <tbody>
+            {customers.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={5}
+                  className="border border-slate-500/40 px-4 py-10 text-center text-slate-400"
+                >
+                  No records found.
+                </td>
+              </tr>
+            ) : (
+              customers.map((customer, index) => (
+                <tr
+                  key={
+                    customer.id ||
+                    `${customer.Phone}-${index}`
+                  }
+                  className={
+                    darkMode
+                      ? index % 2 === 0
+                        ? "bg-[#111c2f]"
+                        : "bg-[#0f172a]"
+                      : index % 2 === 0
+                      ? "bg-slate-50"
+                      : "bg-white"
+                  }
+                >
+                  <td className="border border-slate-500/40 px-3 py-3 text-slate-400">
+                    {index + 1}
+                  </td>
 
-            <div>
-              {customer.Phone ||
-                "No phone"}
-            </div>
+                  <td className="border border-slate-500/40 px-3 py-3 font-semibold">
+                    {customer.Name ||
+                      customer.name ||
+                      "Unknown"}
+                  </td>
 
-            <div
-              className={
-                statusLabel
-                  ? statusColor
-                  : darkMode
-                  ? "font-medium text-white"
-                  : "font-medium text-gray-900"
-              }
-            >
-              {statusLabel
-                ? statusLabel
-                : customer.service ||
-                  customer.Service ||
-                  "No service"}
-            </div>
-          </div>
-        )
-      )}
+                  <td className="border border-slate-500/40 px-3 py-3">
+                    {customer.Phone ||
+                      customer.phone ||
+                      "No phone"}
+                  </td>
+
+                  <td className="border border-slate-500/40 px-3 py-3">
+                    {customer.service ||
+                      customer.Service ||
+                      customer.customer_message ||
+                      "No service/request"}
+                  </td>
+
+                  <td
+                    className={`border border-slate-500/40 px-3 py-3 ${
+                      statusLabel
+                        ? statusColor
+                        : darkMode
+                        ? "text-slate-300"
+                        : "text-slate-700"
+                    }`}
+                  >
+                    {statusLabel ||
+                      customer.lead_status ||
+                      customer.leadStatus ||
+                      "New"}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -1571,106 +1961,224 @@ function CustomersTable({
 
 function AppointmentsTable({
   appointments,
+  title = "Appointment Bookings",
+  subtitle,
   full,
   darkMode,
+  onOutcomeChange,
+  updatingAppointmentId,
 }) {
   return (
     <div
-      className={`rounded-xl shadow-xl p-4 flex flex-col ${
-        full
-          ? "h-full"
-          : "h-[380px]"
+      className={`rounded-xl shadow-xl p-4 md:p-5 flex flex-col ${
+        full ? "h-full" : "h-[430px]"
       } ${
-        darkMode
-          ? "bg-[#0f172a]"
-          : "bg-white"
+        darkMode ? "bg-[#0f172a]" : "bg-white"
       }`}
     >
-      <h3 className="text-sm font-semibold mb-2">
-        Appointment Bookings
-      </h3>
+      <div className="flex items-center justify-between gap-4 mb-3">
+        <div>
+          <h3 className="text-sm font-bold">
+            {title}
+          </h3>
+          {subtitle ? (
+            <p
+              className={`text-xs mt-1 ${
+                darkMode
+                  ? "text-slate-400"
+                  : "text-slate-500"
+              }`}
+            >
+              {subtitle}
+            </p>
+          ) : null}
+        </div>
 
-      <div
-        className={`grid grid-cols-6 text-xs font-bold px-2 py-2 rounded ${
-          darkMode
-            ? "bg-[#1e293b]"
-            : "bg-blue-200"
-        }`}
-      >
-        <div>#</div>
-        <div>Name</div>
-        <div>Phone</div>
-        <div>Date</div>
-        <div>Time</div>
-        <div>Status</div>
+        <div
+          className={`rounded-lg px-3 py-1.5 text-xs font-semibold border ${
+            darkMode
+              ? "border-slate-700 bg-slate-900 text-slate-300"
+              : "border-slate-200 bg-slate-50 text-slate-600"
+          }`}
+        >
+          {appointments.length} bookings
+        </div>
       </div>
 
-      <div
-        className={`overflow-y-auto mt-2 ${
-          full ? "flex-1" : ""
-        }`}
-      >
-        {appointments.length ===
-        0 ? (
-          <div className="p-4 text-center text-gray-400">
-            No appointments
-            found.
-          </div>
-        ) : (
-          appointments.map(
-            (
-              item,
-              index
-            ) => (
-              <div
-                key={
+      <div className="flex-1 overflow-auto rounded-lg border border-slate-500/50">
+        <table className="w-full min-w-[1120px] border-collapse text-sm">
+          <thead
+            className={`sticky top-0 z-10 ${
+              darkMode
+                ? "bg-[#1e293b] text-white"
+                : "bg-blue-100 text-slate-900"
+            }`}
+          >
+            <tr>
+              <th className="border border-slate-500/50 px-3 py-3 text-left w-14">
+                #
+              </th>
+              <th className="border border-slate-500/50 px-3 py-3 text-left">
+                Name
+              </th>
+              <th className="border border-slate-500/50 px-3 py-3 text-left">
+                Phone
+              </th>
+              <th className="border border-slate-500/50 px-3 py-3 text-left">
+                Service
+              </th>
+              <th className="border border-slate-500/50 px-3 py-3 text-left">
+                Date
+              </th>
+              <th className="border border-slate-500/50 px-3 py-3 text-left">
+                Time
+              </th>
+              <th className="border border-slate-500/50 px-3 py-3 text-left">
+                Booking Status
+              </th>
+              <th className="border border-slate-500/50 px-3 py-3 text-left min-w-[190px]">
+                Visit / Outcome
+              </th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {appointments.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={8}
+                  className="border border-slate-500/50 px-4 py-12 text-center text-slate-400"
+                >
+                  No appointments found.
+                </td>
+              </tr>
+            ) : (
+              appointments.map((item, index) => {
+                const outcome =
+                  item.attendance_status || "";
+
+                const rowKey =
                   item.id ||
-                  `${item.Phone}-${item.Date}-${index}`
-                }
-                className={`grid grid-cols-6 text-sm px-2 ${
-                  darkMode
-                    ? index % 2 === 0
-                      ? "bg-[#1e293b]"
-                      : "bg-[#0f172a]"
-                    : index % 2 === 0
-                    ? "bg-gray-200"
-                    : "bg-white"
-                }`}
-                style={{
-                  height: "40px",
-                  alignItems:
-                    "center",
-                }}
-              >
-                <div>
-                  {index + 1}
-                </div>
+                  `${item.Phone}-${item.Date}-${index}`;
 
-                <div>
-                  {item.Name}
-                </div>
+                return (
+                  <tr
+                    key={rowKey}
+                    className={
+                      darkMode
+                        ? index % 2 === 0
+                          ? "bg-[#111c2f]"
+                          : "bg-[#0f172a]"
+                        : index % 2 === 0
+                        ? "bg-slate-50"
+                        : "bg-white"
+                    }
+                  >
+                    <td className="border border-slate-500/50 px-3 py-3 text-slate-400">
+                      {index + 1}
+                    </td>
 
-                <div>
-                  {item.Phone}
-                </div>
+                    <td className="border border-slate-500/50 px-3 py-3 font-semibold">
+                      {item.Name || "Unknown"}
+                    </td>
 
-                <div>
-                  {item.Date}
-                </div>
+                    <td className="border border-slate-500/50 px-3 py-3">
+                      {item.Phone || "No phone"}
+                    </td>
 
-                <div>
-                  {item.Time}
-                </div>
+                    <td className="border border-slate-500/50 px-3 py-3">
+                      {item.Service ||
+                        item.service ||
+                        "—"}
+                    </td>
 
-                <div>
-                  {
-                    item.Appointment_status
-                  }
-                </div>
-              </div>
-            )
-          )
-        )}
+                    <td className="border border-slate-500/50 px-3 py-3">
+                      {item.Date || "—"}
+                    </td>
+
+                    <td className="border border-slate-500/50 px-3 py-3">
+                      {item.Time || "—"}
+                    </td>
+
+                    <td className="border border-slate-500/50 px-3 py-3">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          String(
+                            item.Appointment_status ||
+                              item.status ||
+                              ""
+                          )
+                            .toLowerCase()
+                            .includes("book")
+                            ? "bg-green-500/15 text-green-500"
+                            : String(
+                                item.Appointment_status ||
+                                  item.status ||
+                                  ""
+                              )
+                                .toLowerCase()
+                                .includes("cancel")
+                            ? "bg-red-500/15 text-red-500"
+                            : "bg-yellow-500/15 text-yellow-500"
+                        }`}
+                      >
+                        {item.Appointment_status ||
+                          item.status ||
+                          "Pending"}
+                      </span>
+                    </td>
+
+                    <td className="border border-slate-500/50 px-3 py-2">
+                      <select
+                        value={outcome}
+                        disabled={
+                          !onOutcomeChange ||
+                          updatingAppointmentId === item.id
+                        }
+                        onChange={(event) =>
+                          onOutcomeChange?.(
+                            item,
+                            event.target.value
+                          )
+                        }
+                        className={`w-full rounded-lg border px-3 py-2 text-xs font-semibold outline-none transition ${
+                          darkMode
+                            ? "border-slate-600 bg-slate-900 text-white"
+                            : "border-slate-300 bg-white text-slate-800"
+                        } disabled:cursor-not-allowed disabled:opacity-50`}
+                      >
+                        <option value="">
+                          Select outcome
+                        </option>
+                        <option value="visited">
+                          Visited
+                        </option>
+                        <option value="did_not_visit">
+                          Did Not Visit
+                        </option>
+                        <option value="delayed">
+                          Delayed
+                        </option>
+                        <option value="rescheduled">
+                          Rescheduled
+                        </option>
+                        <option value="cancelled">
+                          Cancelled
+                        </option>
+                      </select>
+
+                      {updatingAppointmentId === item.id ? (
+                        <p className="mt-1 text-[10px] text-blue-400">
+                          Saving...
+                        </p>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

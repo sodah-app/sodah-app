@@ -7,10 +7,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import {
-  useRouter,
-  useSearchParams,
-} from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 /* ================================================================
@@ -22,9 +19,10 @@ function timeLabel(date) {
 
   const d = new Date(date);
 
-  if (Number.isNaN(d.getTime())) return date;
+  if (Number.isNaN(d.getTime())) return String(date);
 
   const now = new Date();
+
   const sameDay =
     d.toDateString() === now.toDateString();
 
@@ -44,7 +42,7 @@ function fullDateLabel(date) {
 
   const d = new Date(date);
 
-  if (Number.isNaN(d.getTime())) return date;
+  if (Number.isNaN(d.getTime())) return String(date);
 
   return d.toLocaleString([], {
     weekday: "long",
@@ -97,12 +95,58 @@ function getInitials(name) {
   ).toUpperCase();
 }
 
+function stripHtml(value) {
+  if (!value) return "";
+
+  return String(value)
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getEmailBody(message) {
+  if (!message) return "";
+
+  const candidates = [
+    message?.body,
+    message?.text,
+    message?.plainText,
+    message?.plain_text,
+    message?.body_text,
+    message?.bodyText,
+    message?.snippet,
+    message?.preview,
+    message?.body_html,
+    message?.html,
+  ];
+
+  for (const candidate of candidates) {
+    const clean = stripHtml(candidate);
+
+    if (clean) {
+      return clean;
+    }
+  }
+
+  return "";
+}
+
 function messagePreview(message) {
   return (
     message?.snippet ||
     message?.preview ||
     message?.text ||
     message?.body ||
+    stripHtml(message?.body_html) ||
+    stripHtml(message?.html) ||
     "No preview available."
   );
 }
@@ -130,59 +174,41 @@ function normalizeMessage(message) {
 }
 
 /* ================================================================
-   PAGE
+   MAIN PAGE
 ================================================================ */
 
 function InboxPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [businessId, setBusinessId] =
-    useState("");
+  const [businessId, setBusinessId] = useState("");
+  const [businessName, setBusinessName] = useState("");
 
-  const [businessName, setBusinessName] =
-    useState("");
+  const [account, setAccount] = useState(null);
 
-  const [account, setAccount] =
-    useState(null);
+  const [messages, setMessages] = useState([]);
+  const [selected, setSelected] = useState(null);
 
-  const [messages, setMessages] =
-    useState([]);
+  const [folder, setFolder] = useState("inbox");
+  const [query, setQuery] = useState("");
 
-  const [selected, setSelected] =
-    useState(null);
+  const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
 
-  const [folder, setFolder] =
-    useState("inbox");
+  const [sending, setSending] = useState(false);
 
-  const [query, setQuery] =
-    useState("");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
-  const [loading, setLoading] =
-    useState(true);
+  const [reply, setReply] = useState("");
 
-  const [detailLoading, setDetailLoading] =
-    useState(false);
-
-  const [sending, setSending] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
-
-  const [notice, setNotice] =
-    useState("");
-
-  const [reply, setReply] =
-    useState("");
-
-  const [aiLoading, setAiLoading] =
-    useState(false);
-
-  const [aiMode, setAiMode] =
-    useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiMode, setAiMode] = useState("");
 
   const [mobileDetail, setMobileDetail] =
+    useState(false);
+
+  const [sidebarOpen, setSidebarOpen] =
     useState(false);
 
   const [selectedMessageIds, setSelectedMessageIds] =
@@ -191,15 +217,14 @@ function InboxPageContent() {
   const [bulkDeleting, setBulkDeleting] =
     useState(false);
 
-  /* ==============================================================
+  /* ============================================================
      BUSINESS CONTEXT
-  ============================================================== */
+  ============================================================ */
 
-  const loadBusinessContext =
-    useCallback(async () => {
+  const loadBusinessContext = useCallback(
+    async () => {
       try {
-        const auth =
-          await getCurrentUser();
+        const auth = await getCurrentUser();
 
         if (!auth?.authenticated) {
           router.push("/");
@@ -224,30 +249,15 @@ function InboxPageContent() {
             localStorage
               .getItem("business_id")
               ?.trim() || "";
-        } catch (storageError) {
-          console.error(
-            "[Inbox] Failed to read stored business ID:",
-            storageError
-          );
+        } catch {
+          storedBusinessId = "";
         }
 
-        /*
-         * Authenticated business is always authoritative.
-         */
         if (
           urlBusinessId &&
           authenticatedBusinessId &&
-          urlBusinessId !==
-            authenticatedBusinessId
+          urlBusinessId !== authenticatedBusinessId
         ) {
-          console.error(
-            "[Inbox] Business ID mismatch:",
-            {
-              urlBusinessId,
-              authenticatedBusinessId,
-            }
-          );
-
           throw new Error(
             "The requested business does not match your authenticated Sodah business."
           );
@@ -275,110 +285,86 @@ function InboxPageContent() {
             "business_id",
             activeBusinessId
           );
-        } catch (storageError) {
-          console.error(
-            "[Inbox] Failed to store business ID:",
-            storageError
-          );
-        }
+        } catch {}
 
         try {
           sessionStorage.setItem(
             "business_id",
             activeBusinessId
           );
-        } catch (storageError) {
-          console.error(
-            "[Inbox] Failed to store session business ID:",
-            storageError
-          );
-        }
+        } catch {}
 
         return {
-          businessId:
-            activeBusinessId,
-          businessName:
-            activeBusinessName,
+          businessId: activeBusinessId,
+          businessName: activeBusinessName,
         };
-      } catch (error) {
+      } catch (e) {
         console.error(
           "[Inbox] Business context failed:",
-          error
+          e
         );
 
         setError(
-          error?.message ||
+          e?.message ||
             "Unable to determine your Sodah business."
         );
 
         return null;
       }
-    }, [
-      router,
-      searchParams,
-    ]);
-
-  /* ==============================================================
-     AUTH TOKEN
-  ============================================================== */
-
-  const token = useCallback(
-    async () => {
-      const {
-        data,
-        error: sessionError,
-      } =
-        await supabase.auth.getSession();
-
-      if (sessionError) {
-        throw new Error(
-          sessionError.message ||
-            "Unable to read your session."
-        );
-      }
-
-      const accessToken =
-        data?.session?.access_token;
-
-      if (!accessToken) {
-        throw new Error(
-          "Your session has expired. Please sign in again."
-        );
-      }
-
-      return accessToken;
     },
-    []
+    [router, searchParams]
   );
 
-  /* ==============================================================
+  /* ============================================================
+     AUTH TOKEN
+  ============================================================ */
+
+  const token = useCallback(async () => {
+    const {
+      data,
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError) {
+      throw new Error(
+        sessionError.message ||
+          "Unable to read your session."
+      );
+    }
+
+    const accessToken =
+      data?.session?.access_token;
+
+    if (!accessToken) {
+      throw new Error(
+        "Your session has expired. Please sign in again."
+      );
+    }
+
+    return accessToken;
+  }, []);
+
+  /* ============================================================
      API HELPER
-  ============================================================== */
+  ============================================================ */
 
   const api = useCallback(
-    async (
-      url,
-      options = {}
-    ) => {
-      const accessToken =
-        await token();
+    async (url, options = {}) => {
+      const accessToken = await token();
 
-      const response =
-        await fetch(url, {
-          ...options,
-          cache: "no-store",
-          headers: {
-            ...(options.headers || {}),
-            Authorization:
-              `Bearer ${accessToken}`,
-          },
-        });
+      const response = await fetch(url, {
+        ...options,
+        cache: "no-store",
+        headers: {
+          ...(options.headers || {}),
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
 
       let data = null;
 
       try {
-        data =
-          await response.json();
+        data = await response.json();
       } catch {
         data = null;
       }
@@ -387,20 +373,14 @@ function InboxPageContent() {
         !response.ok ||
         data?.success === false
       ) {
-        const apiError =
-          new Error(
-            data?.message ||
-              `Request failed with status ${response.status}.`
-          );
+        const apiError = new Error(
+          data?.message ||
+            "Unable to complete the request."
+        );
 
-        apiError.code =
-          data?.code;
-
-        apiError.status =
-          response.status;
-
-        apiError.data =
-          data;
+        apiError.code = data?.code;
+        apiError.status = response.status;
+        apiError.data = data;
 
         throw apiError;
       }
@@ -410,25 +390,18 @@ function InboxPageContent() {
     [token]
   );
 
-  /* ==============================================================
+  /* ============================================================
      LOAD INBOX
-  ============================================================== */
+  ============================================================ */
 
   const load = useCallback(
-    async ({
-      silent = false,
-    } = {}) => {
+    async ({ silent = false } = {}) => {
       try {
-        /*
-         * Silent refreshes NEVER replace the
-         * current page with a loading screen.
-         */
         if (!silent) {
           setLoading(true);
         }
 
         setError("");
-        setNotice("");
 
         const context =
           await loadBusinessContext();
@@ -437,9 +410,10 @@ function InboxPageContent() {
           return;
         }
 
-        /*
-         * Load connected Gmail account.
-         */
+        /* --------------------------------------------------------
+           GET CONNECTED GMAIL ACCOUNT
+        -------------------------------------------------------- */
+
         const accountParams =
           new URLSearchParams();
 
@@ -448,18 +422,14 @@ function InboxPageContent() {
           context.businessId
         );
 
-        const accountData =
-          await api(
-            `/api/email-ai/account?${accountParams.toString()}`
-          );
+        const accountData = await api(
+          `/api/email-ai/account?${accountParams.toString()}`
+        );
 
         const connectedAccount =
-          accountData?.account ||
-          null;
+          accountData?.account || null;
 
-        setAccount(
-          connectedAccount
-        );
+        setAccount(connectedAccount);
 
         if (!connectedAccount) {
           setMessages([]);
@@ -470,9 +440,10 @@ function InboxPageContent() {
           );
         }
 
-        /*
-         * Load Gmail messages.
-         */
+        /* --------------------------------------------------------
+           GET EMAILS
+        -------------------------------------------------------- */
+
         const params =
           new URLSearchParams();
 
@@ -481,69 +452,48 @@ function InboxPageContent() {
           context.businessId
         );
 
-        params.set(
-          "limit",
-          "40"
-        );
+        params.set("limit", "40");
 
         const cleanQuery =
           query.trim();
-
-        if (folder === "inbox") {
-          if (cleanQuery) {
-            params.set(
-              "q",
-              cleanQuery
-            );
-          }
-        }
 
         if (folder === "unread") {
           params.set(
             "q",
             `${cleanQuery} is:unread`.trim()
           );
-        }
-
-        if (folder === "starred") {
+        } else if (folder === "starred") {
           params.set(
             "q",
             `${cleanQuery} is:starred`.trim()
           );
-        }
-
-        if (folder === "important") {
+        } else if (folder === "important") {
           params.set(
             "q",
             `${cleanQuery} is:important`.trim()
           );
-        }
-
-        if (folder === "attachments") {
+        } else if (folder === "attachments") {
           params.set(
             "q",
             `${cleanQuery} has:attachment`.trim()
           );
-        }
-
-        if (folder === "trash") {
+        } else if (folder === "trash") {
           params.set(
             "q",
             `${cleanQuery} in:trash`.trim()
           );
-        }
-
-        if (folder === "archive") {
+        } else if (folder === "archive") {
           params.set(
             "q",
             `${cleanQuery} -in:inbox`.trim()
           );
+        } else if (cleanQuery) {
+          params.set("q", cleanQuery);
         }
 
-        const data =
-          await api(
-            `/api/inbox-email-ai/messages?${params.toString()}`
-          );
+        const data = await api(
+          `/api/inbox-email-ai/messages?${params.toString()}`
+        );
 
         const normalizedMessages = (
           data?.messages || []
@@ -551,68 +501,51 @@ function InboxPageContent() {
           .map(normalizeMessage)
           .filter(Boolean);
 
-        setMessages(
-          normalizedMessages
-        );
+        setMessages(normalizedMessages);
 
         setSelectedMessageIds(
           (current) => {
-            const validIds =
-              new Set(
-                normalizedMessages
-                  .map(
-                    (item) =>
-                      getMessageId(item)
-                  )
-                  .filter(Boolean)
-                  .map((id) =>
-                    String(id)
-                  )
-              );
-
-            return current.filter(
-              (id) =>
-                validIds.has(
+            const validIds = new Set(
+              normalizedMessages
+                .map((item) =>
+                  getMessageId(item)
+                )
+                .filter(Boolean)
+                .map((id) =>
                   String(id)
                 )
             );
-          }
-        );
 
-        /*
-         * Preserve selected email when it
-         * still exists after refresh.
-         */
-        setSelected(
-          (current) => {
-            if (!current) {
-              return null;
-            }
-
-            const currentId =
-              getMessageId(
-                current
-              );
-
-            if (!currentId) {
-              return null;
-            }
-
-            const refreshed =
-              normalizedMessages.find(
-                (item) =>
-                  String(
-                    getMessageId(item)
-                  ) ===
-                  String(currentId)
-              );
-
-            return (
-              refreshed ||
-              current
+            return current.filter(
+              (id) =>
+                validIds.has(String(id))
             );
           }
         );
+
+        setSelected((current) => {
+          if (!current) {
+            return null;
+          }
+
+          const currentId =
+            getMessageId(current);
+
+          if (!currentId) {
+            return null;
+          }
+
+          const refreshed =
+            normalizedMessages.find(
+              (item) =>
+                String(
+                  getMessageId(item)
+                ) ===
+                String(currentId)
+            );
+
+          return refreshed || current;
+        });
       } catch (e) {
         console.error(
           "[Inbox] Load failed:",
@@ -626,16 +559,11 @@ function InboxPageContent() {
         if (
           e?.code ===
             "GMAIL_REAUTH_REQUIRED" ||
-          /invalid_grant/i.test(
-            message
-          ) ||
+          /invalid_grant/i.test(message) ||
           /authorization.*expired/i.test(
             message
           ) ||
           /authorization.*revoked/i.test(
-            message
-          ) ||
-          /re-authorized/i.test(
             message
           )
         ) {
@@ -649,15 +577,9 @@ function InboxPageContent() {
         if (
           e?.code ===
             "GMAIL_READ_PERMISSION_REQUIRED" ||
-          /permission/i.test(
-            message
-          ) ||
-          /readonly/i.test(
-            message
-          ) ||
-          /read access/i.test(
-            message
-          )
+          /permission/i.test(message) ||
+          /readonly/i.test(message) ||
+          /read access/i.test(message)
         ) {
           setError(
             "Inbox needs Gmail read permission. Reconnect Gmail to grant Inbox access to received messages."
@@ -683,40 +605,30 @@ function InboxPageContent() {
     load();
   }, [load]);
 
-  /* ==============================================================
-     MESSAGE SELECTION
-  ============================================================== */
+  /* ============================================================
+     SELECTION
+  ============================================================ */
 
-  const toggleMessageSelection =
-    (item) => {
-      const messageId =
-        getMessageId(item);
+  const toggleMessageSelection = (
+    item
+  ) => {
+    const messageId =
+      getMessageId(item);
 
-      if (!messageId) {
-        console.warn(
-          "[Inbox] Cannot select message without Gmail ID:",
-          item
-        );
+    if (!messageId) return;
 
-        return;
-      }
+    const id = String(messageId);
 
-      const id =
-        String(messageId);
-
-      setSelectedMessageIds(
-        (current) =>
-          current.includes(id)
-            ? current.filter(
-                (value) =>
-                  value !== id
-              )
-            : [
-                ...current,
-                id,
-              ]
-      );
-    };
+    setSelectedMessageIds(
+      (current) =>
+        current.includes(id)
+          ? current.filter(
+              (value) =>
+                value !== id
+            )
+          : [...current, id]
+    );
+  };
 
   const selectAllVisibleMessages =
     () => {
@@ -731,10 +643,7 @@ function InboxPageContent() {
           );
 
       if (!visibleIds.length) {
-        setSelectedMessageIds(
-          []
-        );
-
+        setSelectedMessageIds([]);
         return;
       }
 
@@ -749,9 +658,7 @@ function InboxPageContent() {
           if (allSelected) {
             return current.filter(
               (id) =>
-                !visibleIds.includes(
-                  id
-                )
+                !visibleIds.includes(id)
             );
           }
 
@@ -770,9 +677,9 @@ function InboxPageContent() {
       setSelectedMessageIds([]);
     };
 
-  /* ==============================================================
-     BULK DELETE
-  ============================================================== */
+  /* ============================================================
+     DELETE SELECTED
+  ============================================================ */
 
   const bulkDeleteSelected =
     async () => {
@@ -798,21 +705,18 @@ function InboxPageContent() {
               api(
                 "/api/inbox-email-ai/action",
                 {
-                  method:
-                    "POST",
+                  method: "POST",
                   headers: {
                     "Content-Type":
                       "application/json",
                   },
-                  body:
-                    JSON.stringify({
-                      id,
-                      action:
-                        "trash",
-                      business_id:
-                        businessId ||
-                        undefined,
-                    }),
+                  body: JSON.stringify({
+                    id,
+                    action: "trash",
+                    business_id:
+                      businessId ||
+                      undefined,
+                  }),
                 }
               )
             )
@@ -825,29 +729,20 @@ function InboxPageContent() {
               "rejected"
           ).length;
 
-        if (failed === 0) {
+        const completed =
+          ids.length - failed;
+
+        if (completed > 0) {
           setNotice(
-            `${ids.length} ${
-              ids.length === 1
+            `${completed} ${
+              completed === 1
                 ? "email"
                 : "emails"
             } moved to Trash.`
           );
-        } else {
-          const completed =
-            ids.length -
-            failed;
+        }
 
-          if (completed > 0) {
-            setNotice(
-              `${completed} ${
-                completed === 1
-                  ? "email"
-                  : "emails"
-              } moved to Trash.`
-            );
-          }
-
+        if (failed > 0) {
           setError(
             `${failed} ${
               failed === 1
@@ -857,27 +752,19 @@ function InboxPageContent() {
           );
         }
 
-        setSelectedMessageIds(
-          []
-        );
+        setSelectedMessageIds([]);
 
         const currentSelectedId =
-          getMessageId(
-            selected
-          );
+          getMessageId(selected);
 
         if (
           currentSelectedId &&
           ids.includes(
-            String(
-              currentSelectedId
-            )
+            String(currentSelectedId)
           )
         ) {
           setSelected(null);
-          setMobileDetail(
-            false
-          );
+          setMobileDetail(false);
         }
 
         await load({
@@ -890,165 +777,125 @@ function InboxPageContent() {
         );
 
         setError(
-          e?.message ||
-            "Unable to delete the selected emails."
+          "Unable to delete the selected emails."
         );
       } finally {
         setBulkDeleting(false);
       }
     };
 
-  /* ==============================================================
+  /* ============================================================
      OPEN MESSAGE
-  ============================================================== */
+     
+     IMPORTANT:
+     The already-loaded email is used immediately.
+     No second message-detail request is made here.
+     
+     This prevents the previous 404 issue when opening an email.
+  ============================================================ */
 
-  const openMessage =
-    async (item) => {
-      try {
-        const messageId =
-          getMessageId(item);
+  const openMessage = async (
+    item
+  ) => {
+    try {
+      const messageId =
+        getMessageId(item);
 
-        if (!messageId) {
-          setError(
-            "This email does not contain a valid Gmail message ID. Refresh the Inbox and try again."
-          );
-
-          return;
-        }
-
-        /*
-         * The list endpoint already returns
-         * the complete message.
-         *
-         * Do NOT make another detail request.
-         */
-        const normalized =
-          normalizeMessage(item);
-
-        setSelected(
-          normalized
+      if (!messageId) {
+        setError(
+          "This email does not contain a valid Gmail message ID. Refresh the Inbox and try again."
         );
 
-        setMobileDetail(
-          true
-        );
-
-        setDetailLoading(
-          false
-        );
-
-        setError("");
-        setNotice("");
-
-        /*
-         * Mark unread message as read.
-         *
-         * This never blocks opening the email.
-         */
-        if (item?.unread) {
-          try {
-            await api(
-              "/api/inbox-email-ai/action",
-              {
-                method:
-                  "POST",
-                headers: {
-                  "Content-Type":
-                    "application/json",
-                },
-                body:
-                  JSON.stringify({
-                    id: String(
-                      messageId
-                    ),
-                    action:
-                      "read",
-                    business_id:
-                      businessId ||
-                      undefined,
-                  }),
-              }
-            );
-
-            setMessages(
-              (current) =>
-                current.map(
-                  (x) =>
-                    String(
-                      getMessageId(
-                        x
-                      )
-                    ) ===
-                    String(
-                      messageId
-                    )
-                      ? {
-                          ...x,
-                          unread:
-                            false,
-                        }
-                      : x
-                )
-            );
-
-            setSelected(
-              (current) =>
-                current
-                  ? {
-                      ...current,
-                      unread:
-                        false,
-                    }
-                  : current
-            );
-          } catch (
-            readError
-          ) {
-            console.warn(
-              "[Inbox] Email opened successfully, but marking it as read failed:",
-              readError
-            );
-          }
-        }
-      } catch (e) {
-        console.error(
-          "[Inbox] Open message failed:",
-          e
-        );
-
-        const message =
-          e?.message ||
-          "Unable to open email.";
-
-        if (
-          e?.code ===
-            "GMAIL_REAUTH_REQUIRED" ||
-          /invalid_grant/i.test(
-            message
-          ) ||
-          /authorization.*expired/i.test(
-            message
-          ) ||
-          /authorization.*revoked/i.test(
-            message
-          )
-        ) {
-          setError(
-            "Your connected Gmail account needs to be re-authorized so Inbox can read received messages."
-          );
-        } else {
-          setError(message);
-        }
-      } finally {
-        setDetailLoading(
-          false
-        );
+        return;
       }
-    };
 
-  /* ==============================================================
+      const normalized =
+        normalizeMessage(item);
+
+      setSelected(normalized);
+      setMobileDetail(true);
+      setDetailLoading(false);
+
+      setError("");
+      setNotice("");
+      setReply("");
+
+      /* --------------------------------------------------------
+         Mark unread email as read.
+         This is secondary and must never prevent opening.
+      -------------------------------------------------------- */
+
+      if (item?.unread) {
+        try {
+          await api(
+            "/api/inbox-email-ai/action",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body: JSON.stringify({
+                id: String(
+                  messageId
+                ),
+                action: "read",
+                business_id:
+                  businessId ||
+                  undefined,
+              }),
+            }
+          );
+
+          setMessages(
+            (current) =>
+              current.map((email) =>
+                String(
+                  getMessageId(email)
+                ) ===
+                String(messageId)
+                  ? {
+                      ...email,
+                      unread: false,
+                    }
+                  : email
+              )
+          );
+
+          setSelected(
+            (current) =>
+              current
+                ? {
+                    ...current,
+                    unread: false,
+                  }
+                : current
+          );
+        } catch (readError) {
+          console.warn(
+            "[Inbox] Email opened, but marking read failed:",
+            readError
+          );
+        }
+      }
+    } catch (e) {
+      console.error(
+        "[Inbox] Open message failed:",
+        e
+      );
+
+      setError(
+        e?.message ||
+          "Unable to open email."
+      );
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  /* ============================================================
      MESSAGE ACTION
-  ============================================================== */
+  ============================================================ */
 
   const action = async (
     name
@@ -1076,16 +923,13 @@ function InboxPageContent() {
             "Content-Type":
               "application/json",
           },
-          body:
-            JSON.stringify({
-              id: String(
-                messageId
-              ),
-              action: name,
-              business_id:
-                businessId ||
-                undefined,
-            }),
+          body: JSON.stringify({
+            id: String(messageId),
+            action: name,
+            business_id:
+              businessId ||
+              undefined,
+          }),
         }
       );
 
@@ -1105,65 +949,112 @@ function InboxPageContent() {
           : "Email updated."
       );
 
-      /*
-       * Update UI immediately.
-       */
-      if (
-        name === "trash" ||
-        name === "archive"
-      ) {
-        setSelected(null);
-        setMobileDetail(
-          false
-        );
-      } else {
-        setSelected(
-          (current) =>
-            current
-              ? {
-                  ...current,
-                  unread:
-                    name ===
-                    "unread"
-                      ? true
-                      : name ===
-                        "read"
-                      ? false
-                      : current.unread,
-                  starred:
-                    name ===
-                    "star"
-                      ? true
-                      : name ===
-                        "unstar"
-                      ? false
-                      : current.starred,
-                }
-              : current
-        );
-      }
+      /* --------------------------------------------------------
+         Update UI immediately.
+      -------------------------------------------------------- */
 
-      if (
-        name === "trash"
-      ) {
+      if (name === "trash") {
+        setMessages(
+          (current) =>
+            current.filter(
+              (item) =>
+                String(
+                  getMessageId(item)
+                ) !==
+                String(messageId)
+            )
+        );
+
         setSelectedMessageIds(
           (current) =>
             current.filter(
               (id) =>
                 String(id) !==
-                String(
-                  messageId
-                )
+                String(messageId)
             )
         );
+
+        setSelected(null);
+        setMobileDetail(false);
+
+        /* Refresh silently after local removal. */
+        await load({
+          silent: true,
+        });
+
+        return;
       }
 
-      /*
-       * Silent refresh.
-       */
-      await load({
-        silent: true,
-      });
+      if (name === "archive") {
+        setMessages(
+          (current) =>
+            current.filter(
+              (item) =>
+                String(
+                  getMessageId(item)
+                ) !==
+                String(messageId)
+            )
+        );
+
+        setSelected(null);
+        setMobileDetail(false);
+
+        await load({
+          silent: true,
+        });
+
+        return;
+      }
+
+      setMessages(
+        (current) =>
+          current.map((item) =>
+            String(
+              getMessageId(item)
+            ) ===
+            String(messageId)
+              ? {
+                  ...item,
+                  unread:
+                    name === "unread"
+                      ? true
+                      : name === "read"
+                      ? false
+                      : item.unread,
+                  starred:
+                    name === "star"
+                      ? true
+                      : name ===
+                        "unstar"
+                      ? false
+                      : item.starred,
+                }
+              : item
+          )
+      );
+
+      setSelected(
+        (current) =>
+          current
+            ? {
+                ...current,
+                unread:
+                  name === "unread"
+                    ? true
+                    : name === "read"
+                    ? false
+                    : current.unread,
+                starred:
+                  name === "star"
+                    ? true
+                    : name ===
+                      "unstar"
+                    ? false
+                    : current.starred,
+              }
+            : current
+      );
     } catch (e) {
       console.error(
         "[Inbox] Action failed:",
@@ -1177,9 +1068,9 @@ function InboxPageContent() {
     }
   };
 
-  /* ==============================================================
+  /* ============================================================
      SEND REPLY
-  ============================================================== */
+  ============================================================ */
 
   const sendReply =
     async () => {
@@ -1194,7 +1085,10 @@ function InboxPageContent() {
         return;
       }
 
-      if (!reply.trim()) {
+      const cleanReply =
+        reply.trim();
+
+      if (!cleanReply) {
         setError(
           "Write a reply before sending."
         );
@@ -1211,25 +1105,32 @@ function InboxPageContent() {
           await api(
             "/api/inbox-email-ai/reply",
             {
-              method:
-                "POST",
+              method: "POST",
               headers: {
                 "Content-Type":
                   "application/json",
               },
-              body:
-                JSON.stringify({
-                  id: String(
-                    messageId
-                  ),
-                  message:
-                    reply.trim(),
-                  business_id:
-                    businessId ||
-                    undefined,
-                }),
+              body: JSON.stringify({
+                id: String(
+                  messageId
+                ),
+                message:
+                  cleanReply,
+                business_id:
+                  businessId ||
+                  undefined,
+              }),
             }
           );
+
+        if (
+          data?.success === false
+        ) {
+          throw new Error(
+            data?.message ||
+              "Unable to send reply."
+          );
+        }
 
         setNotice(
           data?.message ||
@@ -1252,13 +1153,21 @@ function InboxPageContent() {
       }
     };
 
-  /* ==============================================================
+  /* ============================================================
      AI REPLY
-  ============================================================== */
+     
+     THREE AI BUTTONS ONLY:
+     
+     1. Interested
+     2. Not Interested
+     3. Improve with AI
+     
+     There is NO "Reply with AI" button.
+  ============================================================ */
 
   const runAiReply =
     async (
-      mode = "reply",
+      mode,
       intent = null
     ) => {
       const messageId =
@@ -1272,10 +1181,15 @@ function InboxPageContent() {
         return;
       }
 
+      const emailBody =
+        getEmailBody(selected);
+
       const cleanDraft =
-        String(
-          reply || ""
-        ).trim();
+        String(reply || "").trim();
+
+      /* --------------------------------------------------------
+         Improve requires the user's draft.
+      -------------------------------------------------------- */
 
       if (
         mode === "improve" &&
@@ -1288,17 +1202,34 @@ function InboxPageContent() {
         return;
       }
 
+      /* --------------------------------------------------------
+         Generate actions require readable email context.
+         
+         We use body, text, HTML, snippet and preview fallbacks
+         so the AI receives the actual email whenever available.
+      -------------------------------------------------------- */
+
+      if (
+        mode === "generate" &&
+        !emailBody
+      ) {
+        setError(
+          "This email does not contain readable content for AI to use."
+        );
+
+        return;
+      }
+
       try {
         setAiLoading(true);
 
         setAiMode(
-          intent ===
-            "interested"
+          intent === "interested"
             ? "interested"
             : intent ===
               "not_interested"
             ? "not_interested"
-            : mode
+            : "improve"
         );
 
         setError("");
@@ -1308,50 +1239,69 @@ function InboxPageContent() {
           await api(
             "/api/inbox-email-ai/ai-reply",
             {
-              method:
-                "POST",
+              method: "POST",
               headers: {
                 "Content-Type":
                   "application/json",
               },
-              body:
-                JSON.stringify({
-                  id: String(
-                    messageId
+              body: JSON.stringify({
+                id: String(
+                  messageId
+                ),
+
+                business_id:
+                  businessId ||
+                  undefined,
+
+                /*
+                 * Generate is used for:
+                 * Interested
+                 * Not Interested
+                 *
+                 * Improve uses improve mode.
+                 */
+                mode:
+                  mode === "improve"
+                    ? "improve"
+                    : "generate",
+
+                /*
+                 * Backend uses this to determine
+                 * whether the generated response
+                 * should be positive or a polite decline.
+                 */
+                intent:
+                  intent || null,
+
+                /*
+                 * Only the current manually typed
+                 * reply is sent for improvement.
+                 */
+                draft:
+                  mode === "improve"
+                    ? cleanDraft
+                    : "",
+
+                /*
+                 * Complete email context.
+                 */
+                emailBody:
+                  emailBody,
+
+                sender:
+                  getSender(
+                    selected
                   ),
-                  business_id:
-                    businessId ||
-                    undefined,
-                  mode:
-                    mode ===
-                    "improve"
-                      ? "improve"
-                      : "generate",
-                  intent:
-                    intent ||
-                    null,
-                  draft:
-                    mode ===
-                    "improve"
-                      ? cleanDraft
-                      : "",
-                  emailBody:
-                    selected?.body ||
-                    selected?.text ||
-                    selected?.snippet ||
-                    "",
-                  sender:
-                    getSender(
-                      selected
-                    ),
-                  senderEmail:
-                    getSenderEmail(
-                      selected
-                    ),
-                  subject:
-                    selected?.subject ||
-                    "",
-                }),
+
+                senderEmail:
+                  getSenderEmail(
+                    selected
+                  ),
+
+                subject:
+                  selected?.subject ||
+                  "",
+              }),
             }
           );
 
@@ -1360,27 +1310,35 @@ function InboxPageContent() {
           data?.message ||
           "";
 
-        if (!generated) {
+        if (!String(generated).trim()) {
           throw new Error(
             "AI did not generate a reply."
           );
         }
 
         setReply(
-          generated
+          String(generated).trim()
         );
 
-        setNotice(
-          mode === "improve"
-            ? "Your draft was improved with AI. Review it before sending."
-            : intent ===
-              "interested"
-            ? "AI prepared an interested reply. Review it before sending."
-            : intent ===
-              "not_interested"
-            ? "AI prepared a polite decline. Review it before sending."
-            : "AI prepared a reply. Review it before sending."
-        );
+        if (
+          intent ===
+          "interested"
+        ) {
+          setNotice(
+            "AI prepared a professional interested reply. Review it before sending."
+          );
+        } else if (
+          intent ===
+          "not_interested"
+        ) {
+          setNotice(
+            "AI prepared a professional decline. Review it before sending."
+          );
+        } else {
+          setNotice(
+            "Your draft was improved with AI. Review it before sending."
+          );
+        }
       } catch (e) {
         console.error(
           "[Inbox] AI reply failed:",
@@ -1413,13 +1371,11 @@ function InboxPageContent() {
 
   const improveWithAI =
     () =>
-      runAiReply(
-        "improve"
-      );
+      runAiReply("improve");
 
-  /* ==============================================================
+  /* ============================================================
      RECONNECT GMAIL
-  ============================================================== */
+  ============================================================ */
 
   const reconnectGmail =
     async () => {
@@ -1477,59 +1433,25 @@ function InboxPageContent() {
       }
     };
 
-  /* ==============================================================
-     SEND EMAIL — NEW TOP BAR BUTTON
-  ============================================================== */
-
-  const openSendEmail =
-    () => {
-      const params =
-        new URLSearchParams();
-
-      if (businessId) {
-        params.set(
-          "business_id",
-          businessId
-        );
-      }
-
-      router.push(
-        `/email-ai/new-campaign${
-          params.toString()
-            ? `?${params.toString()}`
-            : ""
-        }`
-      );
-    };
-
-  /* ==============================================================
+  /* ============================================================
      NAVIGATION
-  ============================================================== */
+  ============================================================ */
 
-  const backToEmailAI =
-    () => {
-      const params =
-        new URLSearchParams();
-
+  const goBackToChannels = () => {
       if (businessId) {
-        params.set(
-          "business_id",
-          businessId
+        router.push(
+          `/channels?businessId=${encodeURIComponent(
+            businessId
+          )}`
         );
+      } else {
+        router.push("/channels");
       }
-
-      router.push(
-        `/email-ai${
-          params.toString()
-            ? `?${params.toString()}`
-            : ""
-        }`
-      );
     };
 
-  /* ==============================================================
+  /* ============================================================
      FILTERING
-  ============================================================== */
+  ============================================================ */
 
   const filteredMessages =
     useMemo(() => {
@@ -1545,9 +1467,8 @@ function InboxPageContent() {
       return messages.filter(
         (message) => {
           const sender =
-            getSender(
-              message
-            ).toLowerCase();
+            getSender(message)
+              .toLowerCase();
 
           const email =
             getSenderEmail(
@@ -1583,9 +1504,9 @@ function InboxPageContent() {
       );
     }, [messages, query]);
 
-  /* ==============================================================
+  /* ============================================================
      STATS
-  ============================================================== */
+  ============================================================ */
 
   const unreadCount =
     messages.filter(
@@ -1605,28 +1526,41 @@ function InboxPageContent() {
         item?.important
     ).length;
 
-  /* ==============================================================
-     MAIN UI
-  ============================================================== */
+  /* ============================================================
+     FOLDER SELECTOR
+  ============================================================ */
+
+  const changeFolder =
+    (nextFolder) => {
+      setFolder(nextFolder);
+      setSelected(null);
+      setMobileDetail(false);
+      setSelectedMessageIds([]);
+      setError("");
+      setNotice("");
+    };
+
+  /* ============================================================
+     RENDER
+  ============================================================ */
 
   return (
     <main className="inbox-page">
       <div className="inbox-shell">
 
-        {/* ========================================================
+        {/* ======================================================
             TOP BAR
-        ========================================================= */}
+        ======================================================= */}
 
         <header className="topbar">
           <div className="topbar-left">
+
             <button
               type="button"
-              onClick={
-                backToEmailAI
-              }
+              onClick={goBackToChannels}
               className="back-button"
             >
-              ← Back to Email AI
+              ← Back to Channels
             </button>
 
             <div className="title-area">
@@ -1635,9 +1569,7 @@ function InboxPageContent() {
                 SODAH INBOX EMAIL AI
               </div>
 
-              <h1>
-                Inbox
-              </h1>
+              <h1>Inbox</h1>
 
               <p>
                 All received emails from your connected Gmail.
@@ -1663,31 +1595,10 @@ function InboxPageContent() {
               </span>
             </div>
 
-            {/* ==================================================
-                SEND EMAIL BUTTON
-            ================================================== */}
-
-            <button
-              type="button"
-              onClick={
-                openSendEmail
-              }
-              className="send-email-button"
-              title="Compose and send a new email"
-              aria-label="Send Email"
-            >
-              <span className="send-email-icon">
-                ✉
-              </span>
-
-              <span>
-                Send Email
-              </span>
-            </button>
-
             <div className="gmail-context">
+
               <div className="gmail-icon">
-                ✉
+                G
               </div>
 
               <div className="gmail-details">
@@ -1705,20 +1616,19 @@ function InboxPageContent() {
 
               <button
                 type="button"
-                onClick={
-                  reconnectGmail
-                }
+                onClick={reconnectGmail}
                 className="reconnect-button"
               >
                 Reconnect
               </button>
+
             </div>
           </div>
         </header>
 
-        {/* ========================================================
+        {/* ======================================================
             ERROR / NOTICE
-        ========================================================= */}
+        ======================================================= */}
 
         {(error || notice) && (
           <div className="message-banner-wrap">
@@ -1738,6 +1648,9 @@ function InboxPageContent() {
                 ) ||
                   error.includes(
                     "authorization"
+                  ) ||
+                  error.includes(
+                    "permission"
                   ) ||
                   error.includes(
                     "read permission"
@@ -1769,30 +1682,67 @@ function InboxPageContent() {
           </div>
         )}
 
-        {/* ========================================================
+        {/* ======================================================
             WORKSPACE
-        ========================================================= */}
+        ======================================================= */}
 
         <section className="workspace">
 
-          {/* ======================================================
-              LEFT MAILBOX SIDEBAR
-          ====================================================== */}
+          {/* ====================================================
+              SIDEBAR
+          ===================================================== */}
 
-          <aside className="mailbox-sidebar">
+          <div
+            className="sidebar-hover-zone"
+            onMouseEnter={() =>
+              setSidebarOpen(true)
+            }
+          >
+            <button
+              type="button"
+              className="sidebar-arrow-button"
+              onClick={() =>
+                setSidebarOpen((open) => !open)
+              }
+              aria-label={
+                sidebarOpen
+                  ? "Hide mailbox sidebar"
+                  : "Show mailbox sidebar"
+              }
+              title={
+                sidebarOpen
+                  ? "Hide sidebar"
+                  : "Show sidebar"
+              }
+            >
+              {sidebarOpen ? "‹" : "›"}
+            </button>
+          </div>
+
+          <aside
+            className={
+              sidebarOpen
+                ? "mailbox-sidebar sidebar-open"
+                : "mailbox-sidebar"
+            }
+            onMouseEnter={() =>
+              setSidebarOpen(true)
+            }
+            onMouseLeave={() =>
+              setSidebarOpen(false)
+            }
+          >
 
             <div className="sidebar-heading">
-              <div>
-                <span className="sidebar-title">
-                  Mailbox
-                </span>
+              <span className="sidebar-title">
+                Mailbox
+              </span>
 
-                <span className="sidebar-subtitle">
-                  {account?.gmail_email ||
-                    account?.email ||
-                    "Gmail"}
-                </span>
-              </div>
+              <span className="sidebar-subtitle">
+                {account?.gmail_email ||
+                  account?.email ||
+                  "Gmail"}
+              </span>
             </div>
 
             <div className="folder-list">
@@ -1800,25 +1750,15 @@ function InboxPageContent() {
               <button
                 type="button"
                 className={
-                  folder ===
-                  "inbox"
+                  folder === "inbox"
                     ? "folder-button active"
                     : "folder-button"
                 }
-                onClick={() => {
-                  setFolder(
+                onClick={() =>
+                  changeFolder(
                     "inbox"
-                  );
-                  setSelected(
-                    null
-                  );
-                  setMobileDetail(
-                    false
-                  );
-                  setSelectedMessageIds(
-                    []
-                  );
-                }}
+                  )
+                }
               >
                 <span className="folder-icon">
                   📥
@@ -1836,28 +1776,18 @@ function InboxPageContent() {
               <button
                 type="button"
                 className={
-                  folder ===
-                  "unread"
+                  folder === "unread"
                     ? "folder-button active"
                     : "folder-button"
                 }
-                onClick={() => {
-                  setFolder(
+                onClick={() =>
+                  changeFolder(
                     "unread"
-                  );
-                  setSelected(
-                    null
-                  );
-                  setMobileDetail(
-                    false
-                  );
-                  setSelectedMessageIds(
-                    []
-                  );
-                }}
+                  )
+                }
               >
                 <span className="folder-icon">
-                  🔵
+                  ●
                 </span>
 
                 <span className="folder-label">
@@ -1872,25 +1802,15 @@ function InboxPageContent() {
               <button
                 type="button"
                 className={
-                  folder ===
-                  "starred"
+                  folder === "starred"
                     ? "folder-button active"
                     : "folder-button"
                 }
-                onClick={() => {
-                  setFolder(
+                onClick={() =>
+                  changeFolder(
                     "starred"
-                  );
-                  setSelected(
-                    null
-                  );
-                  setMobileDetail(
-                    false
-                  );
-                  setSelectedMessageIds(
-                    []
-                  );
-                }}
+                  )
+                }
               >
                 <span className="folder-icon">
                   ★
@@ -1908,28 +1828,18 @@ function InboxPageContent() {
               <button
                 type="button"
                 className={
-                  folder ===
-                  "important"
+                  folder === "important"
                     ? "folder-button active"
                     : "folder-button"
                 }
-                onClick={() => {
-                  setFolder(
+                onClick={() =>
+                  changeFolder(
                     "important"
-                  );
-                  setSelected(
-                    null
-                  );
-                  setMobileDetail(
-                    false
-                  );
-                  setSelectedMessageIds(
-                    []
-                  );
-                }}
+                  )
+                }
               >
                 <span className="folder-icon">
-                  ❗
+                  !
                 </span>
 
                 <span className="folder-label">
@@ -1944,25 +1854,15 @@ function InboxPageContent() {
               <button
                 type="button"
                 className={
-                  folder ===
-                  "attachments"
+                  folder === "attachments"
                     ? "folder-button active"
                     : "folder-button"
                 }
-                onClick={() => {
-                  setFolder(
+                onClick={() =>
+                  changeFolder(
                     "attachments"
-                  );
-                  setSelected(
-                    null
-                  );
-                  setMobileDetail(
-                    false
-                  );
-                  setSelectedMessageIds(
-                    []
-                  );
-                }}
+                  )
+                }
               >
                 <span className="folder-icon">
                   📎
@@ -1976,28 +1876,18 @@ function InboxPageContent() {
               <button
                 type="button"
                 className={
-                  folder ===
-                  "archive"
+                  folder === "archive"
                     ? "folder-button active"
                     : "folder-button"
                 }
-                onClick={() => {
-                  setFolder(
+                onClick={() =>
+                  changeFolder(
                     "archive"
-                  );
-                  setSelected(
-                    null
-                  );
-                  setMobileDetail(
-                    false
-                  );
-                  setSelectedMessageIds(
-                    []
-                  );
-                }}
+                  )
+                }
               >
                 <span className="folder-icon">
-                  🗄
+                  ▣
                 </span>
 
                 <span className="folder-label">
@@ -2008,25 +1898,15 @@ function InboxPageContent() {
               <button
                 type="button"
                 className={
-                  folder ===
-                  "trash"
+                  folder === "trash"
                     ? "folder-button active"
                     : "folder-button"
                 }
-                onClick={() => {
-                  setFolder(
+                onClick={() =>
+                  changeFolder(
                     "trash"
-                  );
-                  setSelected(
-                    null
-                  );
-                  setMobileDetail(
-                    false
-                  );
-                  setSelectedMessageIds(
-                    []
-                  );
-                }}
+                  )
+                }
               >
                 <span className="folder-icon">
                   🗑
@@ -2036,6 +1916,7 @@ function InboxPageContent() {
                   Trash
                 </span>
               </button>
+
             </div>
 
             <div className="sidebar-bottom">
@@ -2060,13 +1941,15 @@ function InboxPageContent() {
                       "Unavailable"}
                   </strong>
                 </div>
+
               </div>
             </div>
+
           </aside>
 
-          {/* ======================================================
+          {/* ====================================================
               MESSAGE LIST
-          ====================================================== */}
+          ===================================================== */}
 
           <section
             className={
@@ -2075,28 +1958,23 @@ function InboxPageContent() {
                 : "message-list-pane"
             }
           >
+
             <div className="list-header">
 
               <div className="list-heading-row">
+
                 <div>
                   <h2>
-                    {folder ===
-                    "inbox"
+                    {folder === "inbox"
                       ? "Inbox"
                       : folder
-                          .charAt(
-                            0
-                          )
+                          .charAt(0)
                           .toUpperCase() +
-                        folder.slice(
-                          1
-                        )}
+                        folder.slice(1)}
                   </h2>
 
                   <span>
-                    {
-                      filteredMessages.length
-                    }{" "}
+                    {filteredMessages.length}{" "}
                     conversations
                   </span>
                 </div>
@@ -2141,6 +2019,7 @@ function InboxPageContent() {
                   >
                     ↻
                   </button>
+
                 </div>
               </div>
 
@@ -2190,11 +2069,13 @@ function InboxPageContent() {
                         ? "Deleting..."
                         : "🗑 Delete"}
                     </button>
+
                   </div>
                 </div>
               )}
 
               <div className="search-box">
+
                 <span>
                   🔎
                 </span>
@@ -2217,12 +2098,13 @@ function InboxPageContent() {
                       setQuery("")
                     }
                     className="clear-search"
-                    aria-label="Clear search"
                   >
                     ×
                   </button>
                 )}
+
               </div>
+
             </div>
 
             <div className="message-items">
@@ -2255,23 +2137,17 @@ function InboxPageContent() {
                   >
                     Refresh Inbox
                   </button>
+
                 </div>
               )}
 
               {filteredMessages.map(
-                (
-                  item,
-                  index
-                ) => {
+                (item, index) => {
                   const itemId =
-                    getMessageId(
-                      item
-                    );
+                    getMessageId(item);
 
                   const sender =
-                    getSender(
-                      item
-                    );
+                    getSender(item);
 
                   const senderEmail =
                     getSenderEmail(
@@ -2287,23 +2163,24 @@ function InboxPageContent() {
                       item
                     );
 
+                  const selectedId =
+                    selected
+                      ? getMessageId(
+                          selected
+                        )
+                      : null;
+
                   const isSelected =
-                    selected &&
+                    selectedId &&
                     itemId &&
                     String(
-                      getMessageId(
-                        selected
-                      )
+                      selectedId
                     ) ===
-                      String(
-                        itemId
-                      );
+                      String(itemId);
 
                   const isChecked =
                     selectedMessageIds.includes(
-                      String(
-                        itemId
-                      )
+                      String(itemId)
                     );
 
                   return (
@@ -2326,6 +2203,7 @@ function InboxPageContent() {
                           : "message-row"
                       }
                     >
+
                       <span
                         role="checkbox"
                         aria-checked={
@@ -2391,6 +2269,7 @@ function InboxPageContent() {
                                 item?.internalDate
                             )}
                           </div>
+
                         </div>
 
                         <div className="sender-email">
@@ -2421,7 +2300,7 @@ function InboxPageContent() {
 
                           {item?.important && (
                             <span className="important-indicator">
-                              ❗
+                              !
                             </span>
                           )}
 
@@ -2430,18 +2309,22 @@ function InboxPageContent() {
                               📎
                             </span>
                           )}
+
                         </div>
+
                       </div>
+
                     </button>
                   );
                 }
               )}
+
             </div>
           </section>
 
-          {/* ======================================================
+          {/* ====================================================
               EMAIL DETAIL
-          ====================================================== */}
+          ===================================================== */}
 
           <section
             className={
@@ -2478,12 +2361,14 @@ function InboxPageContent() {
                   <p>
                     Choose a conversation from your Inbox to read it here.
                   </p>
+
                 </div>
               )}
 
             {!detailLoading &&
               selected && (
                 <>
+
                   <div className="detail-header">
 
                     <button
@@ -2552,7 +2437,7 @@ function InboxPageContent() {
                         }
                         title="Archive"
                       >
-                        🗄
+                        ▣
                       </button>
 
                       <button
@@ -2562,10 +2447,11 @@ function InboxPageContent() {
                             "trash"
                           )
                         }
-                        title="Trash"
+                        title="Move to Trash"
                       >
                         🗑
                       </button>
+
                     </div>
                   </div>
 
@@ -2603,6 +2489,7 @@ function InboxPageContent() {
                             )}
                             &gt;
                           </span>
+
                         </div>
 
                         <div className="to-line">
@@ -2612,6 +2499,7 @@ function InboxPageContent() {
                             account?.email ||
                             "me"}
                         </div>
+
                       </div>
 
                       <div className="email-date">
@@ -2620,6 +2508,7 @@ function InboxPageContent() {
                             selected?.internalDate
                         )}
                       </div>
+
                     </div>
 
                     <div className="email-actions">
@@ -2649,6 +2538,7 @@ function InboxPageContent() {
                       >
                         Clear Reply
                       </button>
+
                     </div>
 
                     <article className="email-body">
@@ -2683,12 +2573,14 @@ function InboxPageContent() {
                         </div>
                       ) : (
                         <div className="empty-body">
-                          (This email does not contain readable text.)
+                          This email does not contain readable text.
                         </div>
                       )}
+
                     </article>
 
-                    {selected?.attachments?.length >
+                    {selected?.attachments
+                      ?.length >
                       0 && (
                       <div className="attachments">
 
@@ -2711,11 +2603,13 @@ function InboxPageContent() {
                                 }
                                 className="attachment-item"
                               >
+
                                 <span>
                                   📄
                                 </span>
 
                                 <div>
+
                                   <strong>
                                     {attachment?.filename ||
                                       "Attachment"}
@@ -2725,17 +2619,20 @@ function InboxPageContent() {
                                     {attachment?.mimeType ||
                                       "File"}
                                   </small>
+
                                 </div>
+
                               </div>
                             )
                           )}
+
                         </div>
                       </div>
                     )}
 
                     {/* ==================================================
-                        REPLY / AI
-                    ================================================== */}
+                        REPLY COMPOSER
+                    =================================================== */}
 
                     <div className="reply-section">
 
@@ -2751,24 +2648,13 @@ function InboxPageContent() {
                           </span>
                         </div>
 
+                        {/* =================================================
+                            THREE AI BUTTONS
+                        ================================================== */}
+
                         <div className="ai-buttons">
 
-                          <button
-                            type="button"
-                            onClick={
-                              improveWithAI
-                            }
-                            disabled={
-                              aiLoading
-                            }
-                            className="generate-button improve-button"
-                          >
-                            {aiLoading &&
-                            aiMode ===
-                              "improve"
-                              ? "✨ Improving..."
-                              : "✨ Improve with AI"}
-                          </button>
+                          {/* INTERESTED */}
 
                           <button
                             type="button"
@@ -2778,14 +2664,16 @@ function InboxPageContent() {
                             disabled={
                               aiLoading
                             }
-                            className="generate-button interested-button"
+                            className="ai-button ai-interested"
                           >
                             {aiLoading &&
                             aiMode ===
                               "interested"
-                              ? "🟢 Preparing..."
-                              : "🟢 Interested"}
+                              ? "Preparing..."
+                              : "● Interested"}
                           </button>
+
+                          {/* NOT INTERESTED */}
 
                           <button
                             type="button"
@@ -2795,24 +2683,40 @@ function InboxPageContent() {
                             disabled={
                               aiLoading
                             }
-                            className="generate-button not-interested-button"
+                            className="ai-button ai-not-interested"
                           >
                             {aiLoading &&
                             aiMode ===
                               "not_interested"
-                              ? "🔴 Preparing..."
-                              : "🔴 Not Interested"}
+                              ? "Preparing..."
+                              : "● Not Interested"}
                           </button>
+
+                          {/* IMPROVE WITH AI */}
+
+                          <button
+                            type="button"
+                            onClick={
+                              improveWithAI
+                            }
+                            disabled={
+                              aiLoading
+                            }
+                            className="ai-button ai-improve"
+                          >
+                            {aiLoading &&
+                            aiMode ===
+                              "improve"
+                              ? "Improving..."
+                              : "✦ Improve with AI"}
+                          </button>
+
                         </div>
                       </div>
 
                       <textarea
-                        value={
-                          reply
-                        }
-                        onChange={(
-                          event
-                        ) =>
+                        value={reply}
+                        onChange={(event) =>
                           setReply(
                             event.target
                               .value
@@ -2840,43 +2744,90 @@ function InboxPageContent() {
                           className="send-reply"
                         >
                           {sending
-                            ? "Sending…"
+                            ? "Sending..."
                             : "Send Reply →"}
                         </button>
+
                       </div>
+
                     </div>
+
                   </div>
                 </>
               )}
+
           </section>
         </section>
-      </div>
 
-      {/* ==========================================================
-          PAGE LOADING OVERLAY
-          Existing page remains visible underneath.
-      ========================================================== */}
+        {/* ======================================================
+            TRANSPARENT LOADING OVERLAY
 
-      {loading && (
-        <div
-          className="loading-overlay"
-          aria-live="polite"
-          aria-busy="true"
-        >
-          <div className="loading-overlay-content">
-            <span className="loading-spinner" />
-            <span>
-              Loading Inbox...
-            </span>
+            IMPORTANT:
+            The existing Inbox remains visible underneath.
+            Loading does NOT replace the page.
+        ======================================================= */}
+
+        {loading && (
+          <div
+            className="loading-overlay"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <div className="loading-overlay-content">
+
+              <div className="loading-spinner" />
+
+              <div className="loading-text">
+                Loading Inbox...
+              </div>
+
+              <div className="loading-subtext">
+                Connecting to your Gmail
+              </div>
+
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* ======================================================
+            AI TRANSPARENT LOADING OVERLAY
+        ======================================================= */}
+
+        {aiLoading && (
+          <div
+            className="ai-loading-overlay"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <div className="ai-loading-content">
+
+              <div className="ai-spinner" />
+
+              <div className="ai-loading-title">
+                {aiMode ===
+                "interested"
+                  ? "Preparing interested reply..."
+                  : aiMode ===
+                    "not_interested"
+                  ? "Preparing professional decline..."
+                  : "Improving your reply..."}
+              </div>
+
+              <div className="ai-loading-subtitle">
+                AI is preparing a professional response
+              </div>
+
+            </div>
+          </div>
+        )}
+
+      </div>
 
       <style jsx>{`
 
-        /* ========================================================
+        /* ==========================================================
            PAGE
-        ======================================================== */
+        ========================================================== */
 
         .inbox-page {
           width: 100%;
@@ -2887,22 +2838,12 @@ function InboxPageContent() {
           background:
             radial-gradient(
               circle at 10% 0%,
-              rgba(
-                37,
-                211,
-                102,
-                0.08
-              ),
+              rgba(37, 211, 102, 0.08),
               transparent 30%
             ),
             radial-gradient(
               circle at 90% 10%,
-              rgba(
-                59,
-                130,
-                246,
-                0.08
-              ),
+              rgba(59, 130, 246, 0.08),
               transparent 28%
             ),
             #020617;
@@ -2920,14 +2861,15 @@ function InboxPageContent() {
           overflow: hidden;
         }
 
-        /* ========================================================
+        /* ==========================================================
            TOP BAR
-        ======================================================== */
+        ========================================================== */
 
         .topbar {
           flex: 0 0 auto;
 
           min-height: 88px;
+
           width: 100%;
 
           display: flex;
@@ -2935,24 +2877,15 @@ function InboxPageContent() {
           justify-content: space-between;
 
           gap: 20px;
+
           padding: 15px 24px;
 
           border-bottom:
             1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.08
-            );
+            rgba(255, 255, 255, 0.08);
 
           background:
-            rgba(
-              3,
-              9,
-              18,
-              0.94
-            );
+            rgba(3, 9, 18, 0.94);
 
           backdrop-filter:
             blur(22px);
@@ -2966,6 +2899,7 @@ function InboxPageContent() {
           align-items: center;
 
           gap: 18px;
+
           min-width: 0;
         }
 
@@ -2974,20 +2908,10 @@ function InboxPageContent() {
 
           border:
             1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.1
-            );
+            rgba(255, 255, 255, 0.1);
 
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.045
-            );
+            rgba(255, 255, 255, 0.045);
 
           color: #cbd5e1;
 
@@ -2995,33 +2919,22 @@ function InboxPageContent() {
 
           padding: 10px 13px;
 
-          font-size: 12px;
+          font-size: 13px;
           font-weight: 700;
 
           cursor: pointer;
 
-          transition:
-            0.2s ease;
+          transition: 0.2s ease;
         }
 
         .back-button:hover {
           color: #fff;
 
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.08
-            );
+            rgba(255, 255, 255, 0.08);
 
           border-color:
-            rgba(
-              37,
-              211,
-              102,
-              0.25
-            );
+            rgba(37, 211, 102, 0.25);
         }
 
         .title-area {
@@ -3036,16 +2949,17 @@ function InboxPageContent() {
 
           color: #64748b;
 
-          font-size: 9px;
+          font-size: 10px;
           font-weight: 900;
 
           letter-spacing: 1.8px;
+
           text-transform: uppercase;
         }
 
         .eyebrow-dot {
-          width: 6px;
-          height: 6px;
+          width: 7px;
+          height: 7px;
 
           border-radius: 999px;
 
@@ -3053,18 +2967,13 @@ function InboxPageContent() {
 
           box-shadow:
             0 0 12px
-            rgba(
-              37,
-              211,
-              102,
-              0.55
-            );
+            rgba(37, 211, 102, 0.55);
         }
 
         .title-area h1 {
           margin: 4px 0 0;
 
-          font-size: 23px;
+          font-size: 26px;
           line-height: 1.1;
 
           font-weight: 900;
@@ -3073,11 +2982,11 @@ function InboxPageContent() {
         }
 
         .title-area p {
-          margin: 4px 0 0;
+          margin: 5px 0 0;
 
           color: #64748b;
 
-          font-size: 11px;
+          font-size: 13px;
         }
 
         .topbar-right {
@@ -3094,35 +3003,25 @@ function InboxPageContent() {
           display: flex;
           flex-direction: column;
 
-          min-width: 150px;
-          max-width: 220px;
+          min-width: 160px;
+          max-width: 230px;
 
-          padding: 8px 11px;
+          padding: 9px 12px;
 
           border:
             1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.07
-            );
+            rgba(255, 255, 255, 0.07);
 
           border-radius: 12px;
 
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.025
-            );
+            rgba(255, 255, 255, 0.025);
         }
 
         .context-label {
           color: #475569;
 
-          font-size: 9px;
+          font-size: 10px;
           font-weight: 900;
 
           letter-spacing: 1.5px;
@@ -3132,12 +3031,14 @@ function InboxPageContent() {
           margin-top: 2px;
 
           overflow: hidden;
+
           text-overflow: ellipsis;
+
           white-space: nowrap;
 
           color: #e2e8f0;
 
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 800;
         }
 
@@ -3145,7 +3046,9 @@ function InboxPageContent() {
           margin-top: 2px;
 
           overflow: hidden;
+
           text-overflow: ellipsis;
+
           white-space: nowrap;
 
           color: #25d366;
@@ -3161,150 +3064,27 @@ function InboxPageContent() {
           font-size: 9px;
         }
 
-        /* ========================================================
-           SEND EMAIL BUTTON
-        ======================================================== */
-
-        .send-email-button {
-          flex: 0 0 auto;
-
-          min-height: 42px;
-
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-
-          gap: 8px;
-
-          padding: 0 15px;
-
-          border:
-            1px solid
-            rgba(
-              37,
-              211,
-              102,
-              0.28
-            );
-
-          border-radius: 12px;
-
-          background:
-            rgba(
-              37,
-              211,
-              102,
-              0.1
-            );
-
-          color: #86efac;
-
-          font-size: 12px;
-          font-weight: 800;
-
-          white-space: nowrap;
-
-          cursor: pointer;
-
-          transition:
-            background 0.2s ease,
-            border-color 0.2s ease,
-            transform 0.2s ease,
-            box-shadow 0.2s ease;
-        }
-
-        .send-email-button:hover {
-          background:
-            rgba(
-              37,
-              211,
-              102,
-              0.17
-            );
-
-          border-color:
-            rgba(
-              37,
-              211,
-              102,
-              0.48
-            );
-
-          box-shadow:
-            0 8px 24px
-            rgba(
-              37,
-              211,
-              102,
-              0.08
-            );
-
-          transform:
-            translateY(-1px);
-        }
-
-        .send-email-button:active {
-          transform:
-            translateY(0);
-        }
-
-        .send-email-icon {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-
-          width: 22px;
-          height: 22px;
-
-          border-radius: 7px;
-
-          background:
-            rgba(
-              37,
-              211,
-              102,
-              0.13
-            );
-
-          font-size: 14px;
-          line-height: 1;
-        }
-
-        /* ========================================================
-           GMAIL
-        ======================================================== */
-
         .gmail-context {
           display: flex;
           align-items: center;
 
-          gap: 9px;
+          gap: 10px;
 
-          padding: 7px 8px;
+          padding: 8px 9px;
 
           border:
             1px solid
-            rgba(
-              37,
-              211,
-              102,
-              0.12
-            );
+            rgba(37, 211, 102, 0.12);
 
           border-radius: 14px;
 
           background:
-            rgba(
-              37,
-              211,
-              102,
-              0.035
-            );
+            rgba(37, 211, 102, 0.035);
         }
 
         .gmail-icon {
-          width: 34px;
-          height: 34px;
+          width: 36px;
+          height: 36px;
 
           display: flex;
           align-items: center;
@@ -3313,16 +3093,12 @@ function InboxPageContent() {
           border-radius: 10px;
 
           background:
-            rgba(
-              239,
-              68,
-              68,
-              0.12
-            );
+            rgba(239, 68, 68, 0.12);
 
           color: #f87171;
 
-          font-size: 16px;
+          font-size: 17px;
+          font-weight: 900;
         }
 
         .gmail-details {
@@ -3335,7 +3111,7 @@ function InboxPageContent() {
         .gmail-details span {
           color: #64748b;
 
-          font-size: 10px;
+          font-size: 11px;
           font-weight: 700;
         }
 
@@ -3343,70 +3119,51 @@ function InboxPageContent() {
           max-width: 190px;
 
           overflow: hidden;
+
           text-overflow: ellipsis;
+
           white-space: nowrap;
 
           margin-top: 2px;
 
           color: #e2e8f0;
 
-          font-size: 12px;
+          font-size: 13px;
         }
 
         .reconnect-button {
           border:
             1px solid
-            rgba(
-              37,
-              211,
-              102,
-              0.2
-            );
+            rgba(37, 211, 102, 0.2);
 
           background:
-            rgba(
-              37,
-              211,
-              102,
-              0.09
-            );
+            rgba(37, 211, 102, 0.09);
 
           color: #86efac;
 
           border-radius: 9px;
 
-          padding: 8px 10px;
+          padding: 8px 11px;
 
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 800;
 
           cursor: pointer;
 
-          transition:
-            0.2s ease;
+          transition: 0.2s ease;
         }
 
         .reconnect-button:hover {
           background:
-            rgba(
-              37,
-              211,
-              102,
-              0.16
-            );
+            rgba(37, 211, 102, 0.16);
 
           border-color:
-            rgba(
-              37,
-              211,
-              102,
-              0.35
-            );
+            rgba(37, 211, 102, 0.35);
         }
 
-        /* ========================================================
+        /* ==========================================================
            BANNERS
-        ======================================================== */
+        ========================================================== */
 
         .message-banner-wrap {
           flex: 0 0 auto;
@@ -3415,20 +3172,10 @@ function InboxPageContent() {
 
           border-bottom:
             1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.05
-            );
+            rgba(255, 255, 255, 0.05);
 
           background:
-            rgba(
-              2,
-              6,
-              23,
-              0.85
-            );
+            rgba(2, 6, 23, 0.85);
 
           position: relative;
           z-index: 15;
@@ -3440,9 +3187,9 @@ function InboxPageContent() {
 
           gap: 9px;
 
-          min-height: 38px;
+          min-height: 40px;
 
-          padding: 8px 12px;
+          padding: 9px 13px;
 
           border-radius: 10px;
 
@@ -3453,20 +3200,10 @@ function InboxPageContent() {
         .error-banner {
           border:
             1px solid
-            rgba(
-              248,
-              113,
-              113,
-              0.18
-            );
+            rgba(248, 113, 113, 0.18);
 
           background:
-            rgba(
-              127,
-              29,
-              29,
-              0.18
-            );
+            rgba(127, 29, 29, 0.18);
 
           color: #fca5a5;
         }
@@ -3474,26 +3211,16 @@ function InboxPageContent() {
         .notice-banner {
           border:
             1px solid
-            rgba(
-              37,
-              211,
-              102,
-              0.18
-            );
+            rgba(37, 211, 102, 0.18);
 
           background:
-            rgba(
-              20,
-              83,
-              45,
-              0.18
-            );
+            rgba(20, 83, 45, 0.18);
 
           color: #86efac;
         }
 
         .banner-icon {
-          font-size: 14px;
+          font-size: 15px;
         }
 
         .banner-action {
@@ -3501,36 +3228,26 @@ function InboxPageContent() {
 
           border:
             1px solid
-            rgba(
-              248,
-              113,
-              113,
-              0.2
-            );
+            rgba(248, 113, 113, 0.2);
 
           background:
-            rgba(
-              248,
-              113,
-              113,
-              0.08
-            );
+            rgba(248, 113, 113, 0.08);
 
           color: #fecaca;
 
           border-radius: 8px;
 
-          padding: 6px 9px;
+          padding: 7px 10px;
 
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 800;
 
           cursor: pointer;
         }
 
-        /* ========================================================
+        /* ==========================================================
            WORKSPACE
-        ======================================================== */
+        ========================================================== */
 
         .workspace {
           flex: 1 1 auto;
@@ -3542,83 +3259,123 @@ function InboxPageContent() {
           display: grid;
 
           grid-template-columns:
-            215px
-            minmax(320px, 420px)
+            minmax(330px, 430px)
             minmax(0, 1fr);
+
+          position: relative;
 
           overflow: hidden;
         }
 
-        /* ========================================================
+        /* ==========================================================
            SIDEBAR
-        ======================================================== */
+        ========================================================== */
+
+        .sidebar-hover-zone {
+          position: absolute;
+          top: 0;
+          left: 0;
+          bottom: 0;
+          width: 34px;
+          z-index: 80;
+        }
+
+        .sidebar-arrow-button {
+          position: absolute;
+          top: 50%;
+          left: 0;
+          transform: translateY(-50%);
+
+          width: 32px;
+          height: 68px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          padding: 0;
+
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          border-left: 0;
+          border-radius: 0 12px 12px 0;
+
+          background: #102d27;
+          color: #ffffff;
+
+          font-size: 29px;
+          line-height: 1;
+          font-weight: 500;
+
+          cursor: pointer;
+
+          box-shadow:
+            8px 0 20px
+            rgba(0, 0, 0, 0.35);
+
+          transition:
+            background 0.18s ease,
+            left 0.22s ease;
+        }
+
+        .sidebar-arrow-button:hover {
+          background: #17483b;
+        }
 
         .mailbox-sidebar {
+          position: absolute;
+          top: 0;
+          left: 0;
+          bottom: 0;
+          width: 220px;
           min-height: 0;
+          z-index: 70;
 
           display: flex;
           flex-direction: column;
 
           overflow: hidden;
 
+          transform: translateX(-100%);
+          transition:
+            transform 0.22s ease,
+            box-shadow 0.22s ease;
+          pointer-events: none;
+
           border-right:
             1px solid
-            rgba(
-              37,
-              211,
-              102,
-              0.11
-            );
+            rgba(37, 211, 102, 0.18);
 
-          background:
-            linear-gradient(
-              180deg,
-              rgba(
-                9,
-                35,
-                29,
-                0.72
-              )
-              0%,
-              rgba(
-                4,
-                18,
-                18,
-                0.84
-              )
-              42%,
-              rgba(
-                3,
-                10,
-                18,
-                0.9
-              )
-              100%
-            );
+          /* Solid sidebar — no transparency. */
+          background: #081c19;
+          box-shadow: none;
+        }
+
+        .mailbox-sidebar.sidebar-open {
+          transform: translateX(0);
+          pointer-events: auto;
+          box-shadow:
+            18px 0 40px
+            rgba(0, 0, 0, 0.42);
+        }
+
+        .sidebar-hover-zone:hover .sidebar-arrow-button {
+          background: #17483b;
         }
 
         .sidebar-heading {
           flex: 0 0 auto;
 
-          padding:
-            18px
-            15px
-            13px;
+          padding: 19px 16px 14px;
 
           border-bottom:
             1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.055
-            );
+            rgba(255, 255, 255, 0.055);
         }
 
         .sidebar-title {
           display: block;
 
-          font-size: 15px;
+          font-size: 17px;
           font-weight: 900;
 
           color: #f8fafc;
@@ -3627,17 +3384,19 @@ function InboxPageContent() {
         .sidebar-subtitle {
           display: block;
 
-          margin-top: 3px;
+          margin-top: 4px;
 
-          max-width: 180px;
+          max-width: 185px;
 
           overflow: hidden;
+
           text-overflow: ellipsis;
+
           white-space: nowrap;
 
-          color: #475569;
+          color: #64748b;
 
-          font-size: 10px;
+          font-size: 11px;
         }
 
         .folder-list {
@@ -3647,7 +3406,7 @@ function InboxPageContent() {
 
           overflow-y: auto;
 
-          padding: 10px;
+          padding: 11px;
         }
 
         .folder-button {
@@ -3656,148 +3415,124 @@ function InboxPageContent() {
           display: flex;
           align-items: center;
 
-          gap: 10px;
+          gap: 11px;
 
           border:
             1px solid
             transparent;
 
-          background:
-            transparent;
+          background: transparent;
 
           color: #64748b;
 
-          border-radius: 10px;
+          border-radius: 11px;
 
-          padding: 10px;
+          padding: 11px;
 
-          margin-bottom: 3px;
+          margin-bottom: 4px;
 
           text-align: left;
 
           cursor: pointer;
 
-          transition:
-            0.18s ease;
+          transition: 0.18s ease;
         }
 
         .folder-button:hover {
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.045
-            );
+            rgba(255, 255, 255, 0.045);
 
           color: #cbd5e1;
         }
 
         .folder-button.active {
           border-color:
-            rgba(
-              37,
-              211,
-              102,
-              0.13
-            );
+            rgba(37, 211, 102, 0.17);
 
           background:
-            rgba(
-              37,
-              211,
-              102,
-              0.08
-            );
+            rgba(37, 211, 102, 0.095);
 
           color: #d1fae5;
+
+          box-shadow:
+            inset 3px 0 0
+            #25d366;
         }
 
         .folder-icon {
-          width: 20px;
+          width: 24px;
 
-          flex: 0 0 20px;
+          flex: 0 0 24px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
 
           text-align: center;
 
-          font-size: 12px;
+          font-size: 17px;
+          font-weight: 900;
         }
 
         .folder-label {
           flex: 1;
 
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 800;
         }
 
         .folder-count {
-          min-width: 20px;
+          min-width: 22px;
 
-          color: #475569;
+          color: #64748b;
 
-          font-size: 11px;
+          font-size: 12px;
 
           text-align: right;
         }
 
-        .folder-button.active
-          .folder-count {
+        .folder-button.active .folder-count {
           color: #86efac;
         }
 
         .sidebar-bottom {
           flex: 0 0 auto;
 
-          padding: 10px;
+          padding: 11px;
 
           border-top:
             1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.055
-            );
+            rgba(255, 255, 255, 0.055);
         }
 
         .connected-card {
-          padding: 11px;
+          padding: 12px;
 
           border:
             1px solid
-            rgba(
-              37,
-              211,
-              102,
-              0.1
-            );
+            rgba(37, 211, 102, 0.1);
 
           border-radius: 12px;
 
           background:
-            rgba(
-              37,
-              211,
-              102,
-              0.035
-            );
+            rgba(37, 211, 102, 0.035);
         }
 
         .connected-status {
           display: flex;
           align-items: center;
 
-          gap: 6px;
+          gap: 7px;
 
           color: #86efac;
 
-          font-size: 10px;
+          font-size: 11px;
           font-weight: 800;
         }
 
         .status-dot {
-          width: 6px;
-          height: 6px;
+          width: 7px;
+          height: 7px;
 
           border-radius: 999px;
 
@@ -3805,24 +3540,21 @@ function InboxPageContent() {
 
           box-shadow:
             0 0 9px
-            rgba(
-              37,
-              211,
-              102,
-              0.5
-            );
+            rgba(37, 211, 102, 0.5);
         }
 
         .connected-email {
-          margin-top: 7px;
+          margin-top: 8px;
 
           overflow: hidden;
+
           text-overflow: ellipsis;
+
           white-space: nowrap;
 
           color: #cbd5e1;
 
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 700;
         }
 
@@ -3832,7 +3564,7 @@ function InboxPageContent() {
 
           gap: 2px;
 
-          margin-top: 8px;
+          margin-top: 9px;
 
           color: #475569;
 
@@ -3846,7 +3578,9 @@ function InboxPageContent() {
 
         .connected-business strong {
           overflow: hidden;
+
           text-overflow: ellipsis;
+
           white-space: nowrap;
 
           color: #64748b;
@@ -3866,9 +3600,9 @@ function InboxPageContent() {
           letter-spacing: 0;
         }
 
-        /* ========================================================
+        /* ==========================================================
            MESSAGE LIST
-        ======================================================== */
+        ========================================================== */
 
         .message-list-pane {
           min-width: 0;
@@ -3881,57 +3615,29 @@ function InboxPageContent() {
 
           border-right:
             1px solid
-            rgba(
-              37,
-              211,
-              102,
-              0.08
-            );
+            rgba(37, 211, 102, 0.08);
 
           background:
             linear-gradient(
               180deg,
-              rgba(
-                4,
-                13,
-                27,
-                0.9
-              )
-              0%,
-              rgba(
-                2,
-                9,
-                20,
-                0.88
-              )
-              100%
+              rgba(4, 13, 27, 0.9) 0%,
+              rgba(2, 9, 20, 0.88) 100%
             );
         }
 
         .list-header {
           flex: 0 0 auto;
 
-          padding: 15px;
+          padding: 16px;
 
           border-bottom:
             1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.07
-            );
+            rgba(255, 255, 255, 0.07);
 
           background:
-            rgba(
-              2,
-              6,
-              23,
-              0.82
-            );
+            rgba(2, 6, 23, 0.82);
 
           position: relative;
-
           z-index: 5;
         }
 
@@ -3942,7 +3648,7 @@ function InboxPageContent() {
 
           gap: 10px;
 
-          margin-bottom: 12px;
+          margin-bottom: 13px;
         }
 
         .list-heading-row h2 {
@@ -3950,153 +3656,87 @@ function InboxPageContent() {
 
           color: #f8fafc;
 
-          font-size: 15px;
+          font-size: 17px;
           font-weight: 900;
         }
 
         .list-heading-row span {
           display: block;
 
-          margin-top: 3px;
+          margin-top: 4px;
 
-          color: #475569;
+          color: #64748b;
 
-          font-size: 10px;
+          font-size: 11px;
         }
 
         .list-header-actions {
           display: flex;
           align-items: center;
 
-          gap: 6px;
-
-          flex: 0 0 auto;
+          gap: 7px;
         }
 
         .select-all-button,
         .refresh-button {
-          width: 31px;
-          height: 31px;
+          width: 34px;
+          height: 34px;
+
+          border:
+            1px solid
+            rgba(255, 255, 255, 0.08);
 
           border-radius: 9px;
 
-          cursor: pointer;
-
-          transition:
-            0.18s ease;
-        }
-
-        .select-all-button {
-          border:
-            1px solid
-            rgba(
-              37,
-              211,
-              102,
-              0.16
-            );
-
           background:
-            rgba(
-              37,
-              211,
-              102,
-              0.045
-            );
-
-          color: #86efac;
-
-          font-size: 15px;
-          font-weight: 900;
-        }
-
-        .select-all-button:hover {
-          background:
-            rgba(
-              37,
-              211,
-              102,
-              0.12
-            );
-
-          border-color:
-            rgba(
-              37,
-              211,
-              102,
-              0.3
-            );
-        }
-
-        .refresh-button {
-          border:
-            1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.08
-            );
-
-          background:
-            rgba(
-              255,
-              255,
-              255,
-              0.04
-            );
+            rgba(255, 255, 255, 0.04);
 
           color: #94a3b8;
 
-          font-size: 16px;
+          cursor: pointer;
+
+          transition: 0.2s ease;
         }
 
+        .select-all-button {
+          color: #86efac;
+
+          border-color:
+            rgba(37, 211, 102, 0.16);
+        }
+
+        .select-all-button:hover,
         .refresh-button:hover {
           color: #fff;
 
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.08
-            );
+            rgba(255, 255, 255, 0.08);
         }
 
         .search-box {
-          height: 37px;
+          height: 40px;
 
           display: flex;
           align-items: center;
 
-          gap: 8px;
+          gap: 9px;
 
-          padding: 0 10px;
+          padding: 0 11px;
 
           border:
             1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.08
-            );
+            rgba(255, 255, 255, 0.08);
 
           border-radius: 10px;
 
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.035
-            );
+            rgba(255, 255, 255, 0.035);
         }
 
         .search-box > span {
-          color: #475569;
+          color: #64748b;
 
-          font-size: 12px;
+          font-size: 14px;
         }
 
         .search-box input {
@@ -4107,12 +3747,11 @@ function InboxPageContent() {
           border: 0;
           outline: none;
 
-          background:
-            transparent;
+          background: transparent;
 
           color: #e2e8f0;
 
-          font-size: 12px;
+          font-size: 13px;
         }
 
         .search-box input::placeholder {
@@ -4120,24 +3759,126 @@ function InboxPageContent() {
         }
 
         .clear-search {
-          width: 22px;
-          height: 22px;
+          width: 24px;
+          height: 24px;
 
           border: 0;
 
           border-radius: 7px;
 
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.05
-            );
+            rgba(255, 255, 255, 0.05);
 
           color: #64748b;
 
           cursor: pointer;
+
+          font-size: 17px;
+        }
+
+        .selection-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+
+          gap: 10px;
+
+          margin-bottom: 11px;
+
+          padding: 9px;
+
+          border:
+            1px solid
+            rgba(37, 211, 102, 0.18);
+
+          border-radius: 10px;
+
+          background:
+            rgba(37, 211, 102, 0.07);
+        }
+
+        .selection-summary {
+          display: flex;
+          align-items: center;
+
+          gap: 7px;
+
+          color: #cbd5e1;
+
+          font-size: 12px;
+          font-weight: 700;
+        }
+
+        .selection-summary strong {
+          color: #86efac;
+
+          font-size: 13px;
+        }
+
+        .selection-check {
+          width: 21px;
+          height: 21px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          border-radius: 6px;
+
+          background:
+            rgba(37, 211, 102, 0.15);
+
+          color: #86efac;
+
+          font-size: 12px;
+          font-weight: 900;
+        }
+
+        .selection-actions {
+          display: flex;
+          align-items: center;
+
+          gap: 7px;
+        }
+
+        .selection-clear,
+        .selection-delete {
+          border-radius: 8px;
+
+          padding: 7px 10px;
+
+          font-size: 11px;
+          font-weight: 800;
+
+          cursor: pointer;
+        }
+
+        .selection-clear {
+          border:
+            1px solid
+            rgba(255, 255, 255, 0.08);
+
+          background:
+            rgba(255, 255, 255, 0.04);
+
+          color: #94a3b8;
+        }
+
+        .selection-delete {
+          border:
+            1px solid
+            rgba(248, 113, 113, 0.22);
+
+          background:
+            rgba(127, 29, 29, 0.16);
+
+          color: #fca5a5;
+        }
+
+        .selection-delete:disabled {
+          opacity: 0.55;
+
+          cursor: not-allowed;
         }
 
         .message-items {
@@ -4155,23 +3896,17 @@ function InboxPageContent() {
           display: flex;
           align-items: flex-start;
 
-          gap: 9px;
+          gap: 10px;
 
-          padding: 14px;
+          padding: 15px;
 
           border: 0;
 
           border-bottom:
             1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.045
-            );
+            rgba(255, 255, 255, 0.045);
 
-          background:
-            transparent;
+          background: transparent;
 
           color: #fff;
 
@@ -4179,49 +3914,33 @@ function InboxPageContent() {
 
           cursor: pointer;
 
-          transition:
-            0.16s ease;
+          transition: 0.16s ease;
         }
 
         .message-row:hover {
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.035
-            );
+            rgba(255, 255, 255, 0.035);
         }
 
         .message-row.selected {
           background:
-            rgba(
-              37,
-              211,
-              102,
-              0.075
-            );
+            rgba(37, 211, 102, 0.075);
 
           box-shadow:
-            inset 2px 0 0
+            inset 3px 0 0
             #25d366;
         }
 
         .message-row.unread {
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.018
-            );
+            rgba(255, 255, 255, 0.018);
         }
 
         .message-select {
-          flex: 0 0 19px;
+          flex: 0 0 20px;
 
-          width: 19px;
-          height: 19px;
+          width: 20px;
+          height: 20px;
 
           margin-top: 7px;
 
@@ -4231,78 +3950,36 @@ function InboxPageContent() {
 
           border:
             1px solid
-            rgba(
-              148,
-              163,
-              184,
-              0.28
-            );
+            rgba(148, 163, 184, 0.28);
 
           border-radius: 5px;
 
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.025
-            );
+            rgba(255, 255, 255, 0.025);
 
           color: #86efac;
 
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 900;
 
           cursor: pointer;
 
           outline: none;
-
-          transition:
-            0.18s ease;
-        }
-
-        .message-select:hover,
-        .message-select:focus-visible {
-          border-color:
-            rgba(
-              37,
-              211,
-              102,
-              0.42
-            );
-
-          background:
-            rgba(
-              37,
-              211,
-              102,
-              0.08
-            );
         }
 
         .message-select.selected {
           border-color:
-            rgba(
-              37,
-              211,
-              102,
-              0.5
-            );
+            rgba(37, 211, 102, 0.5);
 
           background:
-            rgba(
-              37,
-              211,
-              102,
-              0.16
-            );
+            rgba(37, 211, 102, 0.16);
         }
 
         .avatar {
-          flex: 0 0 34px;
+          flex: 0 0 38px;
 
-          width: 34px;
-          height: 34px;
+          width: 38px;
+          height: 38px;
 
           display: flex;
           align-items: center;
@@ -4313,28 +3990,19 @@ function InboxPageContent() {
           background:
             linear-gradient(
               135deg,
-              rgba(
-                37,
-                211,
-                102,
-                0.22
-              ),
-              rgba(
-                6,
-                182,
-                212,
-                0.17
-              )
+              rgba(37, 211, 102, 0.22),
+              rgba(6, 182, 212, 0.17)
             );
 
           color: #d1fae5;
 
-          font-size: 10px;
+          font-size: 11px;
           font-weight: 900;
         }
 
         .message-row-content {
           min-width: 0;
+
           flex: 1;
         }
 
@@ -4343,300 +4011,134 @@ function InboxPageContent() {
           align-items: center;
           justify-content: space-between;
 
-          gap: 8px;
+          gap: 9px;
         }
 
         .sender-name {
           min-width: 0;
 
           overflow: hidden;
+
           text-overflow: ellipsis;
+
           white-space: nowrap;
 
           color: #cbd5e1;
 
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 800;
         }
 
-        .message-row.unread
-          .sender-name {
+        .message-row.unread .sender-name {
           color: #fff;
+
           font-weight: 900;
         }
 
         .message-time {
           flex: 0 0 auto;
 
-          color: #475569;
+          color: #64748b;
 
-          font-size: 10px;
+          font-size: 11px;
         }
 
         .sender-email {
-          margin-top: 2px;
+          margin-top: 3px;
 
           overflow: hidden;
+
           text-overflow: ellipsis;
+
           white-space: nowrap;
 
-          color: #475569;
+          color: #64748b;
 
-          font-size: 10px;
+          font-size: 11px;
         }
 
         .message-subject {
-          margin-top: 7px;
+          margin-top: 8px;
 
           overflow: hidden;
+
           text-overflow: ellipsis;
+
           white-space: nowrap;
 
           color: #94a3b8;
 
-          font-size: 12px;
+          font-size: 13px;
           font-weight: 700;
         }
 
-        .message-row.unread
-          .message-subject {
+        .message-row.unread .message-subject {
           color: #e2e8f0;
+
           font-weight: 800;
         }
 
         .message-preview {
-          margin-top: 4px;
+          margin-top: 5px;
 
           display: -webkit-box;
 
           -webkit-line-clamp: 2;
+
           -webkit-box-orient: vertical;
 
           overflow: hidden;
 
-          color: #475569;
+          color: #64748b;
 
-          font-size: 11px;
-          line-height: 1.5;
+          font-size: 12px;
+
+          line-height: 1.55;
         }
 
         .message-meta {
           display: flex;
           align-items: center;
 
-          gap: 6px;
+          gap: 7px;
 
-          margin-top: 6px;
+          margin-top: 7px;
         }
 
         .meta-badge {
           border-radius: 999px;
 
-          padding: 2px 6px;
+          padding: 3px 7px;
 
-          font-size: 9px;
+          font-size: 10px;
           font-weight: 800;
         }
 
         .unread-badge {
           background:
-            rgba(
-              59,
-              130,
-              246,
-              0.12
-            );
+            rgba(59, 130, 246, 0.12);
 
           color: #93c5fd;
         }
 
         .star-indicator {
           color: #facc15;
-          font-size: 10px;
+
+          font-size: 12px;
         }
 
         .important-indicator {
           color: #fb923c;
-          font-size: 8px;
+
+          font-size: 13px;
+          font-weight: 900;
         }
 
         .attachment-indicator {
           color: #94a3b8;
-          font-size: 9px;
-        }
-
-        /* ========================================================
-           SELECTION
-        ======================================================== */
-
-        .selection-toolbar {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-
-          gap: 10px;
-
-          margin-bottom: 10px;
-
-          padding: 8px 9px;
-
-          border:
-            1px solid
-            rgba(
-              37,
-              211,
-              102,
-              0.18
-            );
-
-          border-radius: 10px;
-
-          background:
-            rgba(
-              37,
-              211,
-              102,
-              0.07
-            );
-        }
-
-        .selection-summary {
-          display: flex;
-          align-items: center;
-
-          gap: 6px;
-
-          color: #cbd5e1;
 
           font-size: 11px;
-          font-weight: 700;
         }
-
-        .selection-summary strong {
-          color: #86efac;
-          font-size: 12px;
-        }
-
-        .selection-check {
-          width: 20px;
-          height: 20px;
-
-          display: flex;
-          align-items: center;
-          justify-content: center;
-
-          border-radius: 6px;
-
-          background:
-            rgba(
-              37,
-              211,
-              102,
-              0.15
-            );
-
-          color: #86efac;
-
-          font-size: 12px;
-          font-weight: 900;
-        }
-
-        .selection-actions {
-          display: flex;
-          align-items: center;
-
-          gap: 6px;
-        }
-
-        .selection-clear,
-        .selection-delete {
-          border-radius: 8px;
-
-          padding: 6px 9px;
-
-          font-size: 10px;
-          font-weight: 800;
-
-          cursor: pointer;
-
-          transition:
-            0.18s ease;
-        }
-
-        .selection-clear {
-          border:
-            1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.08
-            );
-
-          background:
-            rgba(
-              255,
-              255,
-              255,
-              0.04
-            );
-
-          color: #94a3b8;
-        }
-
-        .selection-clear:hover {
-          color: #fff;
-
-          background:
-            rgba(
-              255,
-              255,
-              255,
-              0.08
-            );
-        }
-
-        .selection-delete {
-          border:
-            1px solid
-            rgba(
-              248,
-              113,
-              113,
-              0.22
-            );
-
-          background:
-            rgba(
-              127,
-              29,
-              29,
-              0.16
-            );
-
-          color: #fca5a5;
-        }
-
-        .selection-delete:hover {
-          background:
-            rgba(
-              127,
-              29,
-              29,
-              0.28
-            );
-        }
-
-        .selection-delete:disabled {
-          opacity: 0.55;
-
-          cursor:
-            not-allowed;
-        }
-
-        /* ========================================================
-           EMPTY
-        ======================================================== */
 
         .empty-list {
           min-height: 100%;
@@ -4653,9 +4155,9 @@ function InboxPageContent() {
         }
 
         .empty-icon {
-          font-size: 34px;
+          font-size: 38px;
 
-          margin-bottom: 13px;
+          margin-bottom: 14px;
 
           opacity: 0.7;
         }
@@ -4665,18 +4167,18 @@ function InboxPageContent() {
 
           color: #cbd5e1;
 
-          font-size: 15px;
+          font-size: 16px;
           font-weight: 900;
         }
 
         .empty-list p {
-          max-width: 260px;
+          max-width: 280px;
 
-          margin: 7px 0 14px;
+          margin: 8px 0 15px;
 
-          color: #475569;
+          color: #64748b;
 
-          font-size: 11px;
+          font-size: 12px;
 
           line-height: 1.6;
         }
@@ -4684,36 +4186,26 @@ function InboxPageContent() {
         .empty-refresh {
           border:
             1px solid
-            rgba(
-              37,
-              211,
-              102,
-              0.18
-            );
+            rgba(37, 211, 102, 0.18);
 
           background:
-            rgba(
-              37,
-              211,
-              102,
-              0.08
-            );
+            rgba(37, 211, 102, 0.08);
 
           color: #86efac;
 
           border-radius: 9px;
 
-          padding: 8px 11px;
+          padding: 9px 12px;
 
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 800;
 
           cursor: pointer;
         }
 
-        /* ========================================================
+        /* ==========================================================
            EMAIL DETAIL
-        ======================================================== */
+        ========================================================== */
 
         .email-detail-pane {
           min-width: 0;
@@ -4725,12 +4217,7 @@ function InboxPageContent() {
           overflow: hidden;
 
           background:
-            rgba(
-              2,
-              6,
-              23,
-              0.48
-            );
+            rgba(2, 6, 23, 0.48);
         }
 
         .detail-loading,
@@ -4750,24 +4237,10 @@ function InboxPageContent() {
           text-align: center;
         }
 
-        .detail-loading {
-          background:
-            radial-gradient(
-              circle at 50% 42%,
-              rgba(
-                37,
-                211,
-                102,
-                0.055
-              ),
-              transparent 30%
-            );
-        }
-
         .detail-loading-icon,
         .no-selection-icon {
-          width: 54px;
-          height: 54px;
+          width: 58px;
+          height: 58px;
 
           display: flex;
           align-items: center;
@@ -4776,16 +4249,11 @@ function InboxPageContent() {
           border-radius: 17px;
 
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.04
-            );
+            rgba(255, 255, 255, 0.04);
 
-          font-size: 24px;
+          font-size: 25px;
 
-          margin-bottom: 14px;
+          margin-bottom: 15px;
         }
 
         .detail-loading-icon {
@@ -4800,26 +4268,24 @@ function InboxPageContent() {
           0%,
           100% {
             opacity: 0.55;
-            transform:
-              scale(0.96);
+            transform: scale(0.96);
           }
 
           50% {
             opacity: 1;
-            transform:
-              scale(1);
+            transform: scale(1);
           }
         }
 
         .detail-loading p,
         .no-selection p {
-          max-width: 300px;
+          max-width: 330px;
 
-          margin: 6px 0 0;
+          margin: 7px 0 0;
 
-          color: #475569;
+          color: #64748b;
 
-          font-size: 12px;
+          font-size: 13px;
 
           line-height: 1.6;
         }
@@ -4829,14 +4295,14 @@ function InboxPageContent() {
 
           color: #cbd5e1;
 
-          font-size: 18px;
+          font-size: 20px;
           font-weight: 900;
         }
 
         .detail-header {
           flex: 0 0 auto;
 
-          min-height: 58px;
+          min-height: 60px;
 
           display: flex;
           align-items: center;
@@ -4844,27 +4310,16 @@ function InboxPageContent() {
 
           gap: 12px;
 
-          padding: 10px 17px;
+          padding: 10px 18px;
 
           border-bottom:
             1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.07
-            );
+            rgba(255, 255, 255, 0.07);
 
           background:
-            rgba(
-              2,
-              6,
-              23,
-              0.84
-            );
+            rgba(2, 6, 23, 0.84);
 
           position: relative;
-
           z-index: 5;
         }
 
@@ -4873,12 +4328,11 @@ function InboxPageContent() {
 
           border: 0;
 
-          background:
-            transparent;
+          background: transparent;
 
           color: #94a3b8;
 
-          font-size: 12px;
+          font-size: 13px;
           font-weight: 800;
 
           cursor: pointer;
@@ -4888,54 +4342,38 @@ function InboxPageContent() {
           display: flex;
           align-items: center;
 
-          gap: 5px;
+          gap: 6px;
 
           margin-left: auto;
         }
 
         .detail-header-actions button {
-          width: 31px;
-          height: 31px;
+          width: 34px;
+          height: 34px;
 
           border:
             1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.07
-            );
+            rgba(255, 255, 255, 0.07);
 
           border-radius: 9px;
 
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.035
-            );
+            rgba(255, 255, 255, 0.035);
 
           color: #94a3b8;
 
-          font-size: 12px;
+          font-size: 14px;
 
           cursor: pointer;
 
-          transition:
-            0.18s ease;
+          transition: 0.18s ease;
         }
 
         .detail-header-actions button:hover {
           color: #fff;
 
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.08
-            );
+            rgba(255, 255, 255, 0.08);
         }
 
         .detail-content {
@@ -4946,24 +4384,21 @@ function InboxPageContent() {
           overflow-y: auto;
           overflow-x: hidden;
 
-          padding:
-            20px
-            24px
-            35px;
+          padding: 22px 26px 38px;
         }
 
         .email-heading {
           display: flex;
           align-items: flex-start;
 
-          gap: 13px;
+          gap: 14px;
         }
 
         .large-avatar {
-          flex: 0 0 44px;
+          flex: 0 0 48px;
 
-          width: 44px;
-          height: 44px;
+          width: 48px;
+          height: 48px;
 
           display: flex;
           align-items: center;
@@ -4974,23 +4409,13 @@ function InboxPageContent() {
           background:
             linear-gradient(
               135deg,
-              rgba(
-                37,
-                211,
-                102,
-                0.22
-              ),
-              rgba(
-                6,
-                182,
-                212,
-                0.17
-              )
+              rgba(37, 211, 102, 0.22),
+              rgba(6, 182, 212, 0.17)
             );
 
           color: #d1fae5;
 
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 900;
         }
 
@@ -5005,8 +4430,7 @@ function InboxPageContent() {
 
           color: #f8fafc;
 
-          font-size: 20px;
-
+          font-size: 22px;
           line-height: 1.3;
 
           font-weight: 900;
@@ -5019,36 +4443,37 @@ function InboxPageContent() {
           flex-wrap: wrap;
           align-items: center;
 
-          gap: 5px;
+          gap: 6px;
 
           margin-top: 8px;
 
           color: #64748b;
 
-          font-size: 12px;
+          font-size: 13px;
         }
 
         .from-line strong {
           color: #cbd5e1;
+
           font-weight: 800;
         }
 
         .to-line {
-          margin-top: 5px;
+          margin-top: 6px;
 
-          color: #475569;
+          color: #64748b;
 
-          font-size: 10px;
+          font-size: 11px;
         }
 
         .email-date {
           flex: 0 0 auto;
 
-          max-width: 180px;
+          max-width: 200px;
 
-          color: #475569;
+          color: #64748b;
 
-          font-size: 10px;
+          font-size: 11px;
 
           line-height: 1.5;
 
@@ -5061,80 +4486,58 @@ function InboxPageContent() {
 
           flex-wrap: wrap;
 
-          gap: 6px;
+          gap: 7px;
 
-          margin-top: 17px;
+          margin-top: 18px;
 
-          padding-bottom: 14px;
+          padding-bottom: 15px;
 
           border-bottom:
             1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.06
-            );
+            rgba(255, 255, 255, 0.06);
         }
 
         .email-action {
           border:
             1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.08
-            );
+            rgba(255, 255, 255, 0.08);
 
           border-radius: 8px;
 
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.035
-            );
+            rgba(255, 255, 255, 0.035);
 
           color: #94a3b8;
 
-          padding: 7px 9px;
+          padding: 8px 10px;
 
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 800;
 
           cursor: pointer;
 
-          transition:
-            0.18s ease;
+          transition: 0.18s ease;
         }
 
         .email-action:hover {
           color: #fff;
 
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.075
-            );
+            rgba(255, 255, 255, 0.075);
         }
 
         .email-body {
-          margin-top: 20px;
+          margin-top: 21px;
 
           min-height: 120px;
 
           color: #cbd5e1;
 
-          font-size: 14px;
+          font-size: 15px;
 
           line-height: 1.8;
 
-          word-break:
-            break-word;
+          word-break: break-word;
         }
 
         .html-email-body {
@@ -5145,6 +4548,7 @@ function InboxPageContent() {
 
         .html-email-body :global(img) {
           max-width: 100%;
+
           height: auto;
         }
 
@@ -5161,75 +4565,50 @@ function InboxPageContent() {
         }
 
         .empty-body {
-          padding: 25px;
+          padding: 27px;
 
           border:
             1px dashed
-            rgba(
-              255,
-              255,
-              255,
-              0.08
-            );
+            rgba(255, 255, 255, 0.08);
 
           border-radius: 12px;
 
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.018
-            );
+            rgba(255, 255, 255, 0.018);
 
-          color: #475569;
+          color: #64748b;
 
           text-align: center;
 
-          font-size: 12px;
+          font-size: 13px;
         }
 
-        /* ========================================================
+        /* ==========================================================
            ATTACHMENTS
-        ======================================================== */
+        ========================================================== */
 
         .attachments {
           margin-top: 20px;
 
-          padding: 13px;
+          padding-top: 16px;
 
-          border:
+          border-top:
             1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.07
-            );
-
-          border-radius: 12px;
-
-          background:
-            rgba(
-              255,
-              255,
-              255,
-              0.02
-            );
+            rgba(255, 255, 255, 0.06);
         }
 
         .attachments-title {
           color: #cbd5e1;
 
-          font-size: 12px;
-          font-weight: 900;
+          font-size: 13px;
+          font-weight: 800;
         }
 
         .attachment-list {
           display: flex;
           flex-wrap: wrap;
 
-          gap: 7px;
+          gap: 8px;
 
           margin-top: 10px;
         }
@@ -5238,80 +4617,63 @@ function InboxPageContent() {
           display: flex;
           align-items: center;
 
-          gap: 8px;
+          gap: 9px;
 
-          padding: 8px 9px;
+          padding: 9px 11px;
 
           border:
             1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.07
-            );
+            rgba(255, 255, 255, 0.07);
 
           border-radius: 9px;
 
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.025
-            );
+            rgba(255, 255, 255, 0.025);
+        }
+
+        .attachment-item > span {
+          font-size: 17px;
+        }
+
+        .attachment-item div {
+          display: flex;
+          flex-direction: column;
         }
 
         .attachment-item strong {
-          display: block;
-
-          max-width: 180px;
-
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-
           color: #cbd5e1;
 
           font-size: 11px;
         }
 
         .attachment-item small {
-          display: block;
-
           margin-top: 2px;
 
-          color: #475569;
+          color: #64748b;
 
           font-size: 9px;
         }
 
-        /* ========================================================
+        /* ==========================================================
            REPLY
-        ======================================================== */
+        ========================================================== */
 
         .reply-section {
-          margin-top: 25px;
+          margin-top: 27px;
 
-          padding: 15px;
+          padding: 17px;
 
           border:
             1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.08
-            );
+            rgba(255, 255, 255, 0.08);
 
-          border-radius: 14px;
+          border-radius: 15px;
 
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.025
+            linear-gradient(
+              180deg,
+              rgba(255, 255, 255, 0.035),
+              rgba(255, 255, 255, 0.018)
             );
         }
 
@@ -5320,15 +4682,15 @@ function InboxPageContent() {
           align-items: center;
           justify-content: space-between;
 
-          gap: 10px;
+          gap: 15px;
         }
 
         .reply-title {
           display: block;
 
-          color: #e2e8f0;
+          color: #f8fafc;
 
-          font-size: 13px;
+          font-size: 15px;
           font-weight: 900;
         }
 
@@ -5337,14 +4699,13 @@ function InboxPageContent() {
 
           margin-top: 3px;
 
-          color: #475569;
+          color: #64748b;
 
-          font-size: 10px;
+          font-size: 11px;
         }
 
         .ai-buttons {
           display: flex;
-
           flex-wrap: wrap;
 
           align-items: center;
@@ -5354,155 +4715,126 @@ function InboxPageContent() {
           gap: 8px;
         }
 
-        .generate-button {
-          border:
-            1px solid
-            rgba(
-              139,
-              92,
-              246,
-              0.22
-            );
+        .ai-button {
+          min-height: 36px;
 
-          background:
-            rgba(
-              139,
-              92,
-              246,
-              0.08
-            );
+          border-radius: 9px;
 
-          color: #c4b5fd;
+          padding: 8px 11px;
 
-          border-radius: 8px;
-
-          padding: 7px 9px;
-
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 800;
 
           cursor: pointer;
 
           transition:
-            0.18s ease;
+            transform 0.15s ease,
+            background 0.15s ease,
+            border-color 0.15s ease;
+
+          white-space: nowrap;
         }
 
-        .generate-button:hover {
-          filter: brightness(
-            1.12
-          );
+        .ai-button:hover:not(:disabled) {
+          transform: translateY(-1px);
         }
 
-        .improve-button {
+        .ai-button:disabled {
+          opacity: 0.55;
+
+          cursor: not-allowed;
+        }
+
+        .ai-interested {
+          border:
+            1px solid
+            rgba(74, 222, 128, 0.38);
+
           background:
-            rgba(
-              59,
-              130,
-              246,
-              0.12
-            );
+            rgba(34, 197, 94, 0.14);
 
-          border-color:
-            rgba(
-              96,
-              165,
-              250,
-              0.35
-            );
+          color: #86efac;
         }
 
-        .interested-button {
+        .ai-interested:hover:not(:disabled) {
           background:
-            rgba(
-              34,
-              197,
-              94,
-              0.14
-            );
-
-          border-color:
-            rgba(
-              74,
-              222,
-              128,
-              0.38
-            );
+            rgba(34, 197, 94, 0.22);
         }
 
-        .not-interested-button {
+        .ai-not-interested {
+          border:
+            1px solid
+            rgba(248, 113, 113, 0.38);
+
           background:
-            rgba(
-              239,
-              68,
-              68,
-              0.14
-            );
+            rgba(239, 68, 68, 0.14);
 
-          border-color:
-            rgba(
-              248,
-              113,
-              113,
-              0.38
-            );
+          color: #fca5a5;
         }
 
-        .generate-button:disabled {
-          opacity: 0.5;
+        .ai-not-interested:hover:not(:disabled) {
+          background:
+            rgba(239, 68, 68, 0.22);
+        }
 
-          cursor:
-            not-allowed;
+        .ai-improve {
+          border:
+            1px solid
+            rgba(96, 165, 250, 0.35);
+
+          background:
+            rgba(59, 130, 246, 0.12);
+
+          color: #93c5fd;
+        }
+
+        .ai-improve:hover:not(:disabled) {
+          background:
+            rgba(59, 130, 246, 0.2);
         }
 
         .reply-input {
           width: 100%;
 
-          min-height: 115px;
+          min-height: 155px;
+
+          margin-top: 14px;
 
           resize: vertical;
 
-          margin-top: 12px;
-
-          padding: 11px;
+          box-sizing: border-box;
 
           border:
             1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.07
-            );
-
-          border-radius: 10px;
+            rgba(255, 255, 255, 0.08);
 
           outline: none;
 
+          border-radius: 11px;
+
+          padding: 13px;
+
           background:
-            rgba(
-              0,
-              0,
-              0,
-              0.18
-            );
+            rgba(2, 6, 23, 0.58);
 
           color: #e2e8f0;
 
           font-family: inherit;
 
-          font-size: 13px;
+          font-size: 14px;
 
-          line-height: 1.6;
+          line-height: 1.7;
+
+          transition: 0.2s ease;
         }
 
         .reply-input:focus {
           border-color:
-            rgba(
-              37,
-              211,
-              102,
-              0.25
-            );
+            rgba(37, 211, 102, 0.3);
+
+          box-shadow:
+            0 0 0 3px
+            rgba(37, 211, 102, 0.05);
         }
 
         .reply-input::placeholder {
@@ -5514,286 +4846,246 @@ function InboxPageContent() {
           align-items: center;
           justify-content: space-between;
 
-          gap: 10px;
+          gap: 12px;
 
-          margin-top: 9px;
+          margin-top: 10px;
         }
 
         .reply-hint {
-          color: #475569;
+          color: #64748b;
 
-          font-size: 10px;
+          font-size: 11px;
         }
 
         .send-reply {
           border:
             1px solid
-            rgba(
-              37,
-              211,
-              102,
-              0.25
-            );
+            rgba(37, 211, 102, 0.25);
 
           background:
-            rgba(
-              37,
-              211,
-              102,
-              0.11
-            );
+            rgba(37, 211, 102, 0.12);
 
           color: #86efac;
 
           border-radius: 9px;
 
-          padding: 8px 11px;
+          padding: 9px 13px;
 
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 900;
 
           cursor: pointer;
+
+          transition: 0.18s ease;
         }
 
-        .send-reply:hover {
+        .send-reply:hover:not(:disabled) {
           background:
-            rgba(
-              37,
-              211,
-              102,
-              0.18
-            );
+            rgba(37, 211, 102, 0.2);
         }
 
         .send-reply:disabled {
-          opacity: 0.35;
+          opacity: 0.45;
 
-          cursor:
-            not-allowed;
+          cursor: not-allowed;
         }
 
-        /* ========================================================
-           LOADING OVERLAY
-        ======================================================== */
+        /* ==========================================================
+           TRANSPARENT PAGE LOADING
+        ========================================================== */
 
         .loading-overlay {
           position: fixed;
 
           inset: 0;
 
-          z-index: 100;
+          z-index: 1000;
 
           display: flex;
 
           align-items: center;
           justify-content: center;
 
-          pointer-events: none;
-
           background:
-            rgba(
-              2,
-              6,
-              23,
-              0.16
-            );
+            rgba(2, 6, 23, 0.34);
 
           backdrop-filter:
-            blur(1px);
+            blur(2px);
+
+          pointer-events: none;
         }
 
         .loading-overlay-content {
-          display: inline-flex;
+          min-width: 230px;
+
+          padding: 22px 26px;
+
+          display: flex;
+          flex-direction: column;
 
           align-items: center;
-
-          gap: 10px;
-
-          padding: 10px 15px;
+          justify-content: center;
 
           border:
             1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.08
-            );
+            rgba(255, 255, 255, 0.08);
 
-          border-radius: 999px;
+          border-radius: 15px;
 
           background:
-            rgba(
-              2,
-              6,
-              23,
-              0.48
-            );
+            rgba(2, 6, 23, 0.54);
 
-          color: rgba(
-            226,
-            232,
-            240,
-            0.9
-          );
+          backdrop-filter:
+            blur(14px);
 
           box-shadow:
-            0 10px 35px
-            rgba(
-              0,
-              0,
-              0,
-              0.16
-            );
-
-          font-size: 12px;
-
-          font-weight: 700;
+            0 18px 60px
+            rgba(0, 0, 0, 0.22);
         }
 
-        .loading-spinner {
-          width: 14px;
-          height: 14px;
-
-          border:
-            2px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.16
-            );
-
-          border-top-color:
-            rgba(
-              134,
-              239,
-              172,
-              0.95
-            );
+        .loading-spinner,
+        .ai-spinner {
+          width: 28px;
+          height: 28px;
 
           border-radius: 999px;
 
+          border:
+            3px solid
+            rgba(255, 255, 255, 0.1);
+
+          border-top-color:
+            #25d366;
+
           animation:
-            loadingSpin
-            0.7s
+            spin
+            0.75s
             linear
             infinite;
         }
 
-        @keyframes loadingSpin {
+        @keyframes spin {
           to {
-            transform:
-              rotate(360deg);
+            transform: rotate(360deg);
           }
         }
 
-        /* ========================================================
-           SCROLLBARS
-        ======================================================== */
+        .loading-text {
+          margin-top: 13px;
 
-        .folder-list::-webkit-scrollbar,
-        .message-items::-webkit-scrollbar,
-        .detail-content::-webkit-scrollbar {
-          width: 5px;
+          color: #f8fafc;
+
+          font-size: 15px;
+          font-weight: 800;
         }
 
-        .folder-list::-webkit-scrollbar-track,
-        .message-items::-webkit-scrollbar-track,
-        .detail-content::-webkit-scrollbar-track {
+        .loading-subtext {
+          margin-top: 4px;
+
+          color: #94a3b8;
+
+          font-size: 11px;
+        }
+
+        /* ==========================================================
+           AI LOADING
+        ========================================================== */
+
+        .ai-loading-overlay {
+          position: fixed;
+
+          inset: 0;
+
+          z-index: 1100;
+
+          display: flex;
+
+          align-items: center;
+          justify-content: center;
+
           background:
-            transparent;
+            rgba(2, 6, 23, 0.16);
+
+          backdrop-filter:
+            blur(1.5px);
+
+          pointer-events: none;
         }
 
-        .folder-list::-webkit-scrollbar-thumb,
-        .message-items::-webkit-scrollbar-thumb,
-        .detail-content::-webkit-scrollbar-thumb {
-          border-radius: 999px;
+        .ai-loading-content {
+          min-width: 280px;
+
+          padding: 22px 26px;
+
+          display: flex;
+          flex-direction: column;
+
+          align-items: center;
+          justify-content: center;
+
+          text-align: center;
+
+          border:
+            1px solid
+            rgba(255, 255, 255, 0.08);
+
+          border-radius: 15px;
 
           background:
-            rgba(
-              255,
-              255,
-              255,
-              0.09
-            );
+            rgba(2, 6, 23, 0.62);
+
+          backdrop-filter:
+            blur(15px);
+
+          box-shadow:
+            0 18px 60px
+            rgba(0, 0, 0, 0.2);
         }
 
-        /* ========================================================
-           RESPONSIVE
-        ======================================================== */
+        .ai-loading-title {
+          margin-top: 13px;
 
-        @media (max-width: 1150px) {
+          color: #f8fafc;
+
+          font-size: 14px;
+          font-weight: 800;
+        }
+
+        .ai-loading-subtitle {
+          margin-top: 4px;
+
+          color: #94a3b8;
+
+          font-size: 11px;
+        }
+
+        /* ==========================================================
+           TABLET
+        ========================================================== */
+
+        @media (max-width: 1100px) {
           .workspace {
             grid-template-columns:
               190px
-              minmax(290px, 370px)
-              minmax(0, 1fr);
-          }
-
-          .business-context {
-            display: none;
-          }
-
-          .email-date {
-            display: none;
-          }
-        }
-
-        @media (max-width: 1000px) {
-          .send-email-button {
-            padding: 0 11px;
-          }
-
-          .send-email-button span:last-child {
-            display: none;
-          }
-        }
-
-        @media (max-width: 900px) {
-          .topbar {
-            padding:
-              12px
-              15px;
-          }
-
-          .topbar-left {
-            gap: 10px;
-          }
-
-          .title-area p {
-            display: none;
-          }
-
-          .gmail-details {
-            display: none;
-          }
-
-          .workspace {
-            grid-template-columns:
-              175px
-              minmax(280px, 1fr);
+              minmax(300px, 1fr);
           }
 
           .email-detail-pane {
             display: none;
           }
 
-          .message-list-pane {
-            border-right: 0;
+          .topbar-right {
+            gap: 6px;
           }
 
-          .mailbox-sidebar {
-            border-right:
-              1px solid
-              rgba(
-                255,
-                255,
-                255,
-                0.07
-              );
+          .business-context {
+            display: none;
           }
         }
+
+        /* ==========================================================
+           MOBILE
+        ========================================================== */
 
         @media (max-width: 680px) {
           .inbox-page,
@@ -5803,17 +5095,21 @@ function InboxPageContent() {
           }
 
           .topbar {
-            min-height: 66px;
+            min-height: 68px;
 
-            padding:
-              9px 11px;
+            padding: 9px 11px;
+
+            gap: 8px;
+          }
+
+          .topbar-left {
+            gap: 9px;
           }
 
           .back-button {
-            padding:
-              8px 9px;
+            padding: 8px 9px;
 
-            font-size: 9px;
+            font-size: 10px;
           }
 
           .eyebrow {
@@ -5821,29 +5117,11 @@ function InboxPageContent() {
           }
 
           .title-area h1 {
-            font-size: 18px;
+            font-size: 20px;
           }
 
-          .topbar-right {
-            gap: 5px;
-          }
-
-          .send-email-button {
-            min-height: 34px;
-
-            width: 34px;
-            height: 34px;
-
-            padding: 0;
-
-            border-radius: 10px;
-          }
-
-          .send-email-icon {
-            width: 20px;
-            height: 20px;
-
-            font-size: 13px;
+          .title-area p {
+            display: none;
           }
 
           .gmail-context {
@@ -5851,32 +5129,34 @@ function InboxPageContent() {
 
             border: 0;
 
-            background:
-              transparent;
+            background: transparent;
+          }
+
+          .gmail-details {
+            display: none;
           }
 
           .gmail-icon {
-            width: 30px;
-            height: 30px;
+            width: 31px;
+            height: 31px;
           }
 
           .reconnect-button {
-            padding:
-              7px 8px;
+            padding: 7px 8px;
+
+            font-size: 10px;
           }
 
           .message-banner-wrap {
-            padding:
-              6px 8px;
+            padding: 6px 8px;
           }
 
           .message-banner {
-            align-items:
-              flex-start;
+            align-items: flex-start;
 
             flex-wrap: wrap;
 
-            font-size: 9px;
+            font-size: 11px;
           }
 
           .banner-action {
@@ -5887,7 +5167,8 @@ function InboxPageContent() {
             display: block;
           }
 
-          .mailbox-sidebar {
+          .mailbox-sidebar,
+          .sidebar-hover-zone {
             display: none;
           }
 
@@ -5914,45 +5195,50 @@ function InboxPageContent() {
           }
 
           .detail-content {
-            padding:
-              16px
-              13px
-              28px;
+            padding: 17px 13px 30px;
           }
 
           .email-heading-text h2 {
-            font-size: 16px;
+            font-size: 18px;
           }
 
           .email-body {
-            font-size: 13px;
+            font-size: 14px;
           }
 
           .reply-header {
-            align-items:
-              flex-start;
+            align-items: flex-start;
 
-            flex-direction:
-              column;
+            flex-direction: column;
           }
 
           .ai-buttons {
             width: 100%;
 
-            justify-content:
-              flex-start;
+            justify-content: flex-start;
+          }
+
+          .ai-button {
+            flex: 1;
+
+            min-width: 0;
           }
 
           .reply-footer {
-            align-items:
-              flex-start;
+            align-items: flex-start;
 
-            flex-direction:
-              column;
+            flex-direction: column;
           }
 
           .send-reply {
             width: 100%;
+          }
+
+          .loading-overlay-content,
+          .ai-loading-content {
+            min-width: 220px;
+
+            margin: 20px;
           }
         }
 
@@ -5963,77 +5249,22 @@ function InboxPageContent() {
 
 /* ================================================================
    SUSPENSE WRAPPER
-   Prevents useSearchParams build/prerender errors.
-================================================================ */
+   
+   This fixes:
+   useSearchParams() should be wrapped in a suspense boundary
+   ================================================================ */
 
 export default function InboxPage() {
   return (
     <Suspense
       fallback={
-        <main className="inbox-page-fallback">
-          <div className="fallback-loading">
-            <span className="fallback-spinner" />
-            <span>
-              Loading Inbox...
-            </span>
-          </div>
-
-          <style jsx>{`
-            .inbox-page-fallback {
-              width: 100%;
-              height: 100vh;
-
-              display: flex;
-              align-items: center;
-              justify-content: center;
-
-              background: #020617;
-              color: #cbd5e1;
-            }
-
-            .fallback-loading {
-              display: flex;
-              align-items: center;
-
-              gap: 10px;
-
-              font-size: 13px;
-              font-weight: 700;
-            }
-
-            .fallback-spinner {
-              width: 15px;
-              height: 15px;
-
-              border:
-                2px solid
-                rgba(
-                  255,
-                  255,
-                  255,
-                  0.15
-                );
-
-              border-top-color:
-                #86efac;
-
-              border-radius: 999px;
-
-              animation:
-                fallbackSpin
-                0.7s
-                linear
-                infinite;
-            }
-
-            @keyframes fallbackSpin {
-              to {
-                transform:
-                  rotate(360deg);
-              }
-            }
-          `}</style>
-        </main>
+        <main
+          style={{
+            width: "100%",
+            height: "100vh",
+            background: "#020617",
+          }}
+        />
       }
     >
       <InboxPageContent />
@@ -6049,8 +5280,7 @@ async function getCurrentUser() {
   const {
     data,
     error,
-  } =
-    await supabase.auth.getUser();
+  } = await supabase.auth.getUser();
 
   if (error) {
     throw new Error(
@@ -6070,12 +5300,12 @@ async function getCurrentUser() {
 
   let business = null;
 
-  /*
-   * Resolve from Supabase auth metadata first.
-   */
+  /* --------------------------------------------------------------
+     USER METADATA
+  -------------------------------------------------------------- */
+
   const metadata =
-    authUser?.user_metadata ||
-    {};
+    authUser?.user_metadata || {};
 
   const metadataBusinessId =
     metadata?.business_id ||
@@ -6097,25 +5327,24 @@ async function getCurrentUser() {
     };
   }
 
-  /*
-   * Resolve authoritative business
-   * from businesses table.
-   */
+  /* --------------------------------------------------------------
+     BUSINESSES TABLE
+  -------------------------------------------------------------- */
+
   try {
     const {
       data: businessByUser,
       error: businessError,
-    } =
-      await supabase
-        .from("businesses")
-        .select(
-          "business_id, business_name, user_id"
-        )
-        .eq(
-          "user_id",
-          authUser.id
-        )
-        .maybeSingle();
+    } = await supabase
+      .from("businesses")
+      .select(
+        "business_id, business_name, user_id"
+      )
+      .eq(
+        "user_id",
+        authUser.id
+      )
+      .maybeSingle();
 
     if (
       !businessError &&
@@ -6133,10 +5362,10 @@ async function getCurrentUser() {
           "",
       };
     }
-  } catch (error) {
+  } catch (businessLookupError) {
     console.error(
-      "[Inbox] Business table lookup failed:",
-      error
+      "[Inbox] Business lookup failed:",
+      businessLookupError
     );
   }
 
@@ -6145,15 +5374,14 @@ async function getCurrentUser() {
 
     user: {
       id: authUser.id,
+
       email:
-        authUser.email ||
-        "",
+        authUser.email || "",
     },
 
     profile: {
       email:
-        authUser.email ||
-        "",
+        authUser.email || "",
     },
 
     business,

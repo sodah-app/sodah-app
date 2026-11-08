@@ -1,360 +1,365 @@
 "use client";
 
-import { Suspense, useCallback } from "react";
+import { Suspense, useCallback, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-const WHATSAPP_LOGO =
-  "https://cdn.simpleicons.org/whatsapp/25D366";
+import { supabase } from "@/lib/supabase";
 
-function ConnectWhatsAppIntroContent() {
+type ConnectionState =
+  | "idle"
+  | "checking"
+  | "missing_business"
+  | "business_not_found"
+  | "connected"
+  | "error";
+
+type Business = {
+  business_id: string;
+  business_name: string | null;
+  whatsapp_connected: boolean | null;
+};
+
+function ConnectWhatsAppLoadContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // ======================================================
-  // ACTIVE BUSINESS ID
-  // ======================================================
+  const [state, setState] = useState<ConnectionState>("idle");
+  const [message, setMessage] = useState("");
+  const [isConnecting, setIsConnecting] = useState(false);
 
-  const getActiveBusinessId = useCallback(() => {
-    const urlBusinessId =
-      searchParams.get("businessId");
+  const getBusinessId = useCallback(() => {
+    const queryBusinessId = searchParams.get("businessId");
 
-    if (urlBusinessId) {
-      localStorage.setItem(
-        "business_id",
-        urlBusinessId
-      );
+    if (queryBusinessId?.trim()) {
+      const id = queryBusinessId.trim();
 
-      return urlBusinessId;
+      try {
+        localStorage.setItem("businessId", id);
+      } catch {
+        // Ignore localStorage errors.
+      }
+
+      return id;
     }
 
-    const storedBusinessId =
-      localStorage.getItem("business_id");
+    try {
+      const storedBusinessId = localStorage.getItem("businessId");
 
-    if (storedBusinessId) {
-      return storedBusinessId;
+      if (storedBusinessId?.trim()) {
+        return storedBusinessId.trim();
+      }
+    } catch {
+      // Ignore localStorage errors.
     }
 
     return null;
   }, [searchParams]);
 
-  // ======================================================
-  // TENANT-AWARE NAVIGATION
-  // ======================================================
+  const handleContinue = useCallback(async () => {
+    if (isConnecting) return;
 
-  const navigateWithBusinessId =
-    useCallback(
-      (path: string) => {
-        const businessId =
-          getActiveBusinessId();
+    setIsConnecting(true);
+    setState("checking");
+    setMessage("");
 
-        if (!businessId) {
-          console.error(
-            "[WhatsApp Intro] Missing businessId."
-          );
+    try {
+      const businessId = getBusinessId();
 
-          return;
-        }
-
-        const url = new URL(
-          path,
-          window.location.origin
+      if (!businessId) {
+        setState("missing_business");
+        setMessage(
+          "Your business could not be identified. Please return to your business dashboard and try again."
         );
+        return;
+      }
 
-        url.searchParams.set(
-          "businessId",
-          businessId
+      const { data, error } = await supabase
+        .from("businesses")
+        .select("business_id, business_name, whatsapp_connected")
+        .eq("business_id", businessId)
+        .maybeSingle<Business>();
+
+      if (error) {
+        console.error("WhatsApp business lookup failed:", error);
+
+        setState("error");
+        setMessage(
+          "We could not verify your business right now. Please try again."
         );
+        return;
+      }
 
-        console.log(
-          "[WhatsApp Intro] Navigating:",
-          `${url.pathname}${url.search}`
+      if (!data) {
+        setState("business_not_found");
+        setMessage(
+          "This business could not be found. Please return to your dashboard and try again."
         );
+        return;
+      }
 
-        router.push(
-          `${url.pathname}${url.search}${url.hash}`
+      if (data.whatsapp_connected === true) {
+        setState("connected");
+        setMessage(
+          data.business_name
+            ? `${data.business_name} is already connected to WhatsApp.`
+            : "This business is already connected to WhatsApp."
         );
-      },
-      [
-        getActiveBusinessId,
-        router,
-      ]
-    );
+        return;
+      }
 
-  // ======================================================
-  // BACK TO CHANNELS
-  // ======================================================
+      const targetUrl = `/connect-whatsapp?businessId=${encodeURIComponent(
+        businessId
+      )}`;
+
+      router.push(targetUrl);
+    } catch (error) {
+      console.error("WhatsApp connection check failed:", error);
+
+      setState("error");
+      setMessage(
+        "Something went wrong while preparing WhatsApp connection. Please try again."
+      );
+    } finally {
+      setIsConnecting(false);
+    }
+  }, [getBusinessId, isConnecting, router]);
 
   const handleBack = () => {
-    const businessId =
-      getActiveBusinessId();
+    const businessId = getBusinessId();
 
-    if (!businessId) {
-      console.error(
-        "[WhatsApp Intro] Cannot return to Channels. Missing businessId."
+    if (businessId) {
+      router.push(
+        `/voice-settings?businessId=${encodeURIComponent(businessId)}`
       );
-
-      router.push("/channels");
       return;
     }
 
-    router.push(
-      `/channels?businessId=${encodeURIComponent(
-        businessId
-      )}`
-    );
+    router.back();
   };
 
-  // ======================================================
-  // PAGE
-  // ======================================================
+  const isChecking = state === "checking";
 
   return (
-    <main className="min-h-screen bg-[#05070b] text-white">
-      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-5 py-8">
+    <main className="min-h-screen bg-[#07100c] text-white flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-md">
+        <div className="rounded-3xl border border-white/10 bg-[#0d1712] shadow-2xl overflow-hidden">
+          {/* Header */}
+          <div className="px-6 pt-7 pb-5 text-center border-b border-white/10">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#25D366]/10 border border-[#25D366]/20">
+              <img
+                src="https://cdn.simpleicons.org/whatsapp/25D366"
+                alt="WhatsApp"
+                className="h-9 w-9"
+              />
+            </div>
 
-        {/* ==================================================
-            HEADER
-        ================================================== */}
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Connect WhatsApp
+            </h1>
 
-        <header className="flex items-center justify-between">
-
-          <button
-            type="button"
-            onClick={handleBack}
-            className="
-              rounded-xl
-              border
-              border-white/10
-              bg-white/[0.04]
-              px-3
-              py-2
-              text-xs
-              font-bold
-              text-white/80
-              transition
-              hover:bg-white/[0.08]
-              active:scale-95
-            "
-          >
-            ← Back
-          </button>
-
-          <div className="text-sm font-black">
-            Sodah
-            <span className="text-cyan-400">
-              .io
-            </span>
+            <p className="mt-2 text-sm leading-6 text-white/55">
+              Connect your WhatsApp account to start sending and receiving
+              messages through Sodah.
+            </p>
           </div>
 
-        </header>
-
-        {/* ==================================================
-            MAIN CONTENT
-        ================================================== */}
-
-        <section className="flex flex-1 flex-col items-center justify-center py-12 text-center">
-
-          {/* WHATSAPP LOGO */}
-
-          <div
-            className="
-              mb-7
-              flex
-              h-20
-              w-20
-              items-center
-              justify-center
-              rounded-3xl
-              border
-              border-emerald-400/20
-              bg-emerald-400/10
-              shadow-[0_0_30px_rgba(37,211,102,0.12)]
-            "
-          >
-            <img
-              src={WHATSAPP_LOGO}
-              alt="WhatsApp"
-              className="h-11 w-11 object-contain"
-            />
-          </div>
-
-          {/* LABEL */}
-
-          <p
-            className="
-              mb-3
-              text-xs
-              font-black
-              uppercase
-              tracking-[0.22em]
-              text-emerald-300
-            "
-          >
-            WhatsApp Connection
-          </p>
-
-          {/* TITLE */}
-
-          <h1 className="text-3xl font-black leading-tight">
-            Connect your WhatsApp
-          </h1>
-
-          {/* DESCRIPTION */}
-
-          <p className="mt-4 text-sm leading-6 text-white/60">
-            You are about to connect your WhatsApp
-            to Sodah.io automation. Open WhatsApp
-            on your phone and get ready to scan the
-            QR code.
-          </p>
-
-          {/* ==================================================
-              STEPS
-          ================================================== */}
-
-          <div className="mt-8 w-full rounded-3xl border border-white/10 bg-white/[0.035] p-5 text-left">
-
-            {[
-              [
-                "1",
-                "Open WhatsApp",
-                "Open WhatsApp on the phone you want to connect.",
-              ],
-              [
-                "2",
-                "Get ready to scan",
-                "Open Linked Devices and get ready to scan the QR code.",
-              ],
-              [
-                "3",
-                "Scan the QR code",
-                "Continue to the secure connection screen when you are ready to scan the code.",
-              ],
-            ].map(
-              (
-                [number, title, text],
-                index
-              ) => (
-                <div key={number}>
-
-                  <div className="flex gap-4">
-
-                    <div
-                      className="
-                        flex
-                        h-9
-                        w-9
-                        shrink-0
-                        items-center
-                        justify-center
-                        rounded-xl
-                        bg-cyan-400/10
-                        text-sm
-                        font-black
-                        text-cyan-300
-                      "
-                    >
-                      {number}
+          {/* Main content */}
+          <div className="p-6">
+            {state === "idle" && (
+              <>
+                <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#25D366]/10 text-[#25D366]">
+                      ✓
                     </div>
 
                     <div>
-
-                      <h2 className="text-sm font-black">
-                        {title}
-                      </h2>
-
-                      <p className="mt-1 text-xs leading-5 text-white/50">
-                        {text}
+                      <p className="text-sm font-medium text-white">
+                        Ready to connect
                       </p>
 
+                      <p className="mt-1 text-xs leading-5 text-white/50">
+                        The next screen will show the QR code. Scan it using
+                        WhatsApp on your phone.
+                      </p>
                     </div>
-
                   </div>
-
-                  {index < 2 && (
-                    <div
-                      className="
-                        my-4
-                        ml-4
-                        h-5
-                        border-l
-                        border-dashed
-                        border-white/10
-                      "
-                    />
-                  )}
-
                 </div>
-              )
+
+                <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.02] p-4">
+                  <p className="text-xs font-medium uppercase tracking-wider text-white/40">
+                    Important
+                  </p>
+
+                  <p className="mt-2 text-sm leading-6 text-white/65">
+                    Make sure you are using the WhatsApp number you want to
+                    connect to this business.
+                  </p>
+                </div>
+              </>
             )}
 
+            {state === "checking" && (
+              <div className="py-8 text-center">
+                <div className="mx-auto h-9 w-9 animate-spin rounded-full border-2 border-white/15 border-t-[#25D366]" />
+
+                <p className="mt-4 text-sm font-medium text-white">
+                  Checking your business...
+                </p>
+
+                <p className="mt-1 text-xs text-white/45">
+                  Please wait a moment.
+                </p>
+              </div>
+            )}
+
+            {state === "missing_business" && (
+              <StatusBox
+                type="warning"
+                title="Business not identified"
+                message={message}
+              />
+            )}
+
+            {state === "business_not_found" && (
+              <StatusBox
+                type="warning"
+                title="Business not found"
+                message={message}
+              />
+            )}
+
+            {state === "connected" && (
+              <StatusBox
+                type="success"
+                title="WhatsApp already connected"
+                message={message}
+              />
+            )}
+
+            {state === "error" && (
+              <StatusBox
+                type="error"
+                title="Connection check failed"
+                message={message}
+              />
+            )}
+
+            <div className="mt-6 flex flex-col gap-3">
+              {state === "connected" ? (
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="w-full rounded-2xl bg-white px-4 py-3.5 text-sm font-semibold text-black transition hover:bg-white/90 active:scale-[0.99]"
+                >
+                  Go Back
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleContinue}
+                  disabled={isChecking || isConnecting}
+                  className="w-full rounded-2xl bg-[#25D366] px-4 py-3.5 text-sm font-semibold text-[#061008] transition hover:bg-[#20bd5a] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isChecking || isConnecting
+                    ? "Checking..."
+                    : state === "error" ||
+                        state === "missing_business" ||
+                        state === "business_not_found"
+                      ? "Try Again"
+                      : "Continue to QR Code"}
+                </button>
+              )}
+
+              {state !== "idle" &&
+                state !== "checking" &&
+                state !== "connected" && (
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-sm font-medium text-white/70 transition hover:bg-white/[0.06] hover:text-white"
+                  >
+                    Go Back
+                  </button>
+                )}
+            </div>
           </div>
 
-          {/* ==================================================
-              CONTINUE TO QR CONNECTION
-          ================================================== */}
-
-          <button
-            type="button"
-            onClick={() =>
-              navigateWithBusinessId(
-                "/connect-whatsapp"
-              )
-            }
-            className="
-              mt-7
-              w-full
-              rounded-2xl
-              bg-gradient-to-r
-              from-emerald-400
-              via-cyan-400
-              to-blue-500
-              px-5
-              py-4
-              text-sm
-              font-black
-              text-[#041014]
-              shadow-[0_0_35px_rgba(34,211,238,0.18)]
-              transition
-              hover:scale-[1.01]
-              active:scale-[0.98]
-            "
-          >
-            Ready to scan QR code
-          </button>
-
-          {/* NOTE */}
-
-          <p className="mt-4 text-[11px] text-white/35">
-            The QR code will appear on the next screen.
-          </p>
-
-        </section>
+          {/* Footer */}
+          <div className="border-t border-white/10 px-6 py-4 text-center">
+            <p className="text-[11px] text-white/35">
+              Sodah WhatsApp connection
+            </p>
+          </div>
+        </div>
       </div>
     </main>
+  );
+}
+
+function StatusBox({
+  type,
+  title,
+  message,
+}: {
+  type: "success" | "warning" | "error";
+  title: string;
+  message: string;
+}) {
+  const styles = {
+    success: {
+      wrapper: "border-[#25D366]/20 bg-[#25D366]/5",
+      icon: "bg-[#25D366]/10 text-[#25D366]",
+    },
+    warning: {
+      wrapper: "border-yellow-400/20 bg-yellow-400/5",
+      icon: "bg-yellow-400/10 text-yellow-300",
+    },
+    error: {
+      wrapper: "border-red-400/20 bg-red-400/5",
+      icon: "bg-red-400/10 text-red-300",
+    },
+  };
+
+  const style = styles[type];
+
+  return (
+    <div className={`rounded-2xl border p-4 ${style.wrapper}`}>
+      <div className="flex items-start gap-3">
+        <div
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${style.icon}`}
+        >
+          {type === "success" ? "✓" : type === "warning" ? "!" : "×"}
+        </div>
+
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-white">{title}</p>
+
+          <p className="mt-1 text-xs leading-5 text-white/55">{message}</p>
+        </div>
+      </div>
+    </div>
   );
 }
 
 function LoadingScreen() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#05070b] text-white">
-      <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-6 py-5 text-center">
-        <div className="text-sm font-bold text-white/80">
-          Loading WhatsApp connection...
-        </div>
+    <main className="min-h-screen bg-[#07100c] flex items-center justify-center">
+      <div className="text-center">
+        <div className="mx-auto h-9 w-9 animate-spin rounded-full border-2 border-white/15 border-t-[#25D366]" />
 
-        <div className="mt-2 text-xs text-white/40">
-          Preparing your business connection.
-        </div>
+        <p className="mt-4 text-sm text-white/50">
+          Loading WhatsApp connection...
+        </p>
       </div>
     </main>
   );
 }
 
-export default function ConnectWhatsAppIntroPage() {
+export default function ConnectWhatsAppLoadPage() {
   return (
     <Suspense fallback={<LoadingScreen />}>
-      <ConnectWhatsAppIntroContent />
+      <ConnectWhatsAppLoadContent />
     </Suspense>
   );
 }

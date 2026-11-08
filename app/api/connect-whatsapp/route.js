@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -8,877 +9,1302 @@ const QR_PROVIDER_URL =
   "https://sodah-whatsapp-qr-provider.onrender.com";
 
 const QR_PROVIDER_API_KEY =
-  process.env.WHATSAPP_QR_PROVIDER_API_KEY ||
-  process.env.PROVIDER_API_KEY ||
-  "";
+  process.env.WHATSAPP_QR_PROVIDER_API_KEY || "";
 
-const PROVIDER_TIMEOUT = 20000;
-const QR_WAIT_ATTEMPTS = 20;
-const QR_WAIT_INTERVAL = 1000;
+const PROVIDER_BASE_URL =
+  QR_PROVIDER_URL.replace(/\/+$/, "");
 
 /*
-|--------------------------------------------------------------------------
-| Helpers
-|--------------------------------------------------------------------------
-*/
+ * This is sent from the newly connected WhatsApp account
+ * to its own connected WhatsApp chat.
+ */
+const TEST_MESSAGE = `Your business is connected to Sodah.io.
 
-function providerHeaders() {
-  const headers = {
+AI auto-reply, appointment, reminder and follow-up start.
+
+Thanks for choosing Sodah.io.`;
+
+/* ============================================================
+   PROVIDER HEADERS
+   ============================================================ */
+
+function providerHeaders(includeJson = false) {
+  return {
     Accept: "application/json",
-    "Content-Type": "application/json",
+
+    ...(QR_PROVIDER_API_KEY
+      ? {
+          Authorization: `Bearer ${QR_PROVIDER_API_KEY}`,
+        }
+      : {}),
+
+    ...(includeJson
+      ? {
+          "Content-Type": "application/json",
+        }
+      : {}),
   };
-
-  /*
-   * Your current QR provider does not require an API key.
-   * We only send one if you have configured it in Render/Vercel.
-   */
-  if (QR_PROVIDER_API_KEY) {
-    headers.Authorization = `Bearer ${QR_PROVIDER_API_KEY}`;
-    headers["X-API-Key"] = QR_PROVIDER_API_KEY;
-  }
-
-  return headers;
 }
 
-async function fetchWithTimeout(url, options = {}) {
-  const controller = new AbortController();
+/* ============================================================
+   PHONE HELPERS
+   ============================================================ */
 
-  const timeout = setTimeout(() => {
-    controller.abort();
-  }, PROVIDER_TIMEOUT);
-
-  try {
-    return await fetch(url, {
-      ...options,
-      signal: controller.signal,
-      cache: "no-store",
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
+function normalizePhone(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[^\d+]/g, "")
+    .replace(/\D/g, "");
 }
 
-async function readProviderResponse(response) {
+/* ============================================================
+   PROVIDER RESPONSE
+   ============================================================ */
+
+async function readProviderResponse(response, label) {
   const contentType =
     response.headers.get("content-type") || "";
 
   const rawText = await response.text();
 
-  let data = null;
+  let data = {};
 
-  if (rawText) {
+  if (rawText.trim()) {
     try {
       data = JSON.parse(rawText);
     } catch {
-      data = null;
+      data = {};
     }
   }
+
+  console.log(
+    `[WhatsApp Connect API] ${label}:`,
+    response.status,
+    data
+  );
 
   return {
     ok: response.ok,
     status: response.status,
-    contentType,
-    rawText,
     data,
+    rawText,
+    contentType,
   };
 }
 
-function normalizeSessionId(value) {
-  if (!value) return "";
+/* ============================================================
+   PROVIDER FETCH
+   ============================================================ */
 
-  return String(value).trim();
-}
-
-/*
-|--------------------------------------------------------------------------
-| GET PROVIDER SESSION STATUS
-|--------------------------------------------------------------------------
-|
-| Actual provider endpoint:
-|
-| GET /session/:sessionId
-|
-|--------------------------------------------------------------------------
-*/
-
-async function getSessionStatus(sessionId) {
-  const url =
-    `${QR_PROVIDER_URL}/session/` +
-    encodeURIComponent(sessionId);
-
-  console.log(
-    "[WhatsApp Connect API] Checking provider session:",
-    url
-  );
-
-  const response = await fetchWithTimeout(url, {
-    method: "GET",
-    headers: providerHeaders(),
-  });
-
-  const result = await readProviderResponse(response);
-
-  console.log(
-    "[WhatsApp Connect API] Session status HTTP:",
-    result.status
-  );
-
-  console.log(
-    "[WhatsApp Connect API] Session status response:",
-    result.rawText
-  );
-
-  return result;
-}
-
-/*
-|--------------------------------------------------------------------------
-| GET PROVIDER QR
-|--------------------------------------------------------------------------
-|
-| Actual provider endpoint:
-|
-| GET /qr/:sessionId
-|
-|--------------------------------------------------------------------------
-*/
-
-async function getSessionQR(sessionId) {
-  const url =
-    `${QR_PROVIDER_URL}/qr/` +
-    encodeURIComponent(sessionId);
-
-  console.log(
-    "[WhatsApp Connect API] Checking provider QR:",
-    url
-  );
-
-  const response = await fetchWithTimeout(url, {
-    method: "GET",
-    headers: providerHeaders(),
-  });
-
-  const result = await readProviderResponse(response);
-
-  console.log(
-    "[WhatsApp Connect API] QR HTTP:",
-    result.status
-  );
-
-  console.log(
-    "[WhatsApp Connect API] QR response:",
-    result.rawText
-  );
-
-  return result;
-}
-
-/*
-|--------------------------------------------------------------------------
-| CREATE PROVIDER SESSION
-|--------------------------------------------------------------------------
-|
-| Actual provider endpoint:
-|
-| POST /session
-|
-| Body:
-| {
-|   sessionId: "BIZ-..."
-| }
-|
-|--------------------------------------------------------------------------
-*/
-
-async function createSession(sessionId) {
-  const url = `${QR_PROVIDER_URL}/session`;
-
-  console.log(
-    "[WhatsApp Connect API] Creating provider session:",
-    url
-  );
-
-  console.log(
-    "[WhatsApp Connect API] Session ID:",
-    sessionId
-  );
-
-  const response = await fetchWithTimeout(url, {
-    method: "POST",
-    headers: providerHeaders(),
-    body: JSON.stringify({
-      sessionId,
-    }),
-  });
-
-  const result = await readProviderResponse(response);
-
-  console.log(
-    "[WhatsApp Connect API] Provider /session HTTP:",
-    result.status
-  );
-
-  console.log(
-    "[WhatsApp Connect API] Provider /session response:",
-    result.rawText
-  );
-
-  return result;
-}
-
-/*
-|--------------------------------------------------------------------------
-| FIND QR
-|--------------------------------------------------------------------------
-*/
-
-function extractQR(data) {
-  if (!data || typeof data !== "object") {
-    return null;
-  }
-
-  return (
-    data.qrCode ||
-    data.qr ||
-    data.qrDataUrl ||
-    data.qr_data_url ||
-    null
-  );
-}
-
-/*
-|--------------------------------------------------------------------------
-| WAIT FOR QR
-|--------------------------------------------------------------------------
-|
-| The provider creates the Baileys session asynchronously.
-| Therefore POST /session can return before the QR is generated.
-|
-|--------------------------------------------------------------------------
-*/
-
-async function waitForQR(sessionId) {
-  for (let attempt = 1; attempt <= QR_WAIT_ATTEMPTS; attempt++) {
-    console.log(
-      `[WhatsApp Connect API] Waiting for QR ${attempt}/${QR_WAIT_ATTEMPTS}`
-    );
-
-    /*
-     * First check session status.
-     */
-    let statusResult;
-
-    try {
-      statusResult = await getSessionStatus(sessionId);
-    } catch (error) {
-      console.error(
-        "[WhatsApp Connect API] Status request failed:",
-        error
-      );
-    }
-
-    const statusData = statusResult?.data;
-
-    const providerStatus =
-      statusData?.status || "unknown";
-
-    /*
-     * If already connected, there is no QR to show.
-     */
-    if (
-      providerStatus === "connected"
-    ) {
-      return {
-        success: true,
-        connected: true,
-        status: "connected",
-        sessionId,
-        qrCode: null,
-        phone: statusData?.phone || null,
-      };
-    }
-
-    /*
-     * Now ask the actual provider QR endpoint.
-     */
-    try {
-      const qrResult = await getSessionQR(sessionId);
-
-      if (qrResult.ok && qrResult.data) {
-        const qr = extractQR(qrResult.data);
-
-        if (qr) {
-          console.log(
-            "[WhatsApp Connect API] QR successfully received."
-          );
-
-          return {
-            success: true,
-            connected: false,
-            status:
-              qrResult.data.status ||
-              providerStatus ||
-              "qr",
-            sessionId,
-            qrCode: qr,
-            qr: qr,
-            phone:
-              qrResult.data.phone ||
-              statusData?.phone ||
-              null,
-          };
-        }
-
-        /*
-         * The provider may tell us that the session exists
-         * but the QR has not been generated yet.
-         */
-        if (
-          qrResult.data.status === "connected"
-        ) {
-          return {
-            success: true,
-            connected: true,
-            status: "connected",
-            sessionId,
-            qrCode: null,
-            phone:
-              qrResult.data.phone ||
-              statusData?.phone ||
-              null,
-          };
-        }
-      }
-    } catch (error) {
-      console.error(
-        "[WhatsApp Connect API] QR request failed:",
-        error
-      );
-    }
-
-    await new Promise((resolve) =>
-      setTimeout(resolve, QR_WAIT_INTERVAL)
-    );
-  }
-
-  return {
-    success: false,
-    connected: false,
-    status: "timeout",
-    sessionId,
-    qrCode: null,
-    error:
-      "WhatsApp provider created the session but no QR code became available.",
-  };
-}
-
-/*
-|--------------------------------------------------------------------------
-| GET
-|--------------------------------------------------------------------------
-|
-| GET does NOT create a new session.
-|
-| It checks the existing business session and returns:
-|
-| - connected
-| - QR
-| - connecting
-| - not_found
-|
-|--------------------------------------------------------------------------
-*/
-
-export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-
-  const businessId = normalizeSessionId(
-    searchParams.get("businessId") ||
-    searchParams.get("sessionId") ||
-    searchParams.get("session_id")
-  );
-
-  console.log(
-    "[WhatsApp Connect API] GET request:",
-    businessId
-  );
-
-  if (!businessId) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "businessId is required",
-      },
-      {
-        status: 400,
-        headers: {
-          "Cache-Control": "no-store",
-        },
-      }
-    );
-  }
-
+async function providerFetch(
+  url,
+  options = {},
+  label = "Provider request"
+) {
   try {
-    /*
-     * Check whether the existing provider session exists.
-     */
-    const statusResult =
-      await getSessionStatus(businessId);
+    const response = await fetch(url, {
+      ...options,
+      cache: "no-store",
+    });
 
-    /*
-     * Provider says session does not exist.
-     */
-    if (
-      statusResult.status === 404 ||
-      statusResult.data?.status === "not_found"
-    ) {
-      return NextResponse.json(
-        {
-          success: true,
-          connected: false,
-          status: "not_found",
-          sessionId: businessId,
-          businessId,
-          qrCode: null,
-          qr: null,
-        },
-        {
-          status: 200,
-          headers: {
-            "Cache-Control": "no-store",
-          },
-        }
-      );
-    }
-
-    if (!statusResult.ok) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            statusResult.data?.error ||
-            `WhatsApp provider returned HTTP ${statusResult.status}`,
-          providerStatus: statusResult.status,
-        },
-        {
-          status: 502,
-          headers: {
-            "Cache-Control": "no-store",
-          },
-        }
-      );
-    }
-
-    const statusData = statusResult.data || {};
-
-    /*
-     * Already connected.
-     */
-    if (statusData.status === "connected") {
-      return NextResponse.json(
-        {
-          success: true,
-          connected: true,
-          status: "connected",
-          sessionId: businessId,
-          businessId,
-          qrCode: null,
-          qr: null,
-          phone: statusData.phone || null,
-        },
-        {
-          status: 200,
-          headers: {
-            "Cache-Control": "no-store",
-          },
-        }
-      );
-    }
-
-    /*
-     * Session exists. Retrieve its current QR.
-     */
-    const qrResult =
-      await getSessionQR(businessId);
-
-    if (qrResult.ok && qrResult.data) {
-      const qr = extractQR(qrResult.data);
-
-      if (qr) {
-        return NextResponse.json(
-          {
-            success: true,
-            connected: false,
-            status:
-              qrResult.data.status ||
-              statusData.status ||
-              "qr",
-            sessionId: businessId,
-            businessId,
-            qrCode: qr,
-            qr: qr,
-            phone:
-              qrResult.data.phone ||
-              statusData.phone ||
-              null,
-          },
-          {
-            status: 200,
-            headers: {
-              "Cache-Control": "no-store",
-            },
-          }
-        );
-      }
-    }
-
-    /*
-     * Session exists but QR isn't ready yet.
-     */
-    return NextResponse.json(
-      {
-        success: true,
-        connected: false,
-        status:
-          statusData.status ||
-          "connecting",
-        sessionId: businessId,
-        businessId,
-        qrCode: null,
-        qr: null,
-        phone: statusData.phone || null,
-      },
-      {
-        status: 200,
-        headers: {
-          "Cache-Control": "no-store",
-        },
-      }
+    return await readProviderResponse(
+      response,
+      label
     );
   } catch (error) {
     console.error(
-      "[WhatsApp Connect API] GET fatal error:",
+      `[WhatsApp Connect API] ${label} failed:`,
       error
     );
 
+    return {
+      ok: false,
+      status: 0,
+      data: {},
+      rawText: "",
+      contentType: "",
+    };
+  }
+}
+
+/* ============================================================
+   NORMALIZE PROVIDER DATA
+   ============================================================ */
+
+function normalizeProviderData(data = {}) {
+  const qrCode =
+    typeof data.qrCode === "string" &&
+    data.qrCode.trim()
+      ? data.qrCode
+      : typeof data.qr === "string" &&
+        data.qr.trim()
+      ? data.qr
+      : "";
+
+  const phoneNumber =
+    data.phoneNumber ||
+    data.phone ||
+    data.number ||
+    null;
+
+  const status =
+    String(
+      data.status ||
+        (qrCode
+          ? "qr_pending"
+          : "connecting")
+    ).toLowerCase();
+
+  return {
+    ...data,
+
+    status,
+
+    qrCode,
+
+    phoneNumber,
+
+    connected:
+      data.connected === true ||
+      status === "connected",
+
+    alreadyConnected:
+      data.alreadyConnected === true ||
+      status === "already_connected",
+  };
+}
+
+/* ============================================================
+   SUPABASE ADMIN CLIENT
+   ============================================================ */
+
+function getAdminSupabase() {
+  const url =
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
+    process.env.SUPABASE_URL?.trim();
+
+  const serviceRoleKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+  if (!url || !serviceRoleKey) {
+    throw new Error(
+      "Supabase service-role configuration is missing."
+    );
+  }
+
+  return createSupabaseClient(
+    url,
+    serviceRoleKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+}
+
+/* ============================================================
+   FINALIZE CONNECTED BUSINESS
+   ============================================================ */
+
+/*
+ * Called only after the real WhatsApp provider reports:
+ *
+ *     connected
+ *
+ * This function:
+ *
+ * 1. Finds the Sodah business.
+ * 2. Gets the connected WhatsApp number.
+ * 3. Marks the business as connected.
+ * 4. Saves ai_number.
+ * 5. Sends the one-time Sodah test message.
+ *
+ * IMPORTANT:
+ *
+ * The test message is sent through:
+ *
+ *     /session/:sessionId/send
+ *
+ * which uses the EXISTING Baileys session.
+ *
+ * No new session.
+ * No new QR.
+ */
+async function finalizeConnectedBusiness({
+  businessId,
+  providerData,
+}) {
+  const admin =
+    getAdminSupabase();
+
+  /*
+   * Number returned by the WhatsApp provider.
+   */
+  const providerPhone =
+    normalizePhone(
+      providerData?.phoneNumber ||
+        providerData?.phone ||
+        providerData?.number ||
+        ""
+    );
+
+  /*
+   * Load the Sodah business.
+   */
+  const {
+    data: business,
+    error: businessError,
+  } = await admin
+    .from("businesses")
+    .select(
+      [
+        "business_id",
+        "business_name",
+        "ai_number",
+        "whatsapp_connected",
+      ].join(",")
+    )
+    .eq(
+      "business_id",
+      businessId
+    )
+    .maybeSingle();
+
+  if (businessError) {
+    console.error(
+      "[WhatsApp Connect API] Business lookup after connection failed:",
+      businessError
+    );
+
+    return {
+      testMessageSent: false,
+
+      testMessageError:
+        "Unable to load the connected business.",
+
+      businessName: null,
+
+      phoneNumber:
+        providerPhone || null,
+    };
+  }
+
+  if (!business) {
+    return {
+      testMessageSent: false,
+
+      testMessageError:
+        "The connected business could not be found.",
+
+      businessName: null,
+
+      phoneNumber:
+        providerPhone || null,
+    };
+  }
+
+  /*
+   * Prefer the number returned by Baileys/provider.
+   *
+   * Fall back to the existing ai_number if necessary.
+   */
+  const connectedPhone =
+    providerPhone ||
+    normalizePhone(
+      business.ai_number
+    );
+
+  /*
+   * ----------------------------------------------------------
+   * IMPORTANT ONE-TIME LOCK
+   * ----------------------------------------------------------
+   *
+   * The frontend polls every 1.5 seconds.
+   *
+   * Without this atomic update, several GET requests could
+   * all see "connected" and send the test message repeatedly.
+   *
+   * We therefore change:
+   *
+   *     whatsapp_connected = false
+   *
+   * to:
+   *
+   *     whatsapp_connected = true
+   *
+   * in one database operation.
+   *
+   * Only the request that successfully claims that update
+   * is allowed to send the test message.
+   */
+  const {
+    data: claimedBusiness,
+    error: claimError,
+  } = await admin
+    .from("businesses")
+    .update({
+      whatsapp_connected: true,
+
+      ...(connectedPhone
+        ? {
+            ai_number:
+              connectedPhone,
+          }
+        : {}),
+    })
+    .eq(
+      "business_id",
+      businessId
+    )
+    .eq(
+      "whatsapp_connected",
+      false
+    )
+    .select(
+      [
+        "business_id",
+        "business_name",
+        "ai_number",
+        "whatsapp_connected",
+      ].join(",")
+    )
+    .maybeSingle();
+
+  if (claimError) {
+    console.error(
+      "[WhatsApp Connect API] Business connection update failed:",
+      claimError
+    );
+
+    return {
+      testMessageSent: false,
+
+      testMessageError:
+        "WhatsApp connected, but the Sodah business could not be updated.",
+
+      businessName:
+        business.business_name ||
+        null,
+
+      phoneNumber:
+        connectedPhone || null,
+    };
+  }
+
+  /*
+   * No row was claimed.
+   *
+   * This means another request already changed the business
+   * to connected.
+   *
+   * DO NOT send another test message.
+   */
+  if (!claimedBusiness) {
+    return {
+      testMessageSent: false,
+
+      testMessageAlreadySent: true,
+
+      businessName:
+        business.business_name ||
+        null,
+
+      phoneNumber:
+        connectedPhone ||
+        normalizePhone(
+          business.ai_number
+        ) ||
+        null,
+    };
+  }
+
+  /*
+   * We need a phone number to send the test message.
+   */
+  if (!connectedPhone) {
+    console.error(
+      "[WhatsApp Connect API] Connected but no WhatsApp number was returned."
+    );
+
+    return {
+      testMessageSent: false,
+
+      testMessageError:
+        "WhatsApp connected, but the connected phone number was not returned by the provider.",
+
+      businessName:
+        claimedBusiness.business_name ||
+        business.business_name ||
+        null,
+
+      phoneNumber: null,
+    };
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * SEND TEST MESSAGE
+   * ----------------------------------------------------------
+   *
+   * Send through the existing connected Baileys session.
+   *
+   * The provider endpoint:
+   *
+   *     POST /session/:sessionId/send
+   *
+   * must use the existing:
+   *
+   *     session.socket
+   *
+   * and must NOT create another QR/session.
+   *
+   * The message is sent to the connected WhatsApp account's
+   * own chat.
+   */
+  const sendUrl =
+    `${PROVIDER_BASE_URL}/session/${encodeURIComponent(
+      businessId
+    )}/send`;
+
+  console.log(
+    "[WhatsApp Connect API] Sending Sodah connection test message:",
+    {
+      businessId,
+      phoneNumber:
+        connectedPhone,
+    }
+  );
+
+  const sendResult =
+    await providerFetch(
+      sendUrl,
+      {
+        method: "POST",
+
+        headers:
+          providerHeaders(true),
+
+        body: JSON.stringify({
+          to: connectedPhone,
+
+          message:
+            TEST_MESSAGE,
+        }),
+      },
+
+      "Connected test message"
+    );
+
+  if (!sendResult.ok) {
+    console.error(
+      "[WhatsApp Connect API] Test message failed:",
+      {
+        status:
+          sendResult.status,
+
+        data:
+          sendResult.data,
+      }
+    );
+
+    return {
+      testMessageSent: false,
+
+      testMessageError:
+        sendResult.data?.message ||
+        sendResult.data?.error ||
+        `Connected, but the test message could not be sent (${sendResult.status || "provider error"}).`,
+
+      businessName:
+        claimedBusiness.business_name ||
+        business.business_name ||
+        null,
+
+      phoneNumber:
+        connectedPhone,
+    };
+  }
+
+  /*
+   * Provider may return HTTP 200 while explicitly saying
+   * success=false.
+   */
+  if (
+    sendResult.data?.success === false
+  ) {
+    return {
+      testMessageSent: false,
+
+      testMessageError:
+        sendResult.data?.message ||
+        sendResult.data?.error ||
+        "Connected, but the test message was rejected by the WhatsApp provider.",
+
+      businessName:
+        claimedBusiness.business_name ||
+        business.business_name ||
+        null,
+
+      phoneNumber:
+        connectedPhone,
+    };
+  }
+
+  console.log(
+    "[WhatsApp Connect API] Business connected and test message sent:",
+    {
+      businessId,
+      phoneNumber:
+        connectedPhone,
+    }
+  );
+
+  return {
+    testMessageSent: true,
+
+    testMessageAlreadySent: false,
+
+    businessName:
+      claimedBusiness.business_name ||
+      business.business_name ||
+      null,
+
+    phoneNumber:
+      connectedPhone,
+  };
+}
+
+/* ============================================================
+   RESPONSE FOR PROVIDER
+   ============================================================ */
+
+async function responseForProvider(
+  businessId,
+  sessionId,
+  providerResult
+) {
+  const data =
+    normalizeProviderData(
+      providerResult.data
+    );
+
+  /*
+   * ----------------------------------------------------------
+   * BUSINESS DOES NOT EXIST
+   * ----------------------------------------------------------
+   */
+
+  if (
+    providerResult.status === 404 ||
+    data.code ===
+      "BUSINESS_NOT_FOUND" ||
+    data.status ===
+      "business_not_found"
+  ) {
     return NextResponse.json(
       {
         success: false,
-        error:
-          error.name === "AbortError"
-            ? "WhatsApp provider request timed out."
-            : error.message ||
-              "Unable to contact WhatsApp provider.",
+
+        connected: false,
+
+        alreadyConnected: false,
+
+        businessId,
+
+        sessionId,
+
+        status:
+          "business_not_found",
+
+        code:
+          "BUSINESS_NOT_FOUND",
+
+        qrCode: "",
+
+        phoneNumber:
+          data.phoneNumber,
+
+        businessName:
+          data.businessName ||
+          null,
+
+        message:
+          data.message ||
+          "This business does not exist in Sodah.io.",
       },
       {
-        status: 502,
+        status: 404,
+
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control":
+            "no-store",
         },
       }
     );
   }
+
+  /*
+   * ----------------------------------------------------------
+   * NUMBER ALREADY CONNECTED TO ANOTHER BUSINESS
+   * ----------------------------------------------------------
+   */
+
+  if (
+    data.code ===
+      "WHATSAPP_NUMBER_ALREADY_CONNECTED" ||
+    data.status ===
+      "number_already_connected"
+  ) {
+    return NextResponse.json(
+      {
+        success: false,
+
+        connected: false,
+
+        alreadyConnected: false,
+
+        businessId,
+
+        sessionId,
+
+        status:
+          "number_already_connected",
+
+        code:
+          "WHATSAPP_NUMBER_ALREADY_CONNECTED",
+
+        qrCode: "",
+
+        phoneNumber:
+          data.phoneNumber,
+
+        message:
+          data.message ||
+          "This WhatsApp number is already connected to another Sodah.io business.",
+      },
+      {
+        status: 409,
+
+        headers: {
+          "Cache-Control":
+            "no-store",
+        },
+      }
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * WHATSAPP CONNECTED
+   * ----------------------------------------------------------
+   *
+   * This is where we now:
+   *
+   * 1. Update businesses.whatsapp_connected.
+   * 2. Save ai_number.
+   * 3. Send the test message.
+   */
+  if (
+    data.connected === true ||
+    data.alreadyConnected === true ||
+    data.status ===
+      "already_connected"
+  ) {
+    const finalized =
+      await finalizeConnectedBusiness({
+        businessId,
+
+        providerData:
+          data,
+      });
+
+    return NextResponse.json(
+      {
+        success: true,
+
+        connected: true,
+
+        alreadyConnected:
+          data.alreadyConnected ===
+            true ||
+          data.status ===
+            "already_connected",
+
+        businessId,
+
+        sessionId,
+
+        status: "connected",
+
+        qrCode: "",
+
+        phoneNumber:
+          finalized.phoneNumber ||
+          data.phoneNumber ||
+          null,
+
+        businessName:
+          finalized.businessName ||
+          data.businessName ||
+          null,
+
+        testMessageSent:
+          finalized.testMessageSent ===
+          true,
+
+        testMessageAlreadySent:
+          finalized.testMessageAlreadySent ===
+          true,
+
+        testMessageError:
+          finalized.testMessageError ||
+          null,
+
+        message:
+          finalized.testMessageSent
+            ? "Your business is connected to Sodah.io. The test message was sent."
+            : finalized.testMessageAlreadySent
+            ? "WhatsApp is connected to Sodah.io."
+            : finalized.testMessageError
+            ? "WhatsApp is connected, but the test message could not be sent."
+            : data.message ||
+              "WhatsApp is connected to Sodah.io.",
+      },
+      {
+        status: 200,
+
+        headers: {
+          "Cache-Control":
+            "no-store",
+        },
+      }
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * SODAH ACTIVATION
+   * ----------------------------------------------------------
+   */
+
+  if (
+    data.status ===
+      "connecting_to_sodah" ||
+    data.status ===
+      "activating_ai" ||
+    data.status ===
+      "activating"
+  ) {
+    return NextResponse.json(
+      {
+        success: true,
+
+        connected: false,
+
+        alreadyConnected: false,
+
+        businessId,
+
+        sessionId,
+
+        status:
+          "connecting_to_sodah",
+
+        qrCode: "",
+
+        phoneNumber:
+          data.phoneNumber,
+
+        businessName:
+          data.businessName ||
+          null,
+
+        message:
+          data.message ||
+          "Connecting your business to Sodah.io AI...",
+      },
+      {
+        status: 200,
+
+        headers: {
+          "Cache-Control":
+            "no-store",
+        },
+      }
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * QR CODE
+   * ----------------------------------------------------------
+   */
+
+  if (data.qrCode) {
+    return NextResponse.json(
+      {
+        success: true,
+
+        connected: false,
+
+        alreadyConnected: false,
+
+        businessId,
+
+        sessionId,
+
+        status:
+          data.status ||
+          "qr_pending",
+
+        qrCode:
+          data.qrCode,
+
+        phoneNumber:
+          data.phoneNumber,
+
+        businessName:
+          data.businessName ||
+          null,
+
+        message:
+          data.message ||
+          "Scan this QR code with WhatsApp.",
+      },
+      {
+        status: 200,
+
+        headers: {
+          "Cache-Control":
+            "no-store",
+        },
+      }
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * DEFAULT / STARTING
+   * ----------------------------------------------------------
+   */
+
+  return NextResponse.json(
+    {
+      success:
+        providerResult.ok ||
+        providerResult.status ===
+          202,
+
+      connected: false,
+
+      alreadyConnected: false,
+
+      businessId,
+
+      sessionId,
+
+      status:
+        data.status ||
+        "connecting",
+
+      qrCode: "",
+
+      phoneNumber:
+        data.phoneNumber,
+
+      businessName:
+        data.businessName ||
+        null,
+
+      message:
+        data.message ||
+        "WhatsApp is starting.",
+    },
+    {
+      status:
+        providerResult.status ===
+          202
+          ? 202
+          : providerResult.ok
+          ? 200
+          : 502,
+
+      headers: {
+        "Cache-Control":
+          "no-store",
+      },
+    }
+  );
 }
 
-/*
-|--------------------------------------------------------------------------
-| POST
-|--------------------------------------------------------------------------
-|
-| POST:
-|
-| 1. Checks existing session.
-| 2. If it exists, reuses it.
-| 3. If it does not exist, creates it.
-| 4. Waits for the QR.
-|
-|--------------------------------------------------------------------------
-*/
+/* ============================================================
+   GET PROVIDER STATUS
+   ============================================================ */
 
-export async function POST(request) {
+async function getProviderStatus(
+  sessionId
+) {
+  return providerFetch(
+    `${PROVIDER_BASE_URL}/session/${encodeURIComponent(
+      sessionId
+    )}/status`,
+    {
+      method: "GET",
+
+      headers:
+        providerHeaders(),
+    },
+
+    "Provider status"
+  );
+}
+
+/* ============================================================
+   CREATE PROVIDER SESSION
+   ============================================================ */
+
+async function createProviderSession({
+  sessionId,
+  businessId,
+}) {
+  return providerFetch(
+    `${PROVIDER_BASE_URL}/session/create`,
+    {
+      method: "POST",
+
+      headers:
+        providerHeaders(true),
+
+      body: JSON.stringify({
+        sessionId,
+
+        businessId,
+      }),
+    },
+
+    "Provider create"
+  );
+}
+
+/* ============================================================
+   GET — CHECK ONLY
+   ============================================================ */
+
+export async function GET(request) {
   try {
-    const body = await request.json().catch(() => ({}));
+    const url =
+      new URL(request.url);
 
-    const businessId = normalizeSessionId(
-      body?.businessId ||
-      body?.sessionId ||
-      body?.session_id
-    );
-
-    console.log(
-      "[WhatsApp Connect API] POST request:",
-      businessId
-    );
+    const businessId =
+      String(
+        url.searchParams.get(
+          "businessId"
+        ) || ""
+      ).trim();
 
     if (!businessId) {
       return NextResponse.json(
         {
           success: false,
-          error: "businessId is required",
+
+          connected: false,
+
+          status: "error",
+
+          message:
+            "Business ID is required.",
         },
         {
           status: 400,
+
           headers: {
-            "Cache-Control": "no-store",
+            "Cache-Control":
+              "no-store",
           },
         }
       );
     }
 
-    /*
-     * STEP 1
-     *
-     * Check if the session already exists.
-     *
-     * This is important because we do NOT want to create
-     * another WhatsApp session every time the page loads.
-     */
-    let existingSession = null;
+    const sessionId =
+      businessId;
 
-    try {
-      existingSession =
-        await getSessionStatus(businessId);
-    } catch (error) {
-      console.error(
-        "[WhatsApp Connect API] Existing session check failed:",
-        error
+    const result =
+      await getProviderStatus(
+        sessionId
       );
-    }
 
     /*
-     * Existing session found.
+     * --------------------------------------------------------
+     * NO SESSION
+     * --------------------------------------------------------
+     *
+     * GET NEVER creates a session.
      */
     if (
-      existingSession?.ok &&
-      existingSession?.data &&
-      existingSession.data.status !== "not_found"
+      result.status === 404
     ) {
-      console.log(
-        "[WhatsApp Connect API] Existing session found. Reusing it."
-      );
-
-      /*
-       * If already connected, return immediately.
-       */
-      if (
-        existingSession.data.status === "connected"
-      ) {
-        return NextResponse.json(
-          {
-            success: true,
-            connected: true,
-            status: "connected",
-            sessionId: businessId,
-            businessId,
-            qrCode: null,
-            qr: null,
-            phone:
-              existingSession.data.phone ||
-              null,
-          },
-          {
-            status: 200,
-            headers: {
-              "Cache-Control": "no-store",
-            },
-          }
-        );
-      }
-
-      /*
-       * Existing session is not connected.
-       *
-       * Try to retrieve its existing QR first.
-       */
-      const existingQR =
-        await getSessionQR(businessId);
-
-      if (
-        existingQR.ok &&
-        existingQR.data
-      ) {
-        const qr =
-          extractQR(existingQR.data);
-
-        if (qr) {
-          return NextResponse.json(
-            {
-              success: true,
-              connected: false,
-              status:
-                existingQR.data.status ||
-                existingSession.data.status ||
-                "qr",
-              sessionId: businessId,
-              businessId,
-              qrCode: qr,
-              qr: qr,
-              phone:
-                existingQR.data.phone ||
-                existingSession.data.phone ||
-                null,
-            },
-            {
-              status: 200,
-              headers: {
-                "Cache-Control": "no-store",
-              },
-            }
-          );
-        }
-      }
-
-      /*
-       * Existing session is still starting.
-       * Wait for its QR.
-       */
-      const existingQRResult =
-        await waitForQR(businessId);
-
-      return NextResponse.json(
-        {
-          ...existingQRResult,
-          businessId,
-        },
-        {
-          status: existingQRResult.success
-            ? 200
-            : 504,
-          headers: {
-            "Cache-Control": "no-store",
-          },
-        }
-      );
-    }
-
-    /*
-     * STEP 2
-     *
-     * No existing session.
-     *
-     * Create one using the ACTUAL provider endpoint:
-     *
-     * POST /session
-     */
-    const createResult =
-      await createSession(businessId);
-
-    if (!createResult.ok) {
-      console.error(
-        "[WhatsApp Connect API] Provider session creation failed."
-      );
-
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            createResult.data?.error ||
-            `WhatsApp provider returned HTTP ${createResult.status}`,
-          providerStatus:
-            createResult.status,
-          providerResponse:
-            createResult.rawText,
-        },
-        {
-          status: 502,
-          headers: {
-            "Cache-Control": "no-store",
-          },
-        }
-      );
-    }
-
-    /*
-     * Provider may already have QR in the creation response.
-     */
-    const immediateQR =
-      extractQR(createResult.data);
-
-    if (immediateQR) {
       return NextResponse.json(
         {
           success: true,
-          connected:
-            createResult.data?.status ===
-            "connected",
-          status:
-            createResult.data?.status ||
-            "qr",
-          sessionId: businessId,
+
+          connected: false,
+
+          alreadyConnected: false,
+
           businessId,
-          qrCode: immediateQR,
-          qr: immediateQR,
-          phone:
-            createResult.data?.phone ||
-            null,
+
+          sessionId,
+
+          status: "not_found",
+
+          qrCode: "",
+
+          message:
+            "No WhatsApp session exists yet.",
         },
         {
           status: 200,
+
           headers: {
-            "Cache-Control": "no-store",
+            "Cache-Control":
+              "no-store",
           },
         }
       );
     }
 
-    /*
-     * Provider session created successfully,
-     * but QR generation happens asynchronously.
-     */
-    const qrResult =
-      await waitForQR(businessId);
+    return await responseForProvider(
+      businessId,
 
-    return NextResponse.json(
-      {
-        ...qrResult,
-        businessId,
-      },
-      {
-        status: qrResult.success
-          ? 200
-          : 504,
-        headers: {
-          "Cache-Control": "no-store",
-        },
-      }
+      sessionId,
+
+      result
     );
   } catch (error) {
     console.error(
-      "[WhatsApp Connect API] POST fatal error:",
+      "[WhatsApp Connect API] GET failed:",
       error
     );
 
     return NextResponse.json(
       {
         success: false,
-        error:
-          error.name === "AbortError"
-            ? "WhatsApp provider request timed out."
-            : error.message ||
-              "Unable to connect to WhatsApp provider.",
+
+        connected: false,
+
+        status: "error",
+
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to check WhatsApp connection.",
       },
       {
-        status: 502,
+        status: 500,
+
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control":
+            "no-store",
         },
       }
     );
   }
 }
 
-/*
-|--------------------------------------------------------------------------
-| OPTIONS
-|--------------------------------------------------------------------------
-*/
+/* ============================================================
+   POST — CREATE / REUSE
+   ============================================================ */
+
+export async function POST(request) {
+  try {
+    const body =
+      await request
+        .json()
+        .catch(() => ({}));
+
+    const businessId =
+      String(
+        body?.businessId ||
+          body?.business_id ||
+          ""
+      ).trim();
+
+    if (!businessId) {
+      return NextResponse.json(
+        {
+          success: false,
+
+          connected: false,
+
+          status: "error",
+
+          message:
+            "Business ID is required.",
+        },
+        {
+          status: 400,
+
+          headers: {
+            "Cache-Control":
+              "no-store",
+          },
+        }
+      );
+    }
+
+    const sessionId =
+      businessId;
+
+    /*
+     * --------------------------------------------------------
+     * CHECK CURRENT SESSION FIRST
+     * --------------------------------------------------------
+     *
+     * This prevents another QR from being generated if the
+     * session is already connected or already has a QR.
+     */
+    const current =
+      await getProviderStatus(
+        sessionId
+      );
+
+    if (
+      current.ok
+    ) {
+      const currentData =
+        normalizeProviderData(
+          current.data
+        );
+
+      /*
+       * Already connected.
+       */
+      if (
+        currentData.connected ||
+        currentData.alreadyConnected ||
+        currentData.status ===
+          "already_connected"
+      ) {
+        return await responseForProvider(
+          businessId,
+
+          sessionId,
+
+          current
+        );
+      }
+
+      /*
+       * Existing QR.
+       */
+      if (
+        currentData.qrCode
+      ) {
+        return await responseForProvider(
+          businessId,
+
+          sessionId,
+
+          current
+        );
+      }
+
+      /*
+       * Existing session is starting.
+       */
+      if (
+        currentData.status ===
+          "connecting_to_sodah" ||
+        currentData.status ===
+          "activating_ai" ||
+        currentData.status ===
+          "connecting" ||
+        currentData.status ===
+          "reconnecting"
+      ) {
+        return await responseForProvider(
+          businessId,
+
+          sessionId,
+
+          current
+        );
+      }
+    }
+
+    /*
+     * --------------------------------------------------------
+     * CREATE / REUSE SESSION
+     * --------------------------------------------------------
+     *
+     * The real WhatsApp provider is responsible for:
+     *
+     * - validating the business
+     * - checking whether the number is already connected
+     * - creating the Baileys session
+     * - generating QR when needed
+     */
+    const created =
+      await createProviderSession({
+        sessionId,
+
+        businessId,
+      });
+
+    return await responseForProvider(
+      businessId,
+
+      sessionId,
+
+      created
+    );
+  } catch (error) {
+    console.error(
+      "[WhatsApp Connect API] POST failed:",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        success: false,
+
+        connected: false,
+
+        status: "error",
+
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to start WhatsApp connection.",
+      },
+      {
+        status: 500,
+
+        headers: {
+          "Cache-Control":
+            "no-store",
+        },
+      }
+    );
+  }
+}
+
+/* ============================================================
+   OPTIONS
+   ============================================================ */
 
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
+
     headers: {
-      Allow: "GET, POST, OPTIONS",
-      "Cache-Control": "no-store",
+      Allow:
+        "GET, POST, OPTIONS",
+
+      "Cache-Control":
+        "no-store",
     },
   });
 }

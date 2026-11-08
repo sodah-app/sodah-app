@@ -1,0 +1,9 @@
+{
+  "fixes": [
+    "todayISO export",
+    "undeclared XLSX assignment",
+    "hydration warning guidance"
+  ],
+  "route": "app/timesheet/page.jsx",
+  "max_sheets": 10
+}
