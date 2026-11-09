@@ -228,7 +228,7 @@ function ReportMetric({icon:Icon,label,value}) { return <div className="ts-repor
 function CalendarMini({date,cursor,setCursor,onSelect}) {
   const WEEK=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   const first=new Date(cursor.getFullYear(),cursor.getMonth(),1),start=new Date(first);start.setDate(1-first.getDay());
-  return <div><div className="ts-mini-nav"><button onClick={()=>setCursor(new Date(cursor.getFullYear(),cursor.getMonth()-1,1))}><ChevronLeft/></button><b>{cursor.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</b><button onClick={()=>setCursor(new Date(cursor.getFullYear(),cursor.getMonth()+1,1))}><ChevronRight/></button></div><div className="ts-mini-grid">{WEEK.map(d=><span key={d}>{d.slice(0,1)}</span>)}{Array.from({length:42},(_,i)=>{let d=new Date(start);d.setDate(start.getDate()+i);let iso=new Date(d-d.getTimezoneOffset()*60000).toISOString().slice(0,10);return <button key={iso} className={iso===date?"selected":d.getMonth()===cursor.getMonth()?"":"muted"} onClick={()=>onSelect(iso)}>{d.getDate()}</button>})}</div></div>;
+  return <div><div className="ts-mini-nav"><button onClick={()=>setCursor(new Date(cursor.getFullYear(),cursor.getMonth()-1,1) )}><ChevronLeft/></button><b>{cursor.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</b><button onClick={()=>setCursor(new Date(cursor.getFullYear(),cursor.getMonth()+1,1) )}><ChevronRight/></button></div><div className="ts-mini-grid">{WEEK.map(d=><span key={d}>{d.slice(0,1)}</span>)}{Array.from({length:42},(_,i)=>{let d=new Date(start);d.setDate(start.getDate()+i);let iso=new Date(d-d.getTimezoneOffset()*60000).toISOString().slice(0,10);return <button key={iso} className={iso===date?"selected":d.getMonth()===cursor.getMonth()?"":"muted"} onClick={()=>onSelect(iso)}>{d.getDate()}</button>})}</div></div>;
 }
 function CalendarPanel({rows,cursor,setCursor,onClose,onSelect}) {
   const first = new Date(cursor.getFullYear(),cursor.getMonth(),1);
@@ -236,8 +236,8 @@ function CalendarPanel({rows,cursor,setCursor,onClose,onSelect}) {
   const cells = Array.from({length:42},(_,i)=>{const d=new Date(start);d.setDate(start.getDate()+i);const iso=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);return {d,iso,current:d.getMonth()===cursor.getMonth(),count:rows.filter(r=>r.date===iso).length};});
   return <section className="ts-panel">
     <PanelHeader title="Calendar" subtitle="Select a day to open its exact attendance record" onClose={onClose}/>
-    <div className="ts-calendar-head"><button onClick={()=>setCursor(new Date(cursor.getFullYear(),cursor.getMonth()-1,1))}><ChevronLeft/></button><strong>{cursor.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</strong><button onClick={()=>setCursor(new Date(cursor.getFullYear(),cursor.getMonth()+1,1))}><ChevronRight/></button></div>
-    <div className="ts-calendar-grid">{WEEK.map(d=><div className="ts-cal-week" key={d}>{d.slice(0,3)}</div>)}{cells.map(c=><button key={c.iso} className={`ts-cal-day ${c.current?"":"muted"} ${c.count?"has":""}`} onClick={()=>onSelect(c.iso)}><b>{c.d.getDate()}</b>{c.count>0&&<span>{c.count} record{c.count>1?"s":""}</span>}</button>)}</div>
+    <div className="ts-calendar-head"><button onClick={()=>setCursor(new Date(cursor.getFullYear(),cursor.getMonth()-1,1) )}><ChevronLeft/></button><strong>{cursor.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</strong><button onClick={()=>setCursor(new Date(cursor.getFullYear(),cursor.getMonth()+1,1) )}><ChevronRight/></button></div>
+    <div className="ts-calendar-grid">{WEEK.map(d=><div className="ts-cal-week" key={d}>{d.slice(0,3)}</div>)}{cells.map(c=><button key={c.iso} className={`ts-cal-day ${c.current?"":"muted"} ${c.count?"has":""}`} onClick={()=>onSelect(c.iso )}><b>{c.d.getDate()}</b>{c.count>0&&<span>{c.count} record{c.count>1?"s":""}</span>}</button>)}</div>
   </section>;
 }
 return { CalendarPanel };
@@ -251,7 +251,7 @@ function ReportMetric({icon:Icon,label,value}) { return <div className="ts-repor
 function CalendarMini({date,cursor,setCursor,onSelect}) {
   const WEEK=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   const first=new Date(cursor.getFullYear(),cursor.getMonth(),1),start=new Date(first);start.setDate(1-first.getDay());
-  return <div><div className="ts-mini-nav"><button onClick={()=>setCursor(new Date(cursor.getFullYear(),cursor.getMonth()-1,1))}><ChevronLeft/></button><b>{cursor.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</b><button onClick={()=>setCursor(new Date(cursor.getFullYear(),cursor.getMonth()+1,1))}><ChevronRight/></button></div><div className="ts-mini-grid">{WEEK.map(d=><span key={d}>{d.slice(0,1)}</span>)}{Array.from({length:42},(_,i)=>{let d=new Date(start);d.setDate(start.getDate()+i);let iso=new Date(d-d.getTimezoneOffset()*60000).toISOString().slice(0,10);return <button key={iso} className={iso===date?"selected":d.getMonth()===cursor.getMonth()?"":"muted"} onClick={()=>onSelect(iso)}>{d.getDate()}</button>})}</div></div>;
+  return <div><div className="ts-mini-nav"><button onClick={()=>setCursor(new Date(cursor.getFullYear(),cursor.getMonth()-1,1) )}><ChevronLeft/></button><b>{cursor.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</b><button onClick={()=>setCursor(new Date(cursor.getFullYear(),cursor.getMonth()+1,1) )}><ChevronRight/></button></div><div className="ts-mini-grid">{WEEK.map(d=><span key={d}>{d.slice(0,1)}</span>)}{Array.from({length:42},(_,i)=>{let d=new Date(start);d.setDate(start.getDate()+i);let iso=new Date(d-d.getTimezoneOffset()*60000).toISOString().slice(0,10);return <button key={iso} className={iso===date?"selected":d.getMonth()===cursor.getMonth()?"":"muted"} onClick={()=>onSelect(iso)}>{d.getDate()}</button>})}</div></div>;
 }
 function EquipmentPanel({rows,sheets,equipmentSheets,activeEquipmentSheetId,onSelectSheet,onUpdate,onAction,onAdd,onRemove,onAddColumn,onRemoveColumn,onUpdateColumn,onUpdateCell,onClose,onImportNames,onAddSheet}) {
   const [sourceSheetId, setSourceSheetId] = useState(sheets?.[0]?.id || "");
@@ -354,6 +354,7 @@ export default function TimeSheetMain() {
   const [faceKioskLocked, setFaceKioskLocked] = useState(() => { try { return localStorage.getItem("sodah-face-kiosk-locked") === "1"; } catch { return false; } });
   useEffect(() => { try { localStorage.setItem("sodah-face-kiosk-locked", faceKioskLocked ? "1" : "0"); } catch {} }, [faceKioskLocked]);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const cloudReadyRef = useRef(false);
   const sodaToolsRef = useRef(null);
   const [sheetTabMenu, setSheetTabMenu] = useState(null);
   const [search, setSearch] = useState("");
@@ -382,6 +383,7 @@ export default function TimeSheetMain() {
   const [attendanceSelection, setAttendanceSelection] = useState({ start: { row: 0, col: 0 }, end: { row: 0, col: 0 } });
   const [attendanceDragging, setAttendanceDragging] = useState(false);
   const [attendanceClipboard, setAttendanceClipboard] = useState(null);
+  const [attendanceSelectedSheetIds, setAttendanceSelectedSheetIds] = useState([]);
   const [toolbarFontSize, setToolbarFontSize] = useState(12);
   const [toolbarFont, setToolbarFont] = useState("Inter, Arial, sans-serif");
   const [toolbarTextColor, setToolbarTextColor] = useState("");
@@ -389,6 +391,13 @@ export default function TimeSheetMain() {
   const [freezeHeader, setFreezeHeader] = useState(true);
   const [pageScrolled, setPageScrolled] = useState(false);
   const importRef = useRef(null);
+
+  const saveWorkspaceCloud = async (partial) => {
+    try {
+      const response = await fetch("/api/timesheet-workspace", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(partial) });
+      if (!response.ok) console.warn("Timesheet cloud save was rejected", await response.text());
+    } catch (error) { console.warn("Timesheet cloud save failed; local copy remains available", error); }
+  };
 
   useEffect(() => {
     const onScroll = () => setPageScrolled(window.scrollY > 34);
@@ -463,13 +472,59 @@ export default function TimeSheetMain() {
     }
   }, []);
 
+  // Restore the authenticated user's server-side workspace after local recovery.
+  // Never write the initial empty React state over the cloud copy.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch("/api/timesheet-workspace", { cache: "no-store" });
+        if (!response.ok) return;
+        const result = await response.json();
+        const cloud = result?.workspace || {};
+        if (cancelled) return;
+        if (cloud.settings && typeof cloud.settings === "object") setSettings({ ...DEFAULT_SETTINGS, ...cloud.settings });
+        if (Array.isArray(cloud.sheets) && cloud.sheets.length) {
+          const restored = cloud.sheets.slice(0, MAX_SHEETS).map((item, i) => normalizeSheet(item, { ...DEFAULT_SETTINGS, ...(cloud.settings || {}) }, i));
+          setSheets(restored); setActiveId(prev => restored.some(x => x.id === prev) ? prev : restored[0].id);
+        }
+        if (Array.isArray(cloud.attendanceTrash)) setAttendanceTrash(cloud.attendanceTrash);
+        if (Array.isArray(cloud.equipmentSheets) && cloud.equipmentSheets.length) {
+          const restoredEquipment = cloud.equipmentSheets.slice(0,20).map((item,i)=>normalizeEquipmentSheet(item,i));
+          setEquipmentSheets(restoredEquipment); setActiveEquipmentSheetId(prev => restoredEquipment.some(x=>x.id===prev) ? prev : restoredEquipment[0].id);
+        }
+        if (Array.isArray(cloud.equipmentRows)) {
+          // Preserve legacy equipment records if the newer sheet collection is absent.
+          if (!Array.isArray(cloud.equipmentSheets) || !cloud.equipmentSheets.length) setEquipmentSheets([{ id:`equipment-sheet-${Date.now()}`, name:"Sheet 1", columns:[], rows:cloud.equipmentRows }]);
+        }
+      } catch (error) { console.warn("Timesheet cloud restore unavailable; local data retained", error); }
+      finally {
+        if (!cancelled) {
+          cloudReadyRef.current = true;
+          // Trigger debounced upload of recovered local data when this is a new cloud workspace.
+          setSheets(current => [...current]);
+          setSettings(current => ({ ...current }));
+          setAttendanceTrash(current => [...current]);
+          setEquipmentSheets(current => [...current]);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     if (sheets.length) localStorage.setItem("sodah-timesheet-sheets", JSON.stringify(sheets));
-  }, [sheets]);
+    if (!autoSaveEnabled || !cloudReadyRef.current || !sheets.length) return;
+    const timer = window.setTimeout(() => saveWorkspaceCloud({ sheets }), 700);
+    return () => window.clearTimeout(timer);
+  }, [sheets, autoSaveEnabled]);
 
   useEffect(() => {
     localStorage.setItem("sodah-timesheet-sheet-trash-v1", JSON.stringify(attendanceTrash));
-  }, [attendanceTrash]);
+    if (!autoSaveEnabled || !cloudReadyRef.current) return;
+    const timer = window.setTimeout(() => saveWorkspaceCloud({ attendanceTrash }), 700);
+    return () => window.clearTimeout(timer);
+  }, [attendanceTrash, autoSaveEnabled]);
 
   const activeEquipmentSheet = equipmentSheets.find(s => s.id === activeEquipmentSheetId) || equipmentSheets[0];
   const equipmentRows = activeEquipmentSheet?.rows || [];
@@ -477,13 +532,20 @@ export default function TimeSheetMain() {
   useEffect(() => {
     localStorage.setItem("sodah-timesheet-equipment-sheets", JSON.stringify(equipmentSheets));
     localStorage.setItem("sodah-timesheet-equipment", JSON.stringify(equipmentRows));
-  }, [equipmentSheets, equipmentRows]);
+    if (!autoSaveEnabled || !cloudReadyRef.current || !equipmentSheets.length) return;
+    const timer = window.setTimeout(() => saveWorkspaceCloud({ equipmentSheets, equipmentRows }), 700);
+    return () => window.clearTimeout(timer);
+  }, [equipmentSheets, equipmentRows, autoSaveEnabled]);
 
   useEffect(() => {
     localStorage.setItem("sodah-timesheet-settings", JSON.stringify(settings));
+    const timer = autoSaveEnabled && cloudReadyRef.current
+      ? window.setTimeout(() => saveWorkspaceCloud({ settings }), 700)
+      : null;
     document.documentElement.style.setProperty("--ts-accent", settings.accent);
     document.documentElement.style.setProperty("--ts-accent-2", settings.accent2);
-  }, [settings]);
+    return () => { if (timer) window.clearTimeout(timer); };
+  }, [settings, autoSaveEnabled]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -1015,16 +1077,13 @@ export default function TimeSheetMain() {
     "--ts-cell-font-style": style.fontStyle || "inherit",
   });
 
+  // Spreadsheet selection is intentionally limited to user-editable employee data.
+  // Fixed attendance controls (check-in/out, day, hours, OT, earnings and status)
+  // are not part of the selectable clipboard grid.
   const attendanceColumnDefs = useMemo(() => [
-    { key: "action", label: "CHECK-IN / OUT", editable: false },
     { key: "name", label: "EMPLOYEE NAME", field: "name" },
     { key: "employeeId", label: "EMPLOYEE ID", field: "employeeId" },
     ...((sheet?.columns || []).map(c => ({ key: `custom:${c.id}`, label: c.label, customId: c.id }))),
-    { key: "day", label: "DAY", editable: false },
-    { key: "hours", label: "HOURS", field: "hours" },
-    { key: "ot", label: "O.T", field: "ot" },
-    { key: "rate", label: "HOURLY EARNING", editable: false },
-    { key: "status", label: "STATUS", field: "status" },
   ], [sheet]);
 
   const attendanceRange = useMemo(() => ({
@@ -1036,12 +1095,45 @@ export default function TimeSheetMain() {
 
   const isAttendanceSelected = (row, col) => row >= attendanceRange.minRow && row <= attendanceRange.maxRow && col >= attendanceRange.minCol && col <= attendanceRange.maxCol;
 
-  const startAttendanceSelection = (row, col) => {
+  const startAttendanceSelection = (row, col, extend = false) => {
+    if (extend) {
+      setAttendanceSelection(prev => ({ ...prev, end: { row, col } }));
+      setAttendanceDragging(false);
+      return;
+    }
     setAttendanceSelection({ start: { row, col }, end: { row, col } });
+    setAttendanceSelectedSheetIds([activeId]);
     setAttendanceDragging(true);
   };
   const extendAttendanceSelection = (row, col) => {
     if (attendanceDragging) setAttendanceSelection(prev => ({ ...prev, end: { row, col } }));
+  };
+
+  const rowHasEmployeeData = (row) => !!(
+    String(row?.name || "").trim() || String(row?.employeeId || "").trim() ||
+    Object.values(row?.custom || {}).some(value => String(value ?? "").trim())
+  );
+  const populatedAttendanceSheets = sheets.filter(item => item.rows?.some(row =>
+    rowHasEmployeeData(row) || String(row.checkIn || "").trim() || String(row.checkOut || "").trim() ||
+    Number(row.ot || 0) > 0 || String(row.note || "").trim()
+  ));
+
+  const selectAllAttendanceSheets = () => {
+    const targets = populatedAttendanceSheets;
+    if (!targets.length) {
+      setAttendanceSelectedSheetIds([activeId]);
+      setAttendanceSelection({ start: { row: 0, col: 0 }, end: { row: 0, col: Math.max(1, attendanceColumnDefs.length) - 1 } });
+      setAttendanceDragging(false);
+      return;
+    }
+    const maxRows = Math.max(1, ...targets.map(item => {
+      const last = (item.rows || []).reduce((found, row, index) => rowHasEmployeeData(row) ? index : found, -1);
+      return last + 1;
+    }));
+    const maxCols = Math.max(1, ...targets.map(item => 2 + (item.columns?.length || 0)));
+    setAttendanceSelection({ start: { row: 0, col: 0 }, end: { row: maxRows - 1, col: maxCols - 1 } });
+    setAttendanceSelectedSheetIds(targets.map(item => item.id));
+    setAttendanceDragging(false);
   };
 
   useEffect(() => {
@@ -1070,33 +1162,53 @@ export default function TimeSheetMain() {
     }));
   };
 
+  const readAttendanceCell = (row, def) => {
+    if (!row || !def) return "";
+    if (def.customId) return row.custom?.[def.customId] ?? "";
+    if (def.field) return row[def.field] ?? "";
+    if (def.key === "day") return dayName(row.date);
+    if (def.key === "rate") return money(settings.defaultHourlyRate, settings.currency);
+    return "";
+  };
+
+  const getEditableDefs = (targetSheet) => [
+    { key: "name", field: "name" },
+    { key: "employeeId", field: "employeeId" },
+    ...(targetSheet.columns || []).map(c => ({ key: `custom:${c.id}`, customId: c.id })),
+  ];
+
   const copyAttendanceSelection = async () => {
-    const rows = filteredRows.slice(attendanceRange.minRow, attendanceRange.maxRow + 1).map(r => {
-      return attendanceColumnDefs.slice(attendanceRange.minCol, attendanceRange.maxCol + 1).map(def => {
-        if (def.customId) return r.custom?.[def.customId] ?? "";
-        if (def.field) return r[def.field] ?? "";
-        if (def.key === "day") return dayName(r.date);
-        if (def.key === "rate") return money(settings.defaultHourlyRate, settings.currency);
-        return "";
-      });
-    });
+    const targetIds = attendanceSelectedSheetIds.length ? attendanceSelectedSheetIds : [activeId];
+    const blocks = targetIds.map(id => {
+      const targetSheet = sheets.find(item => item.id === id);
+      if (!targetSheet) return [];
+      const defs = getEditableDefs(targetSheet);
+      const selectedDefs = defs.slice(attendanceRange.minCol, attendanceRange.maxCol + 1);
+      return targetSheet.rows.slice(attendanceRange.minRow, attendanceRange.maxRow + 1).map(row =>
+        selectedDefs.map(def => def.customId ? (row.custom?.[def.customId] ?? "") : (row[def.field] ?? ""))
+      );
+    }).filter(block => block.length);
+    const rows = blocks.flat();
     setAttendanceClipboard(rows);
     try { await navigator.clipboard?.writeText(rows.map(row => row.join("\t")).join("\n")); } catch {}
   };
 
   const clearAttendanceSelection = () => {
-    const ids = filteredRows.slice(attendanceRange.minRow, attendanceRange.maxRow + 1).map(r => r.id);
-    const defs = attendanceColumnDefs;
-    updateSheet(s => ({ ...s, rows: s.rows.map(r => {
-      if (!ids.includes(r.id)) return r;
-      let next = { ...r, custom: { ...(r.custom || {}) } };
-      for (let ci = attendanceRange.minCol; ci <= attendanceRange.maxCol; ci += 1) {
-        const def = defs[ci];
-        if (def?.customId) next.custom[def.customId] = "";
-        else if (def?.field && ["name", "employeeId", "hours", "ot", "status"].includes(def.field)) next[def.field] = def.field === "hours" ? settings.defaultHours : def.field === "ot" ? 0 : def.field === "status" ? "Present" : "";
-      }
-      return next;
-    }) }));
+    const targetIds = attendanceSelectedSheetIds.length ? attendanceSelectedSheetIds : [activeId];
+    setSheets(prev => prev.map(target => {
+      if (!targetIds.includes(target.id)) return target;
+      const defs = getEditableDefs(target);
+      const selectedDefs = defs.slice(attendanceRange.minCol, attendanceRange.maxCol + 1);
+      return { ...target, rows: target.rows.map((row, ri) => {
+        if (ri < attendanceRange.minRow || ri > attendanceRange.maxRow) return row;
+        const next = { ...row, custom: { ...(row.custom || {}) } };
+        selectedDefs.forEach(def => {
+          if (def.customId) next.custom[def.customId] = "";
+          else next[def.field] = "";
+        });
+        return next;
+      }) };
+    }));
   };
 
   const dispatchGeneralCommand = (command, payload) => {
@@ -1114,12 +1226,79 @@ export default function TimeSheetMain() {
   const unifiedCopy = () => openPanel === "general" ? dispatchGeneralCommand("copy") : copyAttendanceSelection();
   const unifiedPaste = () => openPanel === "general" ? dispatchGeneralCommand("paste") : (async () => {
     let data = attendanceClipboard;
-    if (!data) { try { const text = await navigator.clipboard?.readText(); if (text) data = text.split(/\r?\n/).map(line => line.split("\t")); } catch {} }
+    if (!data) {
+      try {
+        const text = await navigator.clipboard?.readText();
+        if (text) data = text.replace(/\r/g, "").split("\n").filter((line, index, all) => !(index === all.length - 1 && line === "")).map(line => line.split("\t"));
+      } catch {}
+    }
     if (!data?.length) return;
-    const rowsData = Array.isArray(data[0]) ? data : [data];
-    const ids = filteredRows.slice(attendanceRange.minRow, attendanceRange.maxRow + rowsData.length).map(r => r.id);
-    updateSheet(s => ({ ...s, rows: s.rows.map(r => { const ri = ids.indexOf(r.id); if (ri < 0 || ri >= rowsData.length) return r; const rowValues = rowsData[ri]; const next = { ...r, custom: { ...(r.custom || {}) } }; rowValues.forEach((value, offset) => { const ci = attendanceRange.minCol + offset; const def = attendanceColumnDefs[ci]; if (!def) return; if (def.customId) next.custom[def.customId] = value; else if (def.field) next[def.field] = def.field === "hours" || def.field === "ot" ? Number(value) || 0 : value; }); return next; }) }));
+    const rowsData = Array.isArray(data[0]) ? data : [[data]];
+    const targetIds = attendanceSelectedSheetIds.length ? attendanceSelectedSheetIds : [activeId];
+    const oneCell = rowsData.length === 1 && rowsData[0].length === 1;
+    setSheets(prev => prev.map(target => {
+      if (!targetIds.includes(target.id)) return target;
+      const defs = getEditableDefs(target);
+      const selectedCols = defs.slice(attendanceRange.minCol, attendanceRange.maxCol + 1);
+      if (!selectedCols.length) return target;
+      const selectedRowCount = attendanceRange.maxRow - attendanceRange.minRow + 1;
+      // A single copied cell fills the selected range. A multi-line clipboard
+      // is distributed row-by-row from the active cell, extending the sheet
+      // when the pasted list is longer than the current selection.
+      const pasteRowCount = oneCell ? selectedRowCount : Math.max(selectedRowCount, rowsData.length);
+      const sourceRows = oneCell ? Array.from({ length: pasteRowCount }, () => rowsData[0]) : rowsData;
+      const rows = [...target.rows];
+      while (rows.length < attendanceRange.minRow + pasteRowCount) {
+        rows.push(blankRow(settings, rows.length));
+      }
+      for (let relativeRow = 0; relativeRow < pasteRowCount; relativeRow += 1) {
+        const rowIndex = attendanceRange.minRow + relativeRow;
+        const sourceRow = sourceRows[relativeRow] || [];
+        const current = rows[rowIndex];
+        const next = { ...current, custom: { ...(current.custom || {}) } };
+        selectedCols.forEach((def, offset) => {
+          const value = sourceRow.length === 1 && !oneCell ? sourceRow[0] : sourceRow[offset];
+          if (value === undefined) return;
+          if (def.customId) next.custom[def.customId] = String(value);
+          else next[def.field] = String(value);
+        });
+        rows[rowIndex] = next;
+      }
+      return { ...target, rows };
+    }));
   })();
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (openPanel === "general") return;
+      const key = event.key.toLowerCase();
+      const modifier = event.ctrlKey || event.metaKey;
+      if (modifier && key === "a") {
+        event.preventDefault();
+        selectAllAttendanceSheets();
+      } else if (modifier && key === "c") {
+        event.preventDefault();
+        copyAttendanceSelection();
+      } else if (modifier && key === "v") {
+        event.preventDefault();
+        unifiedPaste();
+      } else if (!modifier && (key === "delete" || key === "backspace")) {
+        const target = event.target;
+        const isEditableControl = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT");
+        const hasRange = attendanceRange.minRow !== attendanceRange.maxRow || attendanceRange.minCol !== attendanceRange.maxCol || attendanceSelectedSheetIds.length > 1;
+        if (!isEditableControl || hasRange) {
+          event.preventDefault();
+          clearAttendanceSelection();
+        }
+      } else if (key === "escape") {
+        setAttendanceSelectedSheetIds([activeId]);
+        setAttendanceSelection({ start: { row: 0, col: 0 }, end: { row: 0, col: 0 } });
+      }
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [openPanel, activeId, sheets, attendanceClipboard, attendanceRange, attendanceSelectedSheetIds]);
+
 
   const unifiedDelete = () => openPanel === "general" ? dispatchGeneralCommand("deleteSheet") : deleteSheet(activeId);
   const unifiedRename = () => openPanel === "general" ? dispatchGeneralCommand("rename") : renameAttendanceSheet(activeId);
@@ -2805,13 +2984,13 @@ export default function TimeSheetMain() {
             {sheets.map((s, i) => (
               <div
                 key={s.id}
-                className={`ts-sheet-tab ${s.id === activeId ? "active" : ""}`}
+                className={`ts-sheet-tab ${s.id === activeId ? "active" : ""} ${attendanceSelectedSheetIds.includes(s.id) && attendanceSelectedSheetIds.length > 1 ? "ts-sheet-multi-selected" : ""}`}
                 style={{ "--ts-tab-color": s.tabColor || "#9ca3af" }}
                 onContextMenu={e => { e.preventDefault(); setSheetTabMenu({ id: s.id, x: e.clientX, y: e.clientY }); }}
                 onDoubleClick={e => setSheetTabMenu({ id: s.id, x: e.clientX, y: e.clientY, palette: true })}
               >
                 <button onClick={() => { setActiveId(s.id); setOpenPanel(null); }}>{s.name}</button>
-                {sheets.length > 1 && <button className="ts-sheet-x" onClick={() => deleteSheet(s.id)}><X size={12}/></button>}
+                {sheets.length > 1 && <button className="ts-sheet-x" onClick={() => deleteSheet(s.id )}><X size={12}/></button>}
               </div>
             ))}
             <button className="ts-add-sheet" onClick={addSheet} disabled={sheets.length >= MAX_SHEETS}><Plus size={15}/></button>
@@ -2893,14 +3072,14 @@ export default function TimeSheetMain() {
                         {actionLabel}
                       </button>
                     </td>
-                    <td className={`${isAttendanceSelected(i,1) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.name)} onMouseDown={() => startAttendanceSelection(i,1)} onMouseEnter={() => extendAttendanceSelection(i,1)}><input className="ts-cell ts-text-center" style={r.styles?.name} value={r.name} onChange={e => updateCell(r.id,"name",e.target.value)} /></td>
-                    <td className={`${isAttendanceSelected(i,2) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.employeeId)} onMouseDown={() => startAttendanceSelection(i,2)} onMouseEnter={() => extendAttendanceSelection(i,2)}><input className="ts-cell ts-text-center" style={r.styles?.employeeId} value={r.employeeId} onChange={e => updateCell(r.id,"employeeId",e.target.value)} /></td>
-                    {(sheet?.columns || []).map((c,ci) => { const colIndex = ci + 3; return <td key={c.id} className={`${isAttendanceSelected(i,colIndex) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.[`custom:${c.id}`])} onMouseDown={() => startAttendanceSelection(i,colIndex)} onMouseEnter={() => extendAttendanceSelection(i,colIndex)}><input className="ts-cell" style={r.styles?.[`custom:${c.id}`]} value={r.custom?.[c.id] ?? ""} onChange={e => updateCustomCell(r.id,c.id,e.target.value)} /></td>; })}
-                    <td className={`${isAttendanceSelected(i,3+(sheet?.columns || []).length) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.day)} onMouseDown={() => startAttendanceSelection(i,3+(sheet?.columns || []).length)} onMouseEnter={() => extendAttendanceSelection(i,3+(sheet?.columns || []).length)}><button className="ts-day-cell" onDoubleClick={() => openDate(r.date)} title="Double-click to open the calendar date">{dayName(r.date)}</button></td>
-                    <td className={`${isAttendanceSelected(i,4+(sheet?.columns || []).length) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.hours)} onMouseDown={() => startAttendanceSelection(i,4+(sheet?.columns || []).length)} onMouseEnter={() => extendAttendanceSelection(i,4+(sheet?.columns || []).length)}><select className="ts-cell ts-select" style={r.styles?.hours} value={r.hours} onChange={e => updateCell(r.id,"hours",Number(e.target.value))}>{Array.from({length:24},(_,j)=><option key={j+1} value={j+1}>{j+1} H</option>)}</select></td>
-                    <td className={`${isAttendanceSelected(i,5+(sheet?.columns || []).length) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.ot)} onMouseDown={() => startAttendanceSelection(i,5+(sheet?.columns || []).length)} onMouseEnter={() => extendAttendanceSelection(i,5+(sheet?.columns || []).length)}><input className="ts-cell ts-number" style={r.styles?.ot} type="number" min="0" step="0.5" value={r.ot} onChange={e => updateCell(r.id,"ot",Number(e.target.value))}/></td>
-                    <td className={`${isAttendanceSelected(i,6+(sheet?.columns || []).length) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.rate)} onMouseDown={() => startAttendanceSelection(i,6+(sheet?.columns || []).length)} onMouseEnter={() => extendAttendanceSelection(i,6+(sheet?.columns || []).length)}>{money(settings.defaultHourlyRate, settings.currency)}</td>
-                    <td className={`${isAttendanceSelected(i,7+(sheet?.columns || []).length) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.status)} onMouseDown={() => startAttendanceSelection(i,7+(sheet?.columns || []).length)} onMouseEnter={() => extendAttendanceSelection(i,7+(sheet?.columns || []).length)}><select className={`ts-status ${r.status.toLowerCase().replaceAll("-","")}`} style={r.styles?.status} value={r.status} onChange={e => updateCell(r.id,"status",e.target.value)}><option>Present</option><option>Off-day</option><option>Absent</option></select></td>
+                    <td className={`${isAttendanceSelected(i,0) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.name)} onMouseDown={e => startAttendanceSelection(i,0,e.shiftKey)} onMouseEnter={() => extendAttendanceSelection(i,0 )}><input className="ts-cell ts-text-center" style={r.styles?.name} value={r.name} onChange={e => updateCell(r.id,"name",e.target.value)} /></td>
+                    <td className={`${isAttendanceSelected(i,1) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.employeeId)} onMouseDown={e => startAttendanceSelection(i,1,e.shiftKey)} onMouseEnter={() => extendAttendanceSelection(i,1 )}><input className="ts-cell ts-text-center" style={r.styles?.employeeId} value={r.employeeId} onChange={e => updateCell(r.id,"employeeId",e.target.value)} /></td>
+                    {(sheet?.columns || []).map((c,ci) => { const colIndex = ci + 2; return <td key={c.id} className={`${isAttendanceSelected(i,colIndex) ? "ts-attendance-selected " : ""}ts-attendance-formatted`} style={attendanceCellVars(r.styles?.[`custom:${c.id}`])} onMouseDown={e => startAttendanceSelection(i,colIndex,e.shiftKey)} onMouseEnter={() => extendAttendanceSelection(i,colIndex )}><input className="ts-cell" style={r.styles?.[`custom:${c.id}`]} value={r.custom?.[c.id] ?? ""} onChange={e => updateCustomCell(r.id,c.id,e.target.value)} /></td>; })}
+                    <td className="ts-attendance-formatted" style={attendanceCellVars(r.styles?.day)}><button className="ts-day-cell" onDoubleClick={() => openDate(r.date)} title="Double-click to open the calendar date">{dayName(r.date)}</button></td>
+                    <td className="ts-attendance-formatted" style={attendanceCellVars(r.styles?.hours)}><select className="ts-cell ts-select" style={r.styles?.hours} value={r.hours} onChange={e => updateCell(r.id,"hours",Number(e.target.value))}>{Array.from({length:24},(_,j)=><option key={j+1} value={j+1}>{j+1} H</option>)}</select></td>
+                    <td className="ts-attendance-formatted" style={attendanceCellVars(r.styles?.ot)}><input className="ts-cell ts-number" style={r.styles?.ot} type="number" min="0" step="0.5" value={r.ot} onChange={e => updateCell(r.id,"ot",Number(e.target.value))}/></td>
+                    <td className="ts-attendance-formatted" style={attendanceCellVars(r.styles?.rate)}>{money(settings.defaultHourlyRate, settings.currency)}</td>
+                    <td className="ts-attendance-formatted" style={attendanceCellVars(r.styles?.status)}><select className={`ts-status ${r.status.toLowerCase().replaceAll("-","")}`} style={r.styles?.status} value={r.status} onChange={e => updateCell(r.id,"status",e.target.value )}><option>Present</option><option>Off-day</option><option>Absent</option></select></td>
                   </tr>
                 );
               })}
@@ -2927,7 +3106,7 @@ export default function TimeSheetMain() {
           >
             <Minus size={15}/> Remove Column
           </button>
-          <button onClick={() => updateSheetName(prompt("Sheet name", sheet.name) || sheet.name)}><SlidersHorizontal size={15}/> Rename Sheet</button>
+          <button onClick={() => updateSheetName(prompt("Sheet name", sheet.name) || sheet.name )}><SlidersHorizontal size={15}/> Rename Sheet</button>
           <span className="ts-bottom-note">Custom columns can be renamed from their headers. Colors are managed in Settings.</span>
         </div>
 
@@ -4034,7 +4213,7 @@ function UnifiedBinPanel({ data, onClose, onRestore, onPermanentDelete, onEmpty 
   const items = [...(data.attendance || []).map(item => ({...item, __type:"attendance"})), ...(data.general || []).map(item => ({...item, __type:"general"}))].sort((a,b)=>(b.deletedAt||0)-(a.deletedAt||0));
   return <aside className="ts-unified-bin-panel">
     <div className="ts-unified-bin-header"><div><strong><Trash2 size={16}/> Bin ({items.length})</strong><span>Deleted sheets are saved here. Restore them or permanently delete them.</span></div><button onClick={onClose}><X size={18}/></button></div>
-    <div className="ts-unified-bin-list">{items.length ? items.map(item => <div className="ts-unified-bin-item" key={`${item.__type}-${item.id}`}><div><strong>{item.name}</strong><small>{item.__type === "general" ? "General Sheet" : "Employee Timesheet"} • {item.deletedAt ? new Date(item.deletedAt).toLocaleString() : "—"}</small></div><div><button onClick={()=>onRestore(item.__type,item.id)}><Undo2 size={14}/> Restore</button><button className="danger" onClick={()=>onPermanentDelete(item.__type,item.id)}><Trash2 size={14}/> Delete Permanently</button></div></div>) : <div className="ts-unified-bin-empty">Bin is empty.</div>}</div>
+    <div className="ts-unified-bin-list">{items.length ? items.map(item => <div className="ts-unified-bin-item" key={`${item.__type}-${item.id}`}><div><strong>{item.name}</strong><small>{item.__type === "general" ? "General Sheet" : "Employee Timesheet"} • {item.deletedAt ? new Date(item.deletedAt).toLocaleString() : "—"}</small></div><div><button onClick={()=>onRestore(item.__type,item.id )}><Undo2 size={14}/> Restore</button><button className="danger" onClick={()=>onPermanentDelete(item.__type,item.id )}><Trash2 size={14}/> Delete Permanently</button></div></div>) : <div className="ts-unified-bin-empty">Bin is empty.</div>}</div>
     <button className="ts-unified-empty-bin" onClick={onEmpty} disabled={!items.length}><Trash2 size={15}/> Empty Bin</button>
   </aside>;
 }

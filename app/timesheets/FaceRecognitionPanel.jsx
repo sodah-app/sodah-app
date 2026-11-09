@@ -14,6 +14,7 @@ function FaceAttendancePanel({ employees, onAttendanceAction, onClose, kioskLock
   const [error, setError] = useState("");
   const [detectedEmployee, setDetectedEmployee] = useState(null);
   const [attendanceResult, setAttendanceResult] = useState(null);
+  const [capturedImage, setCapturedImage] = useState("");
   const [pinDialog, setPinDialog] = useState(false);
   const [pinMode, setPinMode] = useState("lock");
   const [pinValue, setPinValue] = useState("");
@@ -55,7 +56,7 @@ function FaceAttendancePanel({ employees, onAttendanceAction, onClose, kioskLock
   };
 
   const startCamera = async () => {
-    setError(""); setMessage(""); setDetectedEmployee(null); setAttendanceResult(null);
+    setError(""); setMessage(""); setDetectedEmployee(null); setAttendanceResult(null); setCapturedImage("");
     if (!navigator.mediaDevices?.getUserMedia) {
       setError("Camera access is unavailable. Open this page over HTTPS on a supported browser.");
       return;
@@ -108,6 +109,8 @@ function FaceAttendancePanel({ employees, onAttendanceAction, onClose, kioskLock
     setBusy(true); setError(""); setMessage("");
     try {
       const image = captureFrame();
+      const snapshot = `data:image/jpeg;base64,${image}`;
+      setCapturedImage(snapshot);
       const selected = employees.find(e => e.key === employeeKey);
       const endpoint = mode === "enroll" ? "/api/timesheets/face/enroll" : "/api/timesheets/face/verify";
       const response = await fetch(endpoint, {
@@ -127,10 +130,21 @@ function FaceAttendancePanel({ employees, onAttendanceAction, onClose, kioskLock
         setConsent(false);
       } else if (result.matched && result.employee) {
         setDetectedEmployee(result.employee);
-        setAttendanceResult(null);
-        setMessage(`Face matched: ${result.employee.name || result.employee.employeeId}. Choose Check In or Check Out.`);
+        const recorded = onAttendanceAction?.(result.employee);
+        if (recorded?.success) {
+          const hour = new Date().getHours();
+          const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+          const actionLabel = recorded.action === "check-out" ? "checked out" : "checked in";
+          setAttendanceResult({ action: recorded.action, time: recorded.time || localTime(), message: `${greeting}! ${result.employee.name || "Employee"} — ${actionLabel} successfully at ${recorded.time || localTime()}.` });
+          setMessage(`${greeting}! ${result.employee.name || "Employee"} ${actionLabel} successfully.`);
+        } else {
+          setAttendanceResult(null);
+          setError(recorded?.message || "Face recognized, but attendance could not be recorded. Please contact an administrator.");
+        }
       } else {
-        setError(result.message || "No matching employee was found. Try again or use the normal check-in option.");
+        setDetectedEmployee(null);
+        setAttendanceResult(null);
+        setError(result.message || "No matching employee was found. Try again.");
       }
     } catch (e) {
       setError(e?.message || "Unable to process this face scan.");
@@ -139,32 +153,23 @@ function FaceAttendancePanel({ employees, onAttendanceAction, onClose, kioskLock
     }
   };
 
-  const submitAttendanceAction = (action) => {
-    if (!detectedEmployee || busy) return;
-    setError("");
-    const result = onAttendanceAction?.(detectedEmployee, action);
-    if (result?.success) {
-      setAttendanceResult({ action, time: result.time || "", message: result.message || "Attendance updated in the employee timesheet." });
-      setMessage(result.message || `Successfully recorded ${action === "check-in" ? "check-in" : "check-out"}.`);
-    } else {
-      setAttendanceResult(null);
-      setError(result?.message || "Attendance could not be recorded. Please contact an administrator.");
-    }
-  };
+
 
   return <section className="ts-panel ts-face-panel ts-kiosk-panel">
     <div className="ts-panel-header ts-face-panel-header"><div><h2>Employee Attendance Kiosk</h2><p>Face recognition connected to the existing employee timesheet and attendance rules.</p></div><div className="ts-face-lock-controls"><label className="ts-kiosk-lock-control"><span className="ts-kiosk-lock-label">Kiosk</span><button type="button" role="switch" aria-checked={kioskLocked} aria-label={kioskLocked ? "Unlock attendance kiosk" : "Lock attendance kiosk"} className={`ts-kiosk-lock-switch ${kioskLocked ? "is-on" : ""}`} onClick={openPinDialog}><span className="ts-kiosk-lock-action">{kioskLocked ? <><Unlock size={13}/> Unlock</> : <><Lock size={13}/> Lock</>}</span><span className="ts-kiosk-lock-switch-thumb"/></button></label></div></div>
     <div className="ts-kiosk-layout">
       <div className="ts-face-camera-card ts-kiosk-camera-card">
         <div className="ts-kiosk-camera-head"><span className="ts-face-live-pill"><i/>{cameraState === "live" ? "LIVE SCAN" : "CAMERA OFF"}</span><span className="ts-kiosk-connected"><CheckCircle2 size={15}/> Connected to Employee Timesheet</span></div>
-        <div className="ts-face-mode-tabs"><button type="button" className={mode === "scan" ? "active" : ""} onClick={()=>{setMode("scan");setError("");setMessage("");setDetectedEmployee(null);setAttendanceResult(null);}}>Attendance Kiosk</button>{!kioskLocked && <button type="button" className={mode === "enroll" ? "active" : ""} onClick={()=>{setMode("enroll");setError("");setMessage("");setDetectedEmployee(null);setAttendanceResult(null);}}>Admin Face Enrollment</button>}</div>
+        <div className="ts-face-mode-tabs"><button type="button" className={mode === "scan" ? "active" : ""} onClick={()=>{setMode("scan");setError("");setMessage("");setDetectedEmployee(null);setAttendanceResult(null);setCapturedImage("");}}>Attendance Kiosk</button>{!kioskLocked && <button type="button" className={mode === "enroll" ? "active" : ""} onClick={()=>{setMode("enroll");setError("");setMessage("");setDetectedEmployee(null);setAttendanceResult(null);setCapturedImage("");}}>Admin Face Enrollment</button>}</div>
         {mode === "enroll" && <label className="ts-face-field"><span>Employee</span><select value={employeeKey} onChange={e=>setEmployeeKey(e.target.value)}><option value="">Select employee</option>{employees.map(e=><option key={e.key} value={e.key}>{e.name}{e.employeeId ? ` • ${e.employeeId}` : ""}</option>)}</select></label>}
         <div className="ts-face-video-wrap">
-          {cameraState === "live" ? <video ref={videoRef} autoPlay playsInline muted aria-label="Live face camera preview"/> : <div className="ts-face-camera-placeholder"><Camera size={54}/><strong>Employee Face Scan</strong><span>Start the camera and position your face in the centre of the frame.</span></div>}
+          {cameraState === "live" ? <video ref={videoRef} autoPlay playsInline muted aria-label="Live face camera preview" style={capturedImage ? { visibility:"hidden" } : undefined}/> : <div className="ts-face-camera-placeholder"><Camera size={54}/><strong>Employee Face Scan</strong><span>Start the camera and position your face in the centre of the frame.</span></div>}
+          {capturedImage && <img className="ts-face-captured" src={capturedImage} alt="Captured face image for verification"/>}
           <div className="ts-face-corners" aria-hidden="true"><i/><i/><i/><i/></div>
         </div>
         {mode === "enroll" && <label className="ts-face-consent"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/><span>I confirm this employee has been informed and has freely agreed to biometric face enrollment. They can use the standard attendance method instead.</span></label>}
-        <div className="ts-face-actions ts-kiosk-camera-actions"><button type="button" className="secondary" onClick={cameraState === "live" ? stopCamera : startCamera}>{cameraState === "live" ? "Stop Camera" : "Start Camera"}</button><button type="button" className="primary" onClick={submitFrame} disabled={busy || cameraState !== "live" || (mode === "enroll" && (!employeeKey || !consent))}>{busy ? "Processing…" : mode === "enroll" ? "Capture & Register Face" : "Scan & Identify Employee"}</button></div>
+        <div className="ts-face-actions ts-kiosk-camera-actions"><button type="button" className="secondary" onClick={cameraState === "live" ? stopCamera : startCamera}>{cameraState === "live" ? "Stop Camera" : "Start Camera"}</button><button type="button" className="primary" onClick={submitFrame} disabled={busy || cameraState !== "live" || (mode === "enroll" && (!employeeKey || !consent))}>{busy ? "Processing…" : mode === "enroll" ? "Capture & Register Face" : "Scan & Check Attendance"}</button></div>
+        {capturedImage && <div className="ts-face-message success" role="status"><ScanFace size={16}/> Face captured — processing this still image.</div>}
         {message && <div className="ts-face-message success" role="status"><ShieldCheck size={17}/>{message}</div>}
         {error && <div className="ts-face-message error" role="alert">{error}</div>}
       </div>
@@ -173,9 +178,8 @@ function FaceAttendancePanel({ employees, onAttendanceAction, onClose, kioskLock
         {detectedEmployee ? <>
           <div className="ts-kiosk-person"><div className="ts-kiosk-avatar"><Users size={30}/></div><div><strong>{detectedEmployee.name || "Employee"}</strong><span>Employee ID: {detectedEmployee.employeeId || "Not provided"}</span><span>{detectedEmployee.department || detectedEmployee.role || "Employee"}</span></div></div>
           <div className="ts-kiosk-meta"><span><small>Date</small><b>{todayISO()}</b></span><span><small>Time</small><b>{localTime()}</b></span></div>
-          <div className="ts-kiosk-actions"><button type="button" className="ts-kiosk-checkin" onClick={()=>submitAttendanceAction("check-in")} disabled={!!attendanceResult}> <CheckCircle2 size={18}/> Check In</button><button type="button" className="ts-kiosk-checkout" onClick={()=>submitAttendanceAction("check-out")} disabled={!!attendanceResult}> <Clock3 size={18}/> Check Out</button></div>
-          {attendanceResult && <div className="ts-kiosk-locked-note">This action has been recorded in the existing employee timesheet.</div>}
-        </> : <div className="ts-kiosk-empty"><ScanFace size={38}/><strong>No employee detected yet</strong><span>After a successful scan, the employee name, ID, date and time will appear here.</span></div>}
+          {attendanceResult && <div className="ts-kiosk-locked-note">{attendanceResult.message} Recorded in the existing employee timesheet.</div>}
+        </> : <div className="ts-kiosk-empty"><ScanFace size={38}/><strong>No employee detected yet</strong><span>After a successful scan, attendance is recorded automatically and the employee details appear here.</span></div>}
         <div className="ts-kiosk-rules"><strong>Attendance protection</strong><span>• Duplicate check-ins are blocked.</span><span>• Check-out follows the current minimum / automatic duty rules.</span><span>• All attendance changes use the existing employee timesheet records.</span></div>
       </aside>
     </div>

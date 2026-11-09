@@ -861,16 +861,13 @@ export default function TimeSheetMain() {
     const match = candidates.find(item => item.row.checkIn && !item.row.checkOut) || candidates.find(item => item.row.date === today) || candidates.find(item => !item.row.checkOut) || candidates[0];
     if (!match) return { success: false, message: "No employee timesheet row was found. Ask an administrator to add this employee to the attendance sheet." };
     const row = match.row;
-    if (action === "check-in" && row.checkIn && !row.checkOut) {
-      return { success: false, message: `${row.name || row.employeeId} is already checked in at ${row.checkIn}. A second check-in is not allowed.` };
-    }
-    if (action === "check-out" && (!row.checkIn || row.checkOut)) {
-      return { success: false, message: row.checkOut ? `This employee already checked out at ${row.checkOut}.` : "This employee has not checked in yet, so check-out is not available." };
-    }
+    const resolvedAction = action || (row.checkIn && !row.checkOut ? "check-out" : "check-in");
+    if (resolvedAction === "check-in" && row.checkIn && !row.checkOut) return { success:false, action:resolvedAction, message:`${row.name || row.employeeId} is already checked in at ${row.checkIn}.` };
+    if (resolvedAction === "check-out" && (!row.checkIn || row.checkOut)) return { success:false, action:resolvedAction, message:row.checkOut ? `This employee already checked out at ${row.checkOut}.` : "This employee has not checked in yet." };
     setActiveId(match.sheetId);
     const recorded = checkAction(row, match.sheetId);
-    if (!recorded) return { success: false, message: "The existing attendance rules did not allow this action. Check the timesheet notification for the reason." };
-    return { success: true, time: localTime(), message: `${row.name || row.employeeId} ${action === "check-in" ? "checked in" : "checked out"}. The existing employee timesheet has been updated.` };
+    if (!recorded) return { success:false, action:resolvedAction, message:"The existing attendance rules did not allow this action. Check the timesheet notification for the reason." };
+    return { success:true, action:resolvedAction, time:localTime(), message:`${row.name || row.employeeId} ${resolvedAction === "check-in" ? "checked in" : "checked out"} successfully. The existing employee timesheet has been updated.` };
   };
 
   const findSearchMatch = () => {
@@ -1566,6 +1563,10 @@ export default function TimeSheetMain() {
         .ts-face-status{display:flex;align-items:center;gap:7px;padding:8px 11px;border-radius:999px;background:#dcfce7;color:#166534;font-size:11px;white-space:nowrap}.ts-face-status i,.ts-face-live-pill i{width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block}
         .ts-face-layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(260px,.75fr);gap:14px;padding:0 16px 16px}
         .ts-face-camera-card,.ts-face-info-card{min-width:0;border:1px solid #dbe4f0;border-radius:14px;background:#fff;padding:14px;box-shadow:0 4px 16px rgba(15,23,42,.05)}
+        .ts-face-pin-backdrop{position:fixed;inset:0;z-index:100000;display:grid;place-items:center;padding:20px;background:rgba(8,15,30,.65);backdrop-filter:blur(5px)}
+        .ts-face-pin-dialog{width:min(100%,420px);padding:24px;border:1px solid #dbe4f0;border-radius:18px;background:#fff;color:#172033;box-shadow:0 24px 80px rgba(0,0,0,.28);display:grid;gap:13px}
+        .ts-face-pin-icon{width:44px;height:44px;display:grid;place-items:center;border-radius:13px;background:#e0f2fe;color:#0369a1}.ts-face-pin-dialog h3{margin:0;font-size:20px}.ts-face-pin-dialog p{margin:0;color:#64748b;font-size:13px;line-height:1.55}.ts-face-pin-dialog label{display:grid;gap:7px;font-size:12px;font-weight:800}.ts-face-pin-dialog input{width:100%;height:46px;padding:0 13px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px;letter-spacing:.2em;color:#172033;background:#fff}.ts-face-pin-error{padding:9px 11px;border-radius:9px;background:#fef2f2;color:#b91c1c;font-size:12px}.ts-face-pin-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:4px}.ts-face-pin-actions button{min-height:40px;padding:0 15px;border-radius:9px;font-weight:800;cursor:pointer}.ts-face-pin-actions .secondary{border:1px solid #cbd5e1;background:#fff;color:#334155}.ts-face-pin-actions .primary{border:0;background:#059669;color:#fff}
+        .ts-face-captured{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
         .ts-face-mode-tabs{display:flex;gap:8px;margin-bottom:12px}.ts-face-mode-tabs button{border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:9px;padding:10px 13px;font-weight:800;cursor:pointer}.ts-face-mode-tabs button.active{background:#ede9fe;border-color:#8b5cf6;color:#5b21b6}
         .ts-face-field{display:grid;gap:6px;margin-bottom:12px;color:#334155;font-size:12px;font-weight:800}.ts-face-field select{height:40px;border:1px solid #cbd5e1;border-radius:9px;padding:0 10px;background:#fff;color:#0f172a}
         .ts-face-video-wrap{position:relative;min-height:300px;aspect-ratio:16/9;overflow:hidden;border-radius:13px;background:radial-gradient(circle at 50% 40%,#334155,#0f172a 70%);display:grid;place-items:center}

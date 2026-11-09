@@ -1,10 +1,20 @@
-Sodah Timesheet UI update
+Sodah Face Attendance Update
 
-Files:
-- TimeSheetMain.jsx: Auto Save control restyled to match the supplied compact pill/switch reference and remains visible while the kiosk is locked.
-- FaceRecognitionPanel.jsx: Kiosk lock control restyled to match the Auto Save control family. It displays only “Lock” while unlocked and only “Unlock” while locked; selecting it opens the existing PIN dialog.
-- timesheet.css: styles for the matching controls, responsive sizing and dark theme.
+Replace only these two existing files in your project:
+1. TimeSheetMain.jsx -> your existing TimeSheetMain component file
+2. FaceRecognitionPanel.jsx -> the imported FaceRecognitionPanel component file
 
-Replace the corresponding files in the project. Keep the FaceRecognitionPanel import/path consistent with the existing project.
+What changed:
+- PIN create/unlock prompt is styled as a centered screen modal.
+- Locking switches the face panel to Attendance Kiosk and hides admin enrollment.
+- Existing locked-state toolbar/menu/search hiding remains in TimeSheetMain.
+- A face scan captures a still image and shows that captured image while processing.
+- A successful match automatically determines Check In vs Check Out from the matched employee's attendance row and calls the existing attendance handler.
+- Success feedback includes a time-appropriate greeting, employee name, action and time.
+- The existing AWS face enrollment and verification API routes are unchanged.
+- Existing timesheet sheets, settings, reports, analytics, autosave and spreadsheet functionality are not intentionally changed.
 
-Note: the PIN/kiosk lock remains client-side only and is not a substitute for server-side authorization. No production build or deployment test was run in this environment.
+Important:
+- Apply the update to the same source paths used by your current imports.
+- This is a code update, not a verified production build or live camera/AWS test.
+- Kiosk PIN is currently browser-local and is not a substitute for server-side device authentication on a publicly accessible kiosk.
